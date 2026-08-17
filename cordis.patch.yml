@@ -1,0 +1,6 @@
+# dsh-base already mounts llm-pi-ai, settings, credentials, tools, the system
+# prompt registry, and agent-default-model. This bundle adds only the
+# model-facing management surface and therefore keeps one source of truth.
+- insert:
+    - id: multi-model-provider
+      name: dsh-multi-model-provider
