@@ -1,7 +1,7 @@
 {
   "name": "dsh-multi-model-provider",
-  "description": "Agent-assisted provider registration and default-model selection for DeepSeek Harness",
-  "version": "0.1.0-rc.1",
+  "description": "Agent-assisted language and task-model registration for DeepSeek Harness",
+  "version": "0.1.0-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -42,13 +42,14 @@
   "dsh": {
     "inventory": {
       "summary": {
-        "zh": "让 Agent 安全地查看和配置模型 Provider，并选择新会话的默认主模型。",
-        "en": "Lets agents safely inspect and configure model providers and select the default primary model for new sessions."
+        "zh": "让 Agent 安全注册语言、图片、音频、视频等模型，并区分注册状态与运行时可用性。",
+        "en": "Lets agents safely register language, image, audio, video, and other models while separating registration from runtime availability."
       },
       "tags": [
         "model",
         "provider",
-        "configuration"
+        "configuration",
+        "multimodal"
       ],
       "dependencies": [
         "@deepseek-ai/dsh-llm-pi-ai",
@@ -70,7 +71,8 @@
     "@deepseek-ai/dsh-llm-pi-ai": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -87,6 +89,7 @@
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1",
     "@types/node": "^22.20.0",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
