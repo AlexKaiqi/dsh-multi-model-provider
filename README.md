@@ -2,19 +2,68 @@
 
 English | [中文](README.zh.md)
 
-Agent-assisted model management for DeepSeek Harness. The plugin does not implement another LLM adapter or maintain a parallel registry. The official `@deepseek-ai/dsh-llm-pi-ai` `llm-pi-ai` settings namespace remains the single source of truth for provider routes and model catalogs.
+Agent-assisted model registration for DeepSeek Harness. It deliberately separates registration from execution:
 
-It contributes three model-visible tools:
+- Primary language models remain registered and executed by `@deepseek-ai/dsh-llm-pi-ai`.
+- Image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog.
+- A task-model registration describes a route; a separate runtime adapter is still required to invoke it.
 
-- `list_model_routes` inspects live or dormant provider routes, safe credential status, and live model catalogs.
-- `configure_model_route` creates or updates a pi-ai provider profile while preserving existing fields that were not supplied. It accepts a credential reference (`apiKeyEnv`), never an API key value.
-- `select_default_model` validates and saves the primary model used by newly created Agents.
+This keeps non-language models out of the LLM contract and provides a stable registration layer for future dynamic routing.
+
+## Agent tools
+
+- `list_model_routes`, `configure_model_route`, and `select_default_model` manage primary language models through llm-pi-ai.
+- `list_task_models` inspects non-language registrations and reports registration separately from callability.
+- `register_task_model` creates or updates a task-model route and its reusable connection profile.
+
+Registration tools accept credential references such as `OPENAI_API_KEY`, never API-key values. The user enters the key only in a secure Settings credential field; the Agent can fill provider, URL, model catalog, and profile metadata.
+
+## Settings model
+
+The Settings UI exposes two complementary namespaces:
+
+- `llm-pi-ai` is the sole source of truth for language-model providers and catalogs.
+- `multi-model-provider` owns non-language `connections`, `models`, and optional per-task `defaults`.
+
+Example task-model registration:
+
+```yaml
+multi-model-provider:
+  connections:
+    openai:
+      provider: openai
+      displayName: OpenAI
+      credentialRef: OPENAI_API_KEY
+      baseURL: https://api.openai.com/v1
+  models:
+    openai/gpt-image-2:
+      connection: openai
+      model: gpt-image-2
+      displayName: GPT Image 2
+      task: image-generation
+      runtimeAdapter: openai-images
+      input: [text, image]
+      output: [image]
+      execution: request-response
+      operations: [generate, edit]
+      roles: [image-generator]
+      profile: {}
+```
+
+`openai/gpt-image-2` ships as a built-in catalog entry. It appears in `list_task_models`, not in the language-model picker. Until an `openai-images` runtime integration exists, it is explicitly returned as `registered-only` with `callable: false`.
+
+Supported tasks are `image-generation`, `speech-synthesis`, `transcription`, `audio-generation`, `video-generation`, `embedding`, and `reranking`. Routes also describe input/output modalities, operations, and execution lifecycle, so task semantics are not conflated with modality.
+
+## Runtime boundary
+
+- This plugin owns registration, Settings schemas, safe credential references, and Agent-facing registration tools.
+- llm-pi-ai owns language-model protocol adaptation and execution.
+- Independent capability plugins should execute image/audio/video routes and handle binary artifacts; this release does neither.
+- A future router should select only among registered routes that an execution runtime has actually claimed. It should not duplicate catalog or credential state.
 
 ## Install
 
 The package is a DSH composition bundle targeting DeepSeek Harness `0.1.0-rc.6`:
-
-Install from a local checkout before the first npm release:
 
 ```sh
 git clone https://github.com/AlexKaiqi/dsh-multi-model-provider.git
@@ -23,53 +72,16 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 mkdir -p artifacts
 pnpm pack --pack-destination artifacts
-dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.1.tgz"
+dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.2.tgz"
 ```
 
-After the package is published to npm:
+After publication:
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.1'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.2'
 ```
 
-Restart running DSH Web processes after installation or upgrade, then create a new Agent task. `dsh-base` already mounts llm-pi-ai, Settings, Credentials, Tools, System Prompt, and agent-default-model; this bundle inserts only the multi-model-provider plugin.
-
-## Secure onboarding flow
-
-When a user asks an Agent to add OpenAI, the Agent should:
-
-1. Inspect the built-in `openai` catalog route with `list_model_routes`.
-2. Call `configure_model_route` with `provider: openai` and `apiKeyEnv: OPENAI_API_KEY`.
-3. If the result reports `requiresCredential: true`, direct the user to the secure API-key field on the Web Models page.
-4. Inspect the now-live catalog and choose an exact model id.
-5. Save it with `select_default_model`.
-
-Never place API keys in chat, tool arguments, or `settings.yaml`. The Web Models page stores values through the Credentials seam; provider settings hold references only.
-
-The minimal OpenAI settings are:
-
-```yaml
-llm-pi-ai:
-  providers:
-    openai:
-      apiKeyEnv: OPENAI_API_KEY
-
-agent-default-model:
-  provider: openai
-  model: <gpt-model-id>
-  reasoningEffort: high
-```
-
-Because `openai` is a built-in pi-ai route, omit its endpoint, protocol, and model list to inherit the installed catalog. A non-empty explicit `models` list replaces that catalog.
-
-## Runtime boundaries
-
-- llm-pi-ai hot-loads provider settings.
-- Credentials resolve for each model request, independently of provider metadata.
-- Default selection affects future Agents only. Existing sessions retain their session selection and use the Web model picker to switch.
-- Version 0.1 does not delete providers, accept credential values, perform dynamic routing, or replace the Web Models page.
-
-Future dynamic routing belongs in an `agent/request` policy layer selecting among already registered candidates; it should not own registration or secrets.
+Restart running DSH Web processes after upgrading, then create a new Agent task so the new tools and system-prompt guidance are loaded.
 
 ## Development
 
