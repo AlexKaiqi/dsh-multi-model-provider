@@ -12,11 +12,19 @@ import { MODEL_MANAGER_GUIDANCE } from '../src/model/guidance.ts'
 import { HELP, TOOL_NAMES, VERSION } from '../src/model/help.ts'
 import {
   CONFIGURE_MODEL_ROUTE_SURFACE,
+  DISCOVER_TASK_MODELS_SURFACE,
+  GET_MODEL_PORTRAIT_SURFACE,
+  INVOKE_TASK_MODEL_SURFACE,
   LIST_MODEL_ROUTES_SURFACE,
   LIST_TASK_MODELS_SURFACE,
   MODEL_MANAGER_TOOL_SURFACES,
+  PREPARE_MODEL_PORTRAITS_SURFACE,
   REGISTER_TASK_MODEL_SURFACE,
+  SELECT_TASK_MODELS_SURFACE,
   SELECT_DEFAULT_MODEL_SURFACE,
+  SUMMARIZE_MODEL_USAGE_SURFACE,
+  UPSERT_MODEL_PORTRAIT_SURFACE,
+  VALIDATE_MODEL_PORTRAIT_SURFACE,
 } from '../src/model/tool-surfaces.ts'
 import { modelManagerTools } from '../src/tools.ts'
 
@@ -25,13 +33,21 @@ const POSITIVE = /\buse it\b/i
 const NEGATIVE = /\bdo not use\b/i
 
 describe('tool surfaces', () => {
-  it('covers all five tools exactly once', () => {
+  it('covers all model-management tools exactly once', () => {
     // Named individually so the declared exports are each really referenced.
     expect(MODEL_MANAGER_TOOL_SURFACES).toEqual([
       LIST_MODEL_ROUTES_SURFACE,
       CONFIGURE_MODEL_ROUTE_SURFACE,
       LIST_TASK_MODELS_SURFACE,
+      DISCOVER_TASK_MODELS_SURFACE,
+      SELECT_TASK_MODELS_SURFACE,
       REGISTER_TASK_MODEL_SURFACE,
+      PREPARE_MODEL_PORTRAITS_SURFACE,
+      GET_MODEL_PORTRAIT_SURFACE,
+      UPSERT_MODEL_PORTRAIT_SURFACE,
+      VALIDATE_MODEL_PORTRAIT_SURFACE,
+      INVOKE_TASK_MODEL_SURFACE,
+      SUMMARIZE_MODEL_USAGE_SURFACE,
       SELECT_DEFAULT_MODEL_SURFACE,
     ])
     const names = MODEL_MANAGER_TOOL_SURFACES.map(surface => surface.name)
@@ -39,7 +55,15 @@ describe('tool surfaces', () => {
       'list_model_routes',
       'configure_model_route',
       'list_task_models',
+      'discover_task_models',
+      'select_task_models',
       'register_task_model',
+      'prepare_model_portraits',
+      'get_model_portrait',
+      'upsert_model_portrait',
+      'validate_model_portrait',
+      'invoke_task_model',
+      'summarize_model_usage',
       'select_default_model',
     ])
     expect(new Set(names).size).toBe(names.length)

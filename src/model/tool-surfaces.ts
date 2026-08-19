@@ -44,7 +44,7 @@ export const CONFIGURE_MODEL_ROUTE_SURFACE = {
 /** Tool that lists non-language task-model routes. */
 export const LIST_TASK_MODELS_SURFACE = {
   name: 'list_task_models',
-  description: 'Inspect registered non-language task models such as image, speech, audio, video, embedding, and reranking routes. Use it before register_task_model, and use it to check whether a route is merely registered or actually callable. Do not use it for language/chat models; those live in list_model_routes. Registration and runtime callability are reported separately, and no credential values are returned.',
+  description: 'Inspect registered non-language task models such as image, speech, audio, video, embedding, and reranking routes. Use it before register_task_model, and use it to check declared cross-provider capabilities and whether a route is merely registered or actually callable. Do not use it for language/chat models; those live in list_model_routes. Registration and runtime callability are reported separately, and no credential values are returned.',
   parameters: {
     id: 'Optional exact registry id, for example openai/gpt-image-2.',
     provider: 'Optional provider-family filter.',
@@ -54,29 +54,117 @@ export const LIST_TASK_MODELS_SURFACE = {
   helpPointer: 'list_task_models',
 } as const
 
+export const DISCOVER_TASK_MODELS_SURFACE = {
+  name: 'discover_task_models',
+  description: 'Query one provider connection\'s authenticated model catalog and show which upstream ids are already registered and enabled. Use it before registering provider models or refreshing an available-model selector. Do not use it as proof that every catalog item is callable, and do not assume discovery changes registration or selection; inspect the result with list_task_models.',
+  parameters: {
+    connection: 'Exact reusable connection id, for example volcengine.',
+  },
+  helpPointer: 'list_task_models',
+} as const
+
+export const SELECT_TASK_MODELS_SURFACE = {
+  name: 'select_task_models',
+  description: 'Replace the enabled task-model set for one connection. Use it when the user changes which registered multimodal models are available; an empty ids array intentionally disables all models and never falls back to selecting everything. Do not use it to register new upstream ids or select the primary language model; verify the result with list_task_models.',
+  parameters: {
+    connection: 'Exact reusable connection id whose registered routes will be updated.',
+    ids: 'Complete set of registered route ids to enable. Pass [] to disable every route on the connection.',
+  },
+  helpPointer: 'list_task_models',
+} as const
+
 /** Tool that creates or updates a non-language task-model registration. */
 export const REGISTER_TASK_MODEL_SURFACE = {
   name: 'register_task_model',
-  description: 'Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, and reranking routes; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value.',
+  description: 'Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, reranking, and realtime routes, including providers such as Doubao that require multiple named credential references; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value or another secret value.',
   parameters: {
     id: 'Stable route id, for example openai/gpt-image-2.',
     connection: 'Reusable connection id, for example openai.',
     provider: 'Provider family; required when creating a new connection.',
     connectionDisplayName: 'Human-readable connection name.',
-    credentialRef: `Credential reference such as OPENAI_API_KEY. ${NEVER_A_SECRET}`,
+    credentialRef: `Legacy single credential reference such as OPENAI_API_KEY. ${NEVER_A_SECRET}`,
+    credentialRefs: `Named credential references for multi-credential providers, for example appId=DOUBAO_APPID and token=DOUBAO_TOKEN. Values are reference names, not secrets. ${NEVER_A_SECRET}`,
     baseURL: 'Optional absolute API base URL.',
+    catalogEndpoint: 'Optional absolute model-catalog URL; when omitted discovery uses baseURL/models.',
+    catalogCredentialName: 'Credential slot used for catalog discovery, for example arkApiKey or default.',
+    connectionProfile: 'Optional provider-level non-secret metadata such as region, defaultVoice, or catalog-discovery mode.',
     model: 'Exact provider model id.',
     displayName: 'Human-readable model name.',
     task: 'Semantic task served by the model.',
     runtimeAdapter: 'Adapter contract expected to execute this route.',
+    enabled: 'Whether routing and direct invocation may use this route; defaults to true.',
+    credentialNames: 'Connection credential slots required by this route, allowing one provider to expose products with different authentication.',
     input: 'Accepted modalities; sensible task defaults are used when omitted.',
     output: 'Produced modalities or data shapes; sensible task defaults are used when omitted.',
     execution: 'Invocation lifecycle.',
+    capabilities: 'Stable cross-provider capability ids such as speech.transcribe.file, speech.synthesize.short, or speech.realtime_session.',
     operations: 'Supported operations, for example generate, edit, transcribe, or synthesize.',
     roles: 'Routing roles such as image-generator or speech-to-text.',
     profile: 'Optional provider-specific non-secret capability metadata.',
+    portrait: 'Optional initial router-facing portrait; use upsert_model_portrait for evidence-backed price, speed, and strengths.',
   },
   helpPointer: 'list_task_models',
+} as const
+
+export const PREPARE_MODEL_PORTRAITS_SURFACE = {
+  name: 'prepare_model_portraits',
+  description: 'Start the complete autonomous initial-portrait workflow for registered LLM and task models. Use it immediately when the user says “整理初始画像”, “建立模型画像”, or equivalent—even if they do not list fields or tool steps—and infer model ids from the immediately preceding registration or discovery context. It returns the plugin-defined ontology, candidates needing work, and the required gather/upsert/validate sequence. Do not use it to invent undocumented facts, perform paid probes without approval, or ask the user to restate the portrait schema.',
+  parameters: {
+    ids: 'Optional exact task route ids or LLM ids in llm:<provider>/<model> form. Infer these from recent context when possible; omit to find enabled models with missing or non-valid portraits.',
+    includeDisabled: 'Include disabled task routes when ids are omitted; defaults to false.',
+  },
+  helpPointer: 'prepare_model_portraits',
+} as const
+
+export const GET_MODEL_PORTRAIT_SURFACE = {
+  name: 'get_model_portrait',
+  description: 'Inspect one router-facing portrait for either an LLM or task model together with registered capabilities, input/output types, validation state, and optional current-session observations. Use it before choosing or comparing a model. Do not use it to invoke a model or edit its portrait.',
+  parameters: {
+    id: 'Exact task-model route id, or llm:<provider>/<model> for a language model.',
+    includeEvidence: 'Include evidence records; defaults to true.',
+    includeUsage: 'Include invocation observations aggregated from the current session.',
+  },
+  helpPointer: 'get_model_portrait',
+} as const
+
+export const UPSERT_MODEL_PORTRAIT_SURFACE = {
+  name: 'upsert_model_portrait',
+  description: 'Create or replace the evidence-backed portrait for a registered LLM or task model. Use it after the Harness Agent has gathered authoritative documentation or benchmark evidence for price, strengths, limitations, speed, modalities, and routing quality scores; then immediately call validate_model_portrait and inspect the result with get_model_portrait. Do not use it for secrets, raw request content, guessed facts, or unregistered models.',
+  parameters: {
+    id: 'Exact task-model route id, or llm:<provider>/<model> for a language model.',
+    portrait: 'Complete non-secret portrait facts. Price and performance claims should reference evidence ids; quality scores are normalized from 0 to 1.',
+  },
+  helpPointer: 'get_model_portrait',
+} as const
+
+export const VALIDATE_MODEL_PORTRAIT_SURFACE = {
+  name: 'validate_model_portrait',
+  description: 'Validate a saved portrait against registration, credential status, adapter availability, evidence links, and optionally a live adapter probe. Use it after upsert_model_portrait or when get_model_portrait shows a portrait may be stale. Do not use it to create claims or to treat a missing adapter as proof that the provider model is invalid.',
+  parameters: {
+    id: 'Exact task-model route id, or llm:<provider>/<model> for a language model.',
+    liveProbe: 'Ask the installed runtime adapter to perform a provider-safe live probe; may incur provider traffic or cost.',
+  },
+  helpPointer: 'get_model_portrait',
+} as const
+
+export const INVOKE_TASK_MODEL_SURFACE = {
+  name: 'invoke_task_model',
+  description: 'Invoke a registered multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for image, speech, audio, video, realtime, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.',
+  parameters: {
+    id: 'Exact registered task-model route id.',
+    operation: 'One operation declared by the route, for example synthesize or transcribe-file.',
+    request: 'Adapter-neutral non-secret request metadata. Refer to URLs, attachment ids, or file handles instead of embedding binary data.',
+  },
+  helpPointer: 'list_task_models',
+} as const
+
+export const SUMMARIZE_MODEL_USAGE_SURFACE = {
+  name: 'summarize_model_usage',
+  description: 'Aggregate native Harness LLM calls and task-model calls in the current durable session into counts, success rate, latency percentiles, token usage, and estimated cost. Use it as measured evidence when reviewing a model portrait; collection is automatic during normal calls. Do not use it as a cross-session analytics database or as proof of quality without representative samples.',
+  parameters: {
+    id: 'Optional exact task route id or llm:<provider>/<model>; omit to summarize every observed model call in the current session.',
+  },
+  helpPointer: 'summarize_model_usage',
 } as const
 
 /** Tool that saves the default language model for newly created Agents. */
@@ -96,6 +184,14 @@ export const MODEL_MANAGER_TOOL_SURFACES = [
   LIST_MODEL_ROUTES_SURFACE,
   CONFIGURE_MODEL_ROUTE_SURFACE,
   LIST_TASK_MODELS_SURFACE,
+  DISCOVER_TASK_MODELS_SURFACE,
+  SELECT_TASK_MODELS_SURFACE,
   REGISTER_TASK_MODEL_SURFACE,
+  PREPARE_MODEL_PORTRAITS_SURFACE,
+  GET_MODEL_PORTRAIT_SURFACE,
+  UPSERT_MODEL_PORTRAIT_SURFACE,
+  VALIDATE_MODEL_PORTRAIT_SURFACE,
+  INVOKE_TASK_MODEL_SURFACE,
+  SUMMARIZE_MODEL_USAGE_SURFACE,
   SELECT_DEFAULT_MODEL_SURFACE,
 ] as const

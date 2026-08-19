@@ -55,10 +55,66 @@
       },
       {
         "path": "tool-surfaces.ts",
+        "export": "DISCOVER_TASK_MODELS_SURFACE",
+        "role": "toolSurface",
+        "toolName": "discover_task_models",
+        "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "SELECT_TASK_MODELS_SURFACE",
+        "role": "toolSurface",
+        "toolName": "select_task_models",
+        "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
         "export": "REGISTER_TASK_MODEL_SURFACE",
         "role": "toolSurface",
         "toolName": "register_task_model",
         "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "PREPARE_MODEL_PORTRAITS_SURFACE",
+        "role": "toolSurface",
+        "toolName": "prepare_model_portraits",
+        "helpPointer": "prepare_model_portraits"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "GET_MODEL_PORTRAIT_SURFACE",
+        "role": "toolSurface",
+        "toolName": "get_model_portrait",
+        "helpPointer": "get_model_portrait"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "UPSERT_MODEL_PORTRAIT_SURFACE",
+        "role": "toolSurface",
+        "toolName": "upsert_model_portrait",
+        "helpPointer": "get_model_portrait"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "VALIDATE_MODEL_PORTRAIT_SURFACE",
+        "role": "toolSurface",
+        "toolName": "validate_model_portrait",
+        "helpPointer": "get_model_portrait"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "INVOKE_TASK_MODEL_SURFACE",
+        "role": "toolSurface",
+        "toolName": "invoke_task_model",
+        "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "SUMMARIZE_MODEL_USAGE_SURFACE",
+        "role": "toolSurface",
+        "toolName": "summarize_model_usage",
+        "helpPointer": "summarize_model_usage"
       },
       {
         "path": "tool-surfaces.ts",
@@ -77,7 +133,15 @@
       "configure_model_route",
       "select_default_model",
       "list_task_models",
-      "register_task_model"
+      "discover_task_models",
+      "select_task_models",
+      "register_task_model",
+      "prepare_model_portraits",
+      "get_model_portrait",
+      "upsert_model_portrait",
+      "validate_model_portrait",
+      "invoke_task_model",
+      "summarize_model_usage"
     ]
   },
   "tests": {
@@ -90,7 +154,15 @@
           "LIST_MODEL_ROUTES_SURFACE",
           "CONFIGURE_MODEL_ROUTE_SURFACE",
           "LIST_TASK_MODELS_SURFACE",
+          "DISCOVER_TASK_MODELS_SURFACE",
+          "SELECT_TASK_MODELS_SURFACE",
           "REGISTER_TASK_MODEL_SURFACE",
+          "PREPARE_MODEL_PORTRAITS_SURFACE",
+          "GET_MODEL_PORTRAIT_SURFACE",
+          "UPSERT_MODEL_PORTRAIT_SURFACE",
+          "VALIDATE_MODEL_PORTRAIT_SURFACE",
+          "INVOKE_TASK_MODEL_SURFACE",
+          "SUMMARIZE_MODEL_USAGE_SURFACE",
           "SELECT_DEFAULT_MODEL_SURFACE"
         ]
       }
@@ -111,6 +183,10 @@
       {
         "file": "tests/pi-ai-integration.spec.ts",
         "layer": "L2"
+      },
+      {
+        "file": "tests/observations.spec.ts",
+        "layer": "L1"
       }
     ]
   },
