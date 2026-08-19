@@ -11,6 +11,11 @@ import { MODEL_MANAGER_GUIDANCE } from './model/guidance.ts'
 import { HELP } from './model/help.ts'
 import { VOLCENGINE_ARK_BASE_URL } from './providers/volcengine.ts'
 import { ModelCatalog } from './catalog.ts'
+import {
+  DOUBAO_SPEECH_CATALOG,
+  DOUBAO_SPEECH_LEGACY_CATALOG,
+  DOUBAO_SPEECH_PROVIDER,
+} from './doubao-speech-catalog.ts'
 import { registerTaskModelSettings } from './registry.ts'
 import { TaskModelRuntime } from './runtime.ts'
 import { modelManagerTools } from './tools.ts'
@@ -36,9 +41,8 @@ export const name = 'multi-model-provider'
 export const inject = ['llm', 'settings', 'credentials', 'agentDefaultModel', 'tools', 'systemPrompt']
 
 export function apply(ctx: Context): void {
-  const volcengineDirectoryEntry = ctx.llm.listConfigurableProviders()
-    .find(entry => entry.provider === 'volcengine')
-  if (volcengineDirectoryEntry === undefined) {
+  const existingProviders = new Set(ctx.llm.listConfigurableProviders().map(entry => entry.provider))
+  if (!existingProviders.has('volcengine')) {
     ctx.llm.registerConfigurableProviders([{
       provider: 'volcengine',
       displayName: '火山方舟',
@@ -56,9 +60,46 @@ export function apply(ctx: Context): void {
       // pi-ai has no bundled Volcengine catalog, so this route owns its
       // endpoint, protocol, and selected models even though it is presented
       // as an ordinary language-model provider in the Models settings page.
-      declared: true,
+      declared: false,
     }])
   }
+  if (!existingProviders.has(DOUBAO_SPEECH_PROVIDER)) {
+    ctx.llm.registerConfigurableProviders([{
+      provider: DOUBAO_SPEECH_PROVIDER,
+      displayName: '豆包语音',
+      settingsNs: 'multi-model-provider',
+      settingsPath: ['connections', DOUBAO_SPEECH_PROVIDER],
+      ...{
+        profileDefaults: {
+          provider: DOUBAO_SPEECH_PROVIDER,
+          displayName: '豆包语音',
+          apiKeyEnv: 'DOUBAO_API_KEY',
+          credentialRef: 'DOUBAO_API_KEY',
+          credentialRefs: { apiKey: 'DOUBAO_API_KEY', realtimeApiKey: 'DOUBAO_API_KEY' },
+          baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+          // The full-duplex API fixes session.model to 1.2.6.1 and exposes no
+          // online model-list endpoint. Start empty so the standard catalog
+          // picker adopts the one supported route instead of showing it twice.
+          models: [],
+          profile: { product: 'doubao-realtime-speech' },
+        },
+        cleanupPaths: [...DOUBAO_SPEECH_LEGACY_CATALOG, ...DOUBAO_SPEECH_CATALOG]
+          .map(entry => ['models', entry.id]),
+        // The first reference is the current provider credential. The others
+        // are cleanup-only aliases from the superseded multi-credential form.
+        credentialRefs: ['DOUBAO_API_KEY', 'DOUBAO_APPID', 'DOUBAO_TOKEN', 'DOUBAO_REALTIME_API_KEY'],
+        userConfigured: true,
+      },
+      declared: false,
+    }])
+  }
+  ctx.llm.registerModelDiscovery('multi-model-provider', async (request) => {
+    if (request.provider !== DOUBAO_SPEECH_PROVIDER) return []
+    return DOUBAO_SPEECH_CATALOG.map(entry => ({
+      id: entry.registration.model,
+      ...(entry.registration.displayName === undefined ? {} : { name: entry.registration.displayName }),
+    }))
+  })
   new TaskModelRuntime(ctx)
   new ModelCatalog(ctx)
   registerTaskModelSettings(ctx)

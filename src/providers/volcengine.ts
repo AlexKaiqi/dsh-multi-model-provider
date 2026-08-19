@@ -11,9 +11,7 @@ export const VOLCENGINE_ARK_API = 'openai-responses'
 
 const CREDENTIALS = {
   arkApiKey: 'ARK_API_KEY',
-  speechAppId: 'DOUBAO_APPID',
-  speechToken: 'DOUBAO_TOKEN',
-  realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
+  doubaoApiKey: 'DOUBAO_API_KEY',
 } as const
 
 function object(value: unknown): Record<string, unknown> | undefined {
@@ -97,6 +95,7 @@ export async function inspectVolcengineProvider(ctx: Context, signal: AbortSigna
     relatedTaskProvider: {
       provider: 'doubao-speech',
       displayName: '豆包语音',
+      credentialRef: CREDENTIALS.doubaoApiKey,
       taskRoutes,
     },
     routingRules: {

@@ -59,17 +59,17 @@ await ctx.modelCatalog.selectAgentModel({
 - `invoke_task_model`：由大语言模型通过统一工具入口调用真正可用的多模态 route。
 - `summarize_model_usage`：汇总当前持久会话中 LLM 与 task-model 的成功率、延迟、token、成本等调用观测。
 
-所有注册工具只接收凭据引用（例如 `OPENAI_API_KEY`），不接收 API Key 明文。需要多项认证信息的 Provider 可使用命名引用，例如豆包的 `appId: DOUBAO_APPID` 与 `token: DOUBAO_TOKEN`。用户只需要在 Settings 的安全凭据字段输入真实值；Provider、URL、模型列表和 profile 可以由 Agent 协助填写。
+所有注册工具只接收凭据引用（例如 `OPENAI_API_KEY`），不接收 API Key 明文。豆包 Realtime 使用单个 `DOUBAO_API_KEY` 引用。用户只需要在 Settings 的安全凭据字段输入真实值；Provider、URL、模型列表和 profile 可以由 Agent 协助填写。
 
 ## Settings UI
 
-安装后会扩展 DSH 自带“模型”页，不再增加独立“模型画像”导航。每个语言模型的展开区域同时包含：
+安装后会扩展 DSH 自带“模型”页，不再增加独立“模型画像”导航。普通语言模型在自己的展开区域显示画像；豆包 Realtime 模型在行内通过“模型画像”展开同一套内容：
 
 - 一份可分章节编辑的 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
-- 由显式轻量请求测得的可用性、首 Token 延迟、总延迟和观测时间。速度不允许手填，测试会产生一次最多 8 token 的少量模型费用。
+- 由显式轻量请求测得的可用性、延迟和观测时间。速度不允许手填；语言模型测试会产生一次最多 8 token 的少量模型费用，豆包 Realtime 测试会建立一次最短会话。尚无运行探针的 ASR/TTS 不显示伪造指标。
 
-火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音作为模型页中的独立任务型 Provider，管理 App ID、Access Token、Realtime API Key、内置语音目录和注册时 Realtime 连接测试。
+火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音是模型页中的另一个独立 Provider，使用单个 `DOUBAO_API_KEY`、内置 Realtime 目录和注册时连接测试。
 
 界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
 
@@ -89,10 +89,10 @@ multi-model-provider:
     doubao-speech:
       provider: doubao-speech
       displayName: 豆包语音
+      credentialRef: DOUBAO_API_KEY
       credentialRefs:
-        speechAppId: DOUBAO_APPID
-        speechToken: DOUBAO_TOKEN
-        realtimeApiKey: DOUBAO_REALTIME_API_KEY
+        apiKey: DOUBAO_API_KEY
+        realtimeApiKey: DOUBAO_API_KEY
       profile:
         product: doubao-speech
 ```
@@ -117,11 +117,11 @@ multi-model-provider:
       profile: {}
 ```
 
-当前版本内置 `openai/gpt-image-2`，以及豆包 ASR `doubao/volc.bigasr.sauc.duration`、TTS `doubao/seed-tts-1.0` 和 Realtime Duplex `doubao/realtime-duplex-3.0`。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才注册。它们会出现在 `list_task_models`，不会进入语言模型选择器。
+当前可见目录内置 `openai/gpt-image-2` 和豆包 Realtime Duplex `doubao/realtime-duplex-3.0`。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
 
-`volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；批式语音路由使用 `DOUBAO_APPID` / `DOUBAO_TOKEN`；Realtime Duplex 使用 `DOUBAO_APPID` / `DOUBAO_REALTIME_API_KEY`。方舟 `/models` 不是语音资源目录，因此豆包语音模型由插件按官方资源 ID 内置。
+`volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录，因此 Realtime 路由由插件内置。
 
-安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（Provider id、官方 Responses endpoint、四个安全凭据引用和模型所属运行时）由插件提供；当前账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 路由只有在 task runtime adapter 可用时才能通过 `invoke_task_model` 调用。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
+安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 路由只有在 task runtime adapter 可用时才能通过 `invoke_task_model` 调用。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 
 每条 task route 都有显式 `enabled` 状态。可用模型选择采用整体替换语义；空数组会原样保持“全部停用”，不会回退为全选。停用模型仍可查看画像，但不能被调用。
 
