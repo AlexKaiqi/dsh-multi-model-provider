@@ -48,6 +48,20 @@
       },
       {
         "path": "tool-surfaces.ts",
+        "export": "INSPECT_VOLCENGINE_PROVIDER_SURFACE",
+        "role": "toolSurface",
+        "toolName": "inspect_volcengine_provider",
+        "helpPointer": "inspect_volcengine_provider"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE",
+        "role": "toolSurface",
+        "toolName": "select_volcengine_language_models",
+        "helpPointer": "inspect_volcengine_provider"
+      },
+      {
+        "path": "tool-surfaces.ts",
         "export": "LIST_TASK_MODELS_SURFACE",
         "role": "toolSurface",
         "toolName": "list_task_models",
@@ -131,6 +145,8 @@
     "commands": [
       "list_model_routes",
       "configure_model_route",
+      "inspect_volcengine_provider",
+      "select_volcengine_language_models",
       "select_default_model",
       "list_task_models",
       "discover_task_models",
@@ -153,6 +169,8 @@
           "HELP",
           "LIST_MODEL_ROUTES_SURFACE",
           "CONFIGURE_MODEL_ROUTE_SURFACE",
+          "INSPECT_VOLCENGINE_PROVIDER_SURFACE",
+          "SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE",
           "LIST_TASK_MODELS_SURFACE",
           "DISCOVER_TASK_MODELS_SURFACE",
           "SELECT_TASK_MODELS_SURFACE",
@@ -186,6 +204,10 @@
       },
       {
         "file": "tests/observations.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/volcengine-provider.spec.ts",
         "layer": "L1"
       }
     ]

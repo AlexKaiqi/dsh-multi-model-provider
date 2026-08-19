@@ -15,6 +15,7 @@ import {
   DISCOVER_TASK_MODELS_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   INVOKE_TASK_MODEL_SURFACE,
+  INSPECT_VOLCENGINE_PROVIDER_SURFACE,
   LIST_MODEL_ROUTES_SURFACE,
   LIST_TASK_MODELS_SURFACE,
   MODEL_MANAGER_TOOL_SURFACES,
@@ -22,6 +23,7 @@ import {
   REGISTER_TASK_MODEL_SURFACE,
   SELECT_TASK_MODELS_SURFACE,
   SELECT_DEFAULT_MODEL_SURFACE,
+  SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE,
   SUMMARIZE_MODEL_USAGE_SURFACE,
   UPSERT_MODEL_PORTRAIT_SURFACE,
   VALIDATE_MODEL_PORTRAIT_SURFACE,
@@ -38,6 +40,8 @@ describe('tool surfaces', () => {
     expect(MODEL_MANAGER_TOOL_SURFACES).toEqual([
       LIST_MODEL_ROUTES_SURFACE,
       CONFIGURE_MODEL_ROUTE_SURFACE,
+      INSPECT_VOLCENGINE_PROVIDER_SURFACE,
+      SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE,
       LIST_TASK_MODELS_SURFACE,
       DISCOVER_TASK_MODELS_SURFACE,
       SELECT_TASK_MODELS_SURFACE,
@@ -54,6 +58,8 @@ describe('tool surfaces', () => {
     expect(names).toEqual([
       'list_model_routes',
       'configure_model_route',
+      'inspect_volcengine_provider',
+      'select_volcengine_language_models',
       'list_task_models',
       'discover_task_models',
       'select_task_models',
@@ -136,6 +142,25 @@ describe('help surface', () => {
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
     ) as { version: string }
     expect(VERSION).toBe(pkg.version)
+  })
+
+  it('ships the Web Settings contribution as a client bundle', async () => {
+    const pkg = JSON.parse(
+      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as {
+      exports: Record<string, string>
+      files: string[]
+      dsh: { client?: { platform?: string; inject?: string[] } }
+    }
+    expect(pkg.exports['./client']).toBe('./lib/client.js')
+    expect(pkg.files).toContain('lib/client.js')
+    expect(pkg.dsh.client).toMatchObject({
+      platform: 'web',
+      inject: expect.arrayContaining([
+        '@deepseek-ai/dsh-client-ui-settings',
+        '@deepseek-ai/dsh-api-remotes',
+      ]),
+    })
   })
 
   it('lists every tool the plugin registers', () => {

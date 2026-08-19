@@ -13,6 +13,8 @@ This keeps non-language models out of the LLM contract and provides a stable reg
 ## Agent tools
 
 - `list_model_routes`, `configure_model_route`, and `select_default_model` manage primary language models through llm-pi-ai.
+- `inspect_volcengine_provider` returns safe credential state, the authenticated Ark catalog, selections, task routes, and correct invocation paths.
+- `select_volcengine_language_models` replaces the Ark language/VLM selection; an empty array explicitly disables the route.
 - `list_task_models` inspects non-language registrations and reports registration separately from callability.
 - `discover_task_models` queries a connection's authenticated provider catalog without registering anything.
 - `select_task_models` replaces the enabled set; `ids: []` explicitly disables every route on that connection.
@@ -24,12 +26,15 @@ This keeps non-language models out of the LLM contract and provides a stable reg
 
 Registration tools accept credential references such as `OPENAI_API_KEY`, never API-key values. Providers that need multiple credentials use named references, for example `appId: DOUBAO_APPID` and `token: DOUBAO_TOKEN`. The user enters actual values only in secure Settings credential fields; the Agent can fill provider, URL, model catalog, and profile metadata.
 
-## Settings model
+## Settings UI and data model
 
-The Settings UI exposes two complementary namespaces:
+Installation extends the built-in **Models** Settings section instead of adding a separate Model Portraits navigation item. Each language-model disclosure contains one sectioned Markdown description, structured price rows, and measured availability / time-to-first-token / total latency with an observation timestamp. Speed is not hand-entered: an explicit test sends one minimal request capped at eight output tokens and may incur a small provider charge.
 
-- `llm-pi-ai` is the sole source of truth for language-model providers and catalogs.
-- `multi-model-provider` owns non-language `connections`, `models`, and optional per-task `defaults`.
+Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate task-model provider in the same Models page, with its own App ID, Access Token, Realtime API Key, built-in speech catalog, and registration-time Realtime connection test.
+
+The UI creates no parallel source of truth. Ark language models are written to `llm-pi-ai.providers.volcengine`; Doubao Speech task models and all portrait bindings are written to `multi-model-provider`; credential values only cross the write-only Credentials API and never enter ordinary `settings.yaml`. ChatVoice only selects registered Realtime routes and does not own provider credentials.
+
+The conversation model dropdown is searchable by provider, model id, display name, and description, so a large registry does not turn into an unscannable list.
 
 Example task-model registration:
 
@@ -42,18 +47,15 @@ multi-model-provider:
       credentialRef: OPENAI_API_KEY
       baseURL: https://api.openai.com/v1
       profile: {}
-    volcengine:
-      provider: volcengine
-      displayName: Volcengine (Ark / Doubao)
+    doubao-speech:
+      provider: doubao-speech
+      displayName: Doubao Speech
       credentialRefs:
-        arkApiKey: ARK_API_KEY
         speechAppId: DOUBAO_APPID
         speechToken: DOUBAO_TOKEN
-      baseURL: https://ark.cn-beijing.volces.com/api/v3
-      catalogEndpoint: https://ark.cn-beijing.volces.com/api/v3/models
-      catalogCredentialName: arkApiKey
+        realtimeApiKey: DOUBAO_REALTIME_API_KEY
       profile:
-        catalogDiscovery: openai-models
+        product: doubao-speech
   models:
     openai/gpt-image-2:
       connection: openai
@@ -70,17 +72,17 @@ multi-model-provider:
       profile: {}
 ```
 
-Built-in catalog entries include `openai/gpt-image-2` plus conservative Lore-compatible Doubao routes for ASR (`doubao/volc.bigasr.sauc.duration`) and TTS (`doubao/seed-tts-1.0`). The Doubao routes belong to the unified `volcengine` connection and select only the speech credential slots they require. They appear in `list_task_models`, not in the language-model picker, and remain explicitly `registered-only` with `callable: false` until their runtime adapters are installed.
+Built-in catalog entries include `openai/gpt-image-2` plus conservative Lore-compatible Doubao routes for ASR (`doubao/volc.bigasr.sauc.duration`), TTS (`doubao/seed-tts-1.0`), and Realtime Duplex (`doubao/realtime-duplex-3.0`). The Doubao routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker.
 
 Supported tasks cover image understanding/generation, speech synthesis/transcription/translation/analysis, voice conversion/cloning/design, podcasts, realtime speech, audio/video generation, embedding, and reranking. Routes also declare Lore-compatible capability ids such as `speech.transcribe.file`, `speech.synthesize.short`, and `speech.realtime_session`; `file` is a distinct input modality. Input/output modalities, operations, and execution lifecycle remain separate so task semantics are not conflated with modality.
 
-The built-in `volcengine` connection unifies Ark and Doubao at provider level while keeping authentication product-specific: Ark catalog discovery uses `ARK_API_KEY`; speech routes use `DOUBAO_APPID` and `DOUBAO_TOKEN`. Ark models are discoverable from `/api/v3/models`. Speech resource ids remain documented registrations because the Ark catalog is not an account entitlement list for every speech resource. Discovery never auto-registers or auto-enables models.
+`volcengine` and `doubao-speech` are separate providers because their protocols, credentials, catalogs, and probes differ. Ark catalog discovery uses `ARK_API_KEY`; batch speech routes use `DOUBAO_APPID` and `DOUBAO_TOKEN`; Realtime Duplex uses `DOUBAO_APPID` and `DOUBAO_REALTIME_API_KEY`. Speech resource ids remain documented built-ins because the Ark `/models` catalog is not a speech entitlement catalog.
 
 Every task route has an explicit `enabled` state. Selection is replacement-based, and an empty selection remains empty: it never falls back to the full provider catalog. Disabled routes stay inspectable for portrait work but are not callable.
 
 ## Portraits, invocation, and routing evidence
 
-A portrait keeps evidence-backed provider or assessor claims—pricing, specialties, limitations, speed class, typical latency, and normalized routing scores—separate from measured usage. Portraits cover task route ids and LLM ids in `llm:<provider>/<model>` form. Price rates carry operation, billing unit, currency, effective dates, and an evidence id so stale claims can be detected. Registration remains authoritative for capabilities, input/output modalities, execution mode, and operations.
+A portrait keeps one sectioned qualitative Markdown description, structured pricing, and an explicit `performance.lastProbe` observation separate from long-term measured usage. Portraits cover task route ids and LLM ids in `llm:<provider>/<model>` form. Price rates carry operation, billing unit, currency, effective dates, and an evidence id so stale claims can be detected. Registration remains authoritative for capabilities, input/output modalities, execution mode, and operations.
 
 The user can simply say “build the initial portraits.” Installed guidance requires the Harness Agent to call `prepare_model_portraits`, infer scope from recent registration/discovery context, gather current official documentation or benchmark evidence, save each portrait with `upsert_model_portrait`, and run `validate_model_portrait`. A paid or traffic-producing live probe still requires explicit approval.
 
@@ -104,13 +106,13 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 mkdir -p artifacts
 pnpm pack --pack-destination artifacts
-dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.7.tgz"
+dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.9.tgz"
 ```
 
 After publication:
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.7'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.9'
 ```
 
 Restart running DSH Web processes after upgrading, then create a new Agent task so the new tools and system-prompt guidance are loaded.

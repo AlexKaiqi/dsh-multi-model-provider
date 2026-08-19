@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
 import { configureModelRoute, listModelRoutes, selectDefaultModel } from './operations.ts'
 import { invokeTaskModel } from './invocation.ts'
+import { inspectVolcengineProvider, selectVolcengineLanguageModels } from './providers/volcengine.ts'
 import { getModelPortrait, prepareModelPortraits, summarizeModelUsage, upsertModelPortrait, validateModelPortrait } from './portraits.ts'
 import { discoverTaskModels, listTaskModels, registerTaskModel, selectTaskModels } from './registry.ts'
 import {
@@ -9,12 +10,14 @@ import {
   DISCOVER_TASK_MODELS_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   INVOKE_TASK_MODEL_SURFACE,
+  INSPECT_VOLCENGINE_PROVIDER_SURFACE,
   LIST_MODEL_ROUTES_SURFACE,
   LIST_TASK_MODELS_SURFACE,
   PREPARE_MODEL_PORTRAITS_SURFACE,
   REGISTER_TASK_MODEL_SURFACE,
   SELECT_TASK_MODELS_SURFACE,
   SELECT_DEFAULT_MODEL_SURFACE,
+  SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE,
   SUMMARIZE_MODEL_USAGE_SURFACE,
   UPSERT_MODEL_PORTRAIT_SURFACE,
   VALIDATE_MODEL_PORTRAIT_SURFACE,
@@ -163,6 +166,27 @@ export function modelManagerTools(ctx: Context) {
       },
       output: jsonOutput,
       execute: async args => asJsonValue(await configureModelRoute(ctx, args)),
+    }),
+    defineTool({
+      name: INSPECT_VOLCENGINE_PROVIDER_SURFACE.name,
+      description: INSPECT_VOLCENGINE_PROVIDER_SURFACE.description,
+      parameters: {},
+      output: jsonOutput,
+      execute: async (_args, exec) => asJsonValue(await inspectVolcengineProvider(ctx, exec.signal)),
+    }),
+    defineTool({
+      name: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.name,
+      description: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.description,
+      parameters: {
+        models: {
+          type: 'array',
+          required: true,
+          items: modelProfileSchema,
+          description: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.parameters.models,
+        },
+      },
+      output: jsonOutput,
+      execute: async args => asJsonValue(await selectVolcengineLanguageModels(ctx, args)),
     }),
     defineTool({
       name: LIST_TASK_MODELS_SURFACE.name,

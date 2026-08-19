@@ -84,13 +84,12 @@ describe('task-model registry', () => {
         value: {
           connections: {
             openai: { credentialRef: 'OPENAI_API_KEY' },
-            volcengine: {
+            'doubao-speech': {
               credentialRefs: {
-                arkApiKey: 'ARK_API_KEY',
                 speechAppId: 'DOUBAO_APPID',
                 speechToken: 'DOUBAO_TOKEN',
+                realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
               },
-              catalogCredentialName: 'arkApiKey',
             },
           },
           models: { 'openai/gpt-image-2': { runtimeAdapter: 'openai-images' } },
@@ -126,9 +125,9 @@ describe('task-model registry', () => {
     expect(JSON.stringify(result)).not.toContain('sk-secret')
   })
 
-  it('ships conservative Doubao ASR and TTS registrations with Lore-compatible capabilities', async () => {
-    const result = await listTaskModels(context(), { provider: 'volcengine' })
-    expect(result.count).toBe(2)
+  it('ships conservative Doubao ASR, TTS, and Realtime registrations with Lore-compatible capabilities', async () => {
+    const result = await listTaskModels(context(), { provider: 'doubao-speech' })
+    expect(result.count).toBe(3)
     expect(result.models).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'doubao/volc.bigasr.sauc.duration',
@@ -139,42 +138,25 @@ describe('task-model registry', () => {
         id: 'doubao/seed-tts-1.0',
         capabilities: ['speech.synthesize.short'],
       }),
+      expect.objectContaining({
+        id: 'doubao/realtime-duplex-3.0',
+        model: '1.2.6.0',
+        capabilities: ['speech.realtime_session'],
+        availability: expect.objectContaining({ status: 'registered-only', callable: false, requiredAdapter: 'doubao-realtime-duplex' }),
+      }),
     ]))
   })
 
-  it('discovers the unified Volcengine catalog without auto-registering or exposing credentials', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      data: [
-        { id: 'doubao-seed-2-0-pro-260215', owned_by: 'volcengine' },
-        { id: 'seed-tts-1.0', owned_by: 'volcengine' },
-      ],
-    }), { status: 200, headers: { 'content-type': 'application/json' } }))
-    try {
-      const result = await discoverTaskModels(context(), { connection: 'volcengine' })
-      expect(fetchMock).toHaveBeenCalledWith(
-        'https://ark.cn-beijing.volces.com/api/v3/models',
-        expect.objectContaining({ headers: { Authorization: 'Bearer secret-that-must-not-leak' } }),
-      )
-      expect(result).toMatchObject({
-        connection: 'volcengine',
-        provider: 'volcengine',
-        count: 2,
-        models: expect.arrayContaining([
-          { id: 'seed-tts-1.0', ownedBy: 'volcengine', registered: true, routeId: 'doubao/seed-tts-1.0', enabled: true },
-          { id: 'doubao-seed-2-0-pro-260215', ownedBy: 'volcengine', registered: false },
-        ]),
-      })
-      expect(JSON.stringify(result)).not.toContain('secret-that-must-not-leak')
-    } finally {
-      fetchMock.mockRestore()
-    }
+  it('does not pretend the Ark language-model catalog is a Doubao speech catalog', async () => {
+    await expect(discoverTaskModels(context(), { connection: 'doubao-speech' }))
+      .rejects.toMatchObject({ code: 'TASK_MODEL_CATALOG_UNAVAILABLE' })
   })
 
   it('accepts an empty available-model selection as explicitly all disabled', async () => {
     const ctx = context()
-    const result = await selectTaskModels(ctx, { connection: 'volcengine', ids: [] })
+    const result = await selectTaskModels(ctx, { connection: 'doubao-speech', ids: [] })
     expect(result).toMatchObject({
-      connection: 'volcengine',
+      connection: 'doubao-speech',
       selected: [],
       allDisabled: true,
       disabled: expect.arrayContaining([
@@ -244,11 +226,11 @@ describe('task-model registry', () => {
     const ctx = context()
     const result = await registerTaskModel(ctx, {
       id: 'doubao/big-asr',
-      connection: 'volcengine',
+      connection: 'doubao-speech',
       credentialRefs: {
-        arkApiKey: 'ARK_API_KEY',
         speechAppId: 'DOUBAO_APPID',
         speechToken: 'DOUBAO_TOKEN',
+        realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
       },
       connectionProfile: {
         region: 'cn-north-1',
@@ -274,12 +256,12 @@ describe('task-model registry', () => {
       expect.arrayContaining([
         {
           op: 'set',
-          path: ['connections', 'volcengine', 'credentialRefs'],
-          value: { arkApiKey: 'ARK_API_KEY', speechAppId: 'DOUBAO_APPID', speechToken: 'DOUBAO_TOKEN' },
+          path: ['connections', 'doubao-speech', 'credentialRefs'],
+          value: { speechAppId: 'DOUBAO_APPID', speechToken: 'DOUBAO_TOKEN', realtimeApiKey: 'DOUBAO_REALTIME_API_KEY' },
         },
         {
           op: 'set',
-          path: ['connections', 'volcengine', 'profile'],
+          path: ['connections', 'doubao-speech', 'profile'],
           value: { region: 'cn-north-1', defaultVoice: 'zh_female_cancan_mars_bigtts' },
         },
         {
@@ -397,6 +379,22 @@ describe('task-model registry', () => {
       },
       defaults: { transcription: 'image' },
     })).toThrow("defaults.transcription references a 'image-generation' model")
+  })
+
+  it('validates task portraits written directly by the Settings UI', () => {
+    const value = structuredClone(BUILTIN_TASK_MODEL_REGISTRY)
+    ;(value.models['doubao/seed-tts-1.0'] as { portrait: unknown }).portrait = {
+      summary: '   ',
+      specialties: [],
+      limitations: [],
+      bestFor: [],
+      avoidFor: [],
+      pricing: { rates: [] },
+      performance: {},
+      qualityScores: {},
+      evidence: [],
+    }
+    expect(() => validateTaskModelRegistry(value)).toThrow('summary must not be blank')
   })
 })
 

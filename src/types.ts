@@ -85,6 +85,9 @@ export interface ModelPortraitValidationCheck {
 
 export interface ModelPortrait {
   readonly schemaVersion: 1
+  /** Free-form, sectioned Markdown used for qualitative routing knowledge. */
+  readonly description?: string
+  /** Legacy short text retained for stored portraits created before description. */
   readonly summary?: string
   readonly specialties: readonly string[]
   readonly limitations: readonly string[]
@@ -99,6 +102,13 @@ export interface ModelPortrait {
     readonly typicalLatencyMs?: { readonly min: number; readonly max: number }
     readonly throughputPerMinute?: number
     readonly notes?: string
+    /** Most recent explicit live probe; never inferred from registration metadata. */
+    readonly lastProbe?: {
+      readonly observedAt: string
+      readonly reachable: boolean
+      readonly latencyMs: number
+      readonly timeToFirstTokenMs?: number
+    }
   }
   readonly qualityScores: Readonly<Record<string, number>>
   readonly evidence: readonly ModelPortraitEvidence[]
@@ -110,6 +120,7 @@ export interface ModelPortrait {
 }
 
 export interface ModelPortraitInput {
+  readonly description?: string
   readonly summary?: string
   readonly specialties?: readonly string[]
   readonly limitations?: readonly string[]
@@ -124,6 +135,12 @@ export interface ModelPortraitInput {
     readonly typicalLatencyMs?: { readonly min: number; readonly max: number }
     readonly throughputPerMinute?: number
     readonly notes?: string
+    readonly lastProbe?: {
+      readonly observedAt: string
+      readonly reachable: boolean
+      readonly latencyMs: number
+      readonly timeToFirstTokenMs?: number
+    }
   }
   readonly qualityScores?: Readonly<Record<string, number>>
   readonly evidence?: readonly ModelPortraitEvidence[]
@@ -264,6 +281,11 @@ export interface SelectTaskModelsInput {
   readonly connection: string
   /** Exact registered route ids. An empty list intentionally disables every route on the connection. */
   readonly ids: readonly string[]
+}
+
+export interface SelectVolcengineLanguageModelsInput {
+  /** Complete selected LLM/VLM profiles. An empty array explicitly disables the Volcengine LLM route. */
+  readonly models: readonly ModelProfileInput[]
 }
 
 export interface DiscoveredTaskModel {

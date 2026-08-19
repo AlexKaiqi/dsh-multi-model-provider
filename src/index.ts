@@ -8,14 +8,17 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { MODEL_MANAGER_GUIDANCE } from './model/guidance.ts'
 import { HELP } from './model/help.ts'
+import { VOLCENGINE_ARK_BASE_URL } from './providers/volcengine.ts'
 import { registerTaskModelSettings } from './registry.ts'
 import { TaskModelRuntime } from './runtime.ts'
 import { modelManagerTools } from './tools.ts'
+import { registerModelProbeRoute } from './probe-route.ts'
 
 export * from './model/guidance.ts'
 export * from './model/tool-surfaces.ts'
 export * from './model/help.ts'
 export * from './operations.ts'
+export * from './providers/index.ts'
 export * from './registry.ts'
 export * from './runtime.ts'
 export * from './portrait-core.ts'
@@ -30,8 +33,32 @@ export const name = 'multi-model-provider'
 export const inject = ['llm', 'settings', 'credentials', 'agentDefaultModel', 'tools', 'systemPrompt']
 
 export function apply(ctx: Context): void {
+  const volcengineDirectoryEntry = ctx.llm.listConfigurableProviders()
+    .find(entry => entry.provider === 'volcengine')
+  if (volcengineDirectoryEntry === undefined) {
+    ctx.llm.registerConfigurableProviders([{
+      provider: 'volcengine',
+      displayName: '火山方舟',
+      settingsNs: 'llm-pi-ai',
+      settingsPath: ['providers', 'volcengine'],
+      // Kept behind a spread so the plugin still typechecks against the
+      // previous rc peer contract; current hosts preserve and publish this
+      // generic directory hint.
+      ...{ profileDefaults: {
+          displayName: '火山方舟',
+          apiKeyEnv: 'ARK_API_KEY',
+          api: 'openai-responses',
+          baseURL: VOLCENGINE_ARK_BASE_URL,
+        } },
+      // pi-ai has no bundled Volcengine catalog, so this route owns its
+      // endpoint, protocol, and selected models even though it is presented
+      // as an ordinary language-model provider in the Models settings page.
+      declared: true,
+    }])
+  }
   new TaskModelRuntime(ctx)
   registerTaskModelSettings(ctx)
+  registerModelProbeRoute(ctx)
   for (const tool of modelManagerTools(ctx)) ctx.tools.register(tool)
   ctx.systemPrompt.section({
     name: 'tool:multi-model-provider',
