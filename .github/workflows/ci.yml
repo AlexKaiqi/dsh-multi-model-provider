@@ -23,3 +23,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm check
+      - run: git diff --exit-code -- lib/index.js lib/client.js lib/client.js.map lib/types
