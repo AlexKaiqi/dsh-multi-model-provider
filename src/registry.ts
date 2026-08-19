@@ -114,7 +114,7 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
         speechResources: 'documented-resource-ids',
       },
       baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
-      models: [{ id: '1.2.6.1', name: '豆包 Realtime Duplex 3.0（Seeduplex）' }],
+      models: [],
     },
   },
   models: {
