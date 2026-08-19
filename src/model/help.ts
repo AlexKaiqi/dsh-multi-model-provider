@@ -50,8 +50,8 @@ adapter. It is not Agent-model selection.
 
 credentials:
   Registration tools accept only reference names such as OPENAI_API_KEY. A
-  multi-credential provider may use named refs such as DOUBAO_APPID and
-  DOUBAO_TOKEN. They never accept an API key value. When a reference is not configured, direct
+  multi-credential provider may use named refs; Doubao Realtime uses the single
+  DOUBAO_API_KEY reference. Tools never accept an API key value. When a reference is not configured, direct
   the user to the secure Settings credential field; never ask for a key in chat.
 
 registration is not callability:
@@ -62,8 +62,8 @@ registration is not callability:
   openai/gpt-image-2 and Doubao speech start registered-only.
 
 provider discovery and selection:
-  Volcengine is one provider connection spanning Ark and Doubao products while
-  each product keeps its own credential slots. Discovery is advisory and never
+  Volcengine Ark and Doubao Speech are separate provider connections with
+  separate protocols, catalogs, and API keys. Discovery is advisory and never
   auto-registers or auto-enables returned models. An empty enabled selection is
   preserved as all disabled; it never falls back to all models.
 

@@ -52,7 +52,7 @@ describe('Volcengine provider orientation', () => {
     }))
     expect(result).toMatchObject({
       provider: 'volcengine',
-      credentials: { arkApiKey: { ref: 'ARK_API_KEY', configured: true }, speechAppId: { ref: 'DOUBAO_APPID', configured: false } },
+      credentials: { arkApiKey: { ref: 'ARK_API_KEY', configured: true }, doubaoApiKey: { ref: 'DOUBAO_API_KEY', configured: false } },
       ark: {
         discovery: 'ok',
         availableModels: [{ id: 'doubao-seed-2-0-lite-260215' }],
@@ -60,6 +60,7 @@ describe('Volcengine provider orientation', () => {
       },
       relatedTaskProvider: {
         provider: 'doubao-speech',
+        credentialRef: 'DOUBAO_API_KEY',
         taskRoutes: [{ id: 'doubao/tts', callability: false }],
       },
     })

@@ -85,10 +85,10 @@ describe('task-model registry', () => {
           connections: {
             openai: { credentialRef: 'OPENAI_API_KEY' },
             'doubao-speech': {
+              credentialRef: 'DOUBAO_API_KEY',
               credentialRefs: {
-                speechAppId: 'DOUBAO_APPID',
-                speechToken: 'DOUBAO_TOKEN',
-                realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
+                apiKey: 'DOUBAO_API_KEY',
+                realtimeApiKey: 'DOUBAO_API_KEY',
               },
             },
           },
@@ -140,7 +140,7 @@ describe('task-model registry', () => {
       }),
       expect.objectContaining({
         id: 'doubao/realtime-duplex-3.0',
-        model: '1.2.6.0',
+        model: '1.2.6.1',
         capabilities: ['speech.realtime_session'],
         availability: expect.objectContaining({ status: 'registered-only', callable: false, requiredAdapter: 'doubao-realtime-duplex' }),
       }),

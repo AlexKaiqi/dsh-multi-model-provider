@@ -5,6 +5,11 @@ import { settingsNamespace, type SettingsDescriptor, type SettingsPathOp } from 
 import { ModelManagerError } from './operations.ts'
 import { initialPortrait, normalizePortrait } from './portrait-core.ts'
 import {
+  DOUBAO_SPEECH_CATALOG,
+  DOUBAO_SPEECH_LEGACY_CATALOG,
+  DOUBAO_SPEECH_PROVIDER,
+} from './doubao-speech-catalog.ts'
+import {
   MODEL_EXECUTION_MODES,
   MODEL_MODALITIES,
   TASK_MODEL_CAPABILITIES,
@@ -32,9 +37,16 @@ const capabilitySchema = z.union(TASK_MODEL_CAPABILITIES)
 const connectionSchema = z.object({
   provider: z.string().required().description('Provider family, for example openai.'),
   displayName: z.string().description('Human-readable connection name.'),
+  apiKeyEnv: z.string().role('credential-ref').description('Conventional single API-key reference used by the Models UI.'),
   credentialRef: z.string().role('credential-ref').description('Secure credential reference; never the credential value.'),
   credentialRefs: z.dict(z.string().role('credential-ref')).description('Named secure credential references for multi-credential providers.'),
   baseURL: z.string().description('Optional absolute API base URL.'),
+  models: z.array(z.object({
+    id: z.string().required(),
+    name: z.string(),
+    contextWindow: z.number(),
+    maxTokens: z.number(),
+  })).default([]).description('Provider-local model directory.'),
   catalogEndpoint: z.string().description('Optional provider model-catalog endpoint; defaults to baseURL/models.'),
   catalogCredentialName: z.string().description('Credential slot used for catalog discovery.'),
   profile: z.dict(z.any()).default({}).description('Non-secret provider-specific connection metadata.'),
@@ -84,18 +96,25 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       baseURL: 'https://api.openai.com/v1',
       profile: {},
     },
-    'doubao-speech': {
-      provider: 'doubao-speech',
+    [DOUBAO_SPEECH_PROVIDER]: {
+      provider: DOUBAO_SPEECH_PROVIDER,
       displayName: '豆包语音',
+      apiKeyEnv: 'DOUBAO_API_KEY',
+      credentialRef: 'DOUBAO_API_KEY',
       credentialRefs: {
+        apiKey: 'DOUBAO_API_KEY',
+        // Legacy slots keep pre-Realtime settings structurally valid until
+        // the provider is saved or removed through the new single-key UI.
         speechAppId: 'DOUBAO_APPID',
         speechToken: 'DOUBAO_TOKEN',
-        realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
+        realtimeApiKey: 'DOUBAO_API_KEY',
       },
       profile: {
         product: 'doubao-speech',
         speechResources: 'documented-resource-ids',
       },
+      baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+      models: [{ id: '1.2.6.1', name: '豆包 Realtime Duplex 3.0（Seeduplex）' }],
     },
   },
   models: {
@@ -114,63 +133,10 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       profile: {},
       portrait: initialPortrait('OpenAI image generation and editing model.'),
     },
-    'doubao/volc.bigasr.sauc.duration': {
-      enabled: false,
-      connection: 'doubao-speech',
-      model: 'volc.bigasr.sauc.duration',
-      displayName: '豆包大模型录音文件识别',
-      task: 'transcription',
-      runtimeAdapter: 'doubao-speech',
-      credentialNames: ['speechAppId', 'speechToken'],
-      input: ['audio', 'file'],
-      output: ['text'],
-      execution: 'streaming',
-      capabilities: ['speech.transcribe.file', 'speech.transcribe.stream'],
-      operations: ['transcribe-file', 'transcribe-stream'],
-      roles: ['speech-to-text'],
-      profile: { resourceIdRole: 'asr' },
-      portrait: initialPortrait('Doubao/Volcengine large-model speech transcription resource.'),
-    },
-    'doubao/seed-tts-1.0': {
-      enabled: false,
-      connection: 'doubao-speech',
-      model: 'seed-tts-1.0',
-      displayName: '豆包 Seed TTS 1.0',
-      task: 'speech-synthesis',
-      runtimeAdapter: 'doubao-speech',
-      credentialNames: ['speechAppId', 'speechToken'],
-      input: ['text'],
-      output: ['audio'],
-      execution: 'streaming',
-      capabilities: ['speech.synthesize.short'],
-      operations: ['synthesize'],
-      roles: ['text-to-speech'],
-      profile: { resourceIdRole: 'tts' },
-      portrait: initialPortrait('Doubao/Volcengine short-text speech synthesis resource.'),
-    },
-    'doubao/realtime-duplex-3.0': {
-      enabled: false,
-      connection: 'doubao-speech',
-      model: '1.2.6.0',
-      displayName: '豆包 Realtime Duplex 3.0（Seeduplex）',
-      task: 'realtime-speech',
-      runtimeAdapter: 'doubao-realtime-duplex',
-      credentialNames: ['speechAppId', 'realtimeApiKey'],
-      input: ['text', 'audio'],
-      output: ['text', 'audio'],
-      execution: 'realtime',
-      capabilities: ['speech.realtime_session'],
-      operations: ['realtime-session'],
-      roles: ['voice-deliberation'],
-      profile: {
-        protocol: 'doubao-realtime-duplex',
-        endpoint: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
-        inputSampleRate: 16000,
-        outputSampleRate: 24000,
-        nativeFunctionCalling: true,
-      },
-      portrait: initialPortrait('Volcengine Realtime Speech Model 3.0 full-duplex speech dialogue with native function calling.'),
-    },
+    ...Object.fromEntries([...DOUBAO_SPEECH_LEGACY_CATALOG, ...DOUBAO_SPEECH_CATALOG].map(entry => [entry.id, {
+      ...entry.registration,
+      portrait: initialPortrait(entry.summary),
+    }])),
   },
   defaults: {},
   portraits: {},
@@ -224,6 +190,21 @@ function absoluteHttpUrl(value: string | undefined, name: string): string | unde
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new ModelManagerError(`${name} must use http or https`, 'INVALID_TASK_MODEL_CONFIGURATION')
+  }
+  return normalized
+}
+
+function absoluteConnectionUrl(value: string | undefined, name: string): string | undefined {
+  const normalized = optionalText(value)
+  if (normalized === undefined) return undefined
+  let parsed: URL
+  try {
+    parsed = new URL(normalized)
+  } catch (cause) {
+    throw new ModelManagerError(`${name} must be an absolute URL`, 'INVALID_TASK_MODEL_CONFIGURATION', { cause })
+  }
+  if (!['http:', 'https:', 'ws:', 'wss:'].includes(parsed.protocol)) {
+    throw new ModelManagerError(`${name} must use http, https, ws, or wss`, 'INVALID_TASK_MODEL_CONFIGURATION')
   }
   return normalized
 }
@@ -349,7 +330,7 @@ async function credentialStatus(ctx: Context, ref: string): Promise<CredentialSt
 function validateConnection(id: string, connection: TaskModelRegistryConfig['connections'][string]): void {
   nonBlank(id, 'connection id')
   nonBlank(connection.provider, `connections.${id}.provider`)
-  absoluteHttpUrl(connection.baseURL, `connections.${id}.baseURL`)
+  absoluteConnectionUrl(connection.baseURL, `connections.${id}.baseURL`)
   absoluteHttpUrl(connection.catalogEndpoint, `connections.${id}.catalogEndpoint`)
   if (connection.credentialRef !== undefined) credentialRef(nonBlank(connection.credentialRef, `connections.${id}.credentialRef`))
   const refs = namedCredentialRefs(connection.credentialRefs, `connections.${id}.credentialRefs`)
@@ -448,7 +429,7 @@ export async function registerTaskModel(
   if (credential !== undefined) await credentialStatus(ctx, credential)
   const credentialRefs = namedCredentialRefs(input.credentialRefs, 'credentialRefs')
   if (credentialRefs !== undefined) await namedCredentialStatuses(ctx, credentialRefs)
-  const baseURL = absoluteHttpUrl(input.baseURL, 'baseURL')
+  const baseURL = absoluteConnectionUrl(input.baseURL, 'baseURL')
   const catalogEndpoint = absoluteHttpUrl(input.catalogEndpoint, 'catalogEndpoint')
   const catalogCredentialName = optionalText(input.catalogCredentialName)
   const defaults = TASK_DEFAULTS[input.task]
@@ -537,6 +518,10 @@ function catalogURL(connection: TaskModelRegistryConfig['connections'][string]):
   if (connection.catalogEndpoint !== undefined) return connection.catalogEndpoint
   if (connection.baseURL === undefined) {
     throw new ModelManagerError('connection declares neither catalogEndpoint nor baseURL', 'TASK_MODEL_CATALOG_UNAVAILABLE')
+  }
+  const protocol = new URL(connection.baseURL).protocol
+  if (protocol !== 'http:' && protocol !== 'https:') {
+    throw new ModelManagerError('connection baseURL is not an HTTP model catalog', 'TASK_MODEL_CATALOG_UNAVAILABLE')
   }
   return `${connection.baseURL.replace(/\/+$/, '')}/models`
 }

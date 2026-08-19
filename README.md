@@ -53,13 +53,13 @@ Other plugins that only need the directory can stop at `snapshot()`. Do not scra
 - `invoke_task_model` invokes a callable multimodal route through its runtime adapter.
 - `summarize_model_usage` aggregates native LLM and task-model observations from the current durable session.
 
-Registration tools accept credential references such as `OPENAI_API_KEY`, never API-key values. Providers that need multiple credentials use named references, for example `appId: DOUBAO_APPID` and `token: DOUBAO_TOKEN`. The user enters actual values only in secure Settings credential fields; the Agent can fill provider, URL, model catalog, and profile metadata.
+Registration tools accept credential references such as `OPENAI_API_KEY`, never API-key values. Doubao Realtime uses the single `DOUBAO_API_KEY` reference. The user enters actual values only in secure Settings credential fields; the Agent can fill provider, URL, model catalog, and profile metadata.
 
 ## Settings UI and data model
 
-Installation extends the built-in **Models** Settings section instead of adding a separate Model Portraits navigation item. Each language-model disclosure contains one sectioned Markdown description, structured price rows, and measured availability / time-to-first-token / total latency with an observation timestamp. Speed is not hand-entered: an explicit test sends one minimal request capped at eight output tokens and may incur a small provider charge.
+Installation extends the built-in **Models** Settings section instead of adding a separate Model Portraits navigation item. Language models expose portraits in their own disclosure; the Doubao Realtime row has a **Model Portrait** disclosure with the same sectioned Markdown description, structured price rows, and measured runtime fields. Speed is never hand-entered. Language-model probes send one minimal request capped at eight output tokens, while the Doubao Realtime probe opens one minimal session.
 
-Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate task-model provider in the same Models page, with its own App ID, Access Token, Realtime API Key, built-in speech catalog, and registration-time Realtime connection test.
+Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate provider in the same Models page, using one `DOUBAO_API_KEY`, a Realtime catalog, and a registration-time connection test.
 
 The UI creates no parallel source of truth. Ark language models are written to `llm-pi-ai.providers.volcengine`; Doubao Speech task models and all portrait bindings are written to `multi-model-provider`; credential values only cross the write-only Credentials API and never enter ordinary `settings.yaml`. ChatVoice only selects registered Realtime routes and does not own provider credentials.
 
@@ -79,10 +79,10 @@ multi-model-provider:
     doubao-speech:
       provider: doubao-speech
       displayName: Doubao Speech
+      credentialRef: DOUBAO_API_KEY
       credentialRefs:
-        speechAppId: DOUBAO_APPID
-        speechToken: DOUBAO_TOKEN
-        realtimeApiKey: DOUBAO_REALTIME_API_KEY
+        apiKey: DOUBAO_API_KEY
+        realtimeApiKey: DOUBAO_API_KEY
       profile:
         product: doubao-speech
   models:
@@ -101,11 +101,11 @@ multi-model-provider:
       profile: {}
 ```
 
-Built-in catalog entries include `openai/gpt-image-2` plus conservative Lore-compatible Doubao routes for ASR (`doubao/volc.bigasr.sauc.duration`), TTS (`doubao/seed-tts-1.0`), and Realtime Duplex (`doubao/realtime-duplex-3.0`). The Doubao routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker.
+The visible built-in catalog includes `openai/gpt-image-2` and Realtime Duplex (`doubao/realtime-duplex-3.0`). The Doubao route belongs to the independent `doubao-speech` connection and starts disabled until selected in Models settings. It appears in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
 
 Supported tasks cover image understanding/generation, speech synthesis/transcription/translation/analysis, voice conversion/cloning/design, podcasts, realtime speech, audio/video generation, embedding, and reranking. Routes also declare Lore-compatible capability ids such as `speech.transcribe.file`, `speech.synthesize.short`, and `speech.realtime_session`; `file` is a distinct input modality. Input/output modalities, operations, and execution lifecycle remain separate so task semantics are not conflated with modality.
 
-`volcengine` and `doubao-speech` are separate providers because their protocols, credentials, catalogs, and probes differ. Ark catalog discovery uses `ARK_API_KEY`; batch speech routes use `DOUBAO_APPID` and `DOUBAO_TOKEN`; Realtime Duplex uses `DOUBAO_APPID` and `DOUBAO_REALTIME_API_KEY`. Speech resource ids remain documented built-ins because the Ark `/models` catalog is not a speech entitlement catalog.
+`volcengine` and `doubao-speech` are separate providers because their protocols, credentials, catalogs, and probes differ. Ark catalog discovery uses `ARK_API_KEY`; Realtime Duplex uses the new Speech console's single `DOUBAO_API_KEY`. Ark `/models` is not a speech-entitlement catalog, so the Realtime route is built in.
 
 Every task route has an explicit `enabled` state. Selection is replacement-based, and an empty selection remains empty: it never falls back to the full provider catalog. Disabled routes stay inspectable for portrait work but are not callable.
 
