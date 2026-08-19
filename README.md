@@ -59,7 +59,7 @@ Registration tools accept credential references such as `OPENAI_API_KEY`, never 
 
 Installation extends the built-in **Models** Settings section instead of adding a separate Model Portraits navigation item. Language models expose portraits in their own disclosure; the Doubao Realtime row has a **Model Portrait** disclosure with the same sectioned Markdown description, structured price rows, and measured runtime fields. Speed is never hand-entered. Language-model probes send one minimal request capped at eight output tokens, while the Doubao Realtime probe opens one minimal session.
 
-Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate provider in the same Models page, using one `DOUBAO_API_KEY`, a Realtime catalog, and a registration-time connection test.
+Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate provider in the same Models page, using one `DOUBAO_API_KEY`, a documented Realtime O/SC voice-profile catalog, and a registration-time connection test.
 
 The UI creates no parallel source of truth. Ark language models are written to `llm-pi-ai.providers.volcengine`; Doubao Speech task models and all portrait bindings are written to `multi-model-provider`; credential values only cross the write-only Credentials API and never enter ordinary `settings.yaml`. ChatVoice only selects registered Realtime routes and does not own provider credentials.
 
@@ -101,11 +101,11 @@ multi-model-provider:
       profile: {}
 ```
 
-The visible built-in catalog includes `openai/gpt-image-2` and Realtime Duplex (`doubao/realtime-duplex-3.0`). The Doubao route belongs to the independent `doubao-speech` connection and starts disabled until selected in Models settings. It appears in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
+The visible built-in catalog includes `openai/gpt-image-2` and 25 documented Realtime S2S-O/SC 2.0 voice profiles. Doubao fixes `session.model` to `1.2.6.1`; the Models picker therefore selects the actual voice profile and the runtime maps it to that fixed protocol model. The routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
 
 Supported tasks cover image understanding/generation, speech synthesis/transcription/translation/analysis, voice conversion/cloning/design, podcasts, realtime speech, audio/video generation, embedding, and reranking. Routes also declare Lore-compatible capability ids such as `speech.transcribe.file`, `speech.synthesize.short`, and `speech.realtime_session`; `file` is a distinct input modality. Input/output modalities, operations, and execution lifecycle remain separate so task semantics are not conflated with modality.
 
-`volcengine` and `doubao-speech` are separate providers because their protocols, credentials, catalogs, and probes differ. Ark catalog discovery uses `ARK_API_KEY`; Realtime Duplex uses the new Speech console's single `DOUBAO_API_KEY`. Ark `/models` is not a speech-entitlement catalog, so the Realtime route is built in.
+`volcengine` and `doubao-speech` are separate providers because their protocols, credentials, catalogs, and probes differ. Ark catalog discovery uses `ARK_API_KEY`; Realtime Duplex uses the new Speech console's single `DOUBAO_API_KEY`. Ark `/models` is not a speech-entitlement catalog, while Volcengine's `ListSpeakers`/`ServiceStatus` OpenAPI requires cloud-account AK/SK and cannot use the Speech API Key. The one-key provider therefore carries the documented Realtime catalog and verifies access with a minimal session probe.
 
 Every task route has an explicit `enabled` state. Selection is replacement-based, and an empty selection remains empty: it never falls back to the full provider catalog. Disabled routes stay inspectable for portrait work but are not callable.
 

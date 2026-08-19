@@ -77,9 +77,8 @@ export function apply(ctx: Context): void {
           credentialRef: 'DOUBAO_API_KEY',
           credentialRefs: { apiKey: 'DOUBAO_API_KEY', realtimeApiKey: 'DOUBAO_API_KEY' },
           baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
-          // The full-duplex API fixes session.model to 1.2.6.1 and exposes no
-          // online model-list endpoint. Start empty so the standard catalog
-          // picker adopts the one supported route instead of showing it twice.
+          // Realtime fixes session.model to 1.2.6.1; the selectable provider
+          // profiles are its documented O/SC voices and are discovered below.
           models: [],
           profile: { product: 'doubao-realtime-speech' },
         },
@@ -96,7 +95,7 @@ export function apply(ctx: Context): void {
   ctx.llm.registerModelDiscovery('multi-model-provider', async (request) => {
     if (request.provider !== DOUBAO_SPEECH_PROVIDER) return []
     return DOUBAO_SPEECH_CATALOG.map(entry => ({
-      id: entry.registration.model,
+      id: String(entry.registration.profile?.voice ?? entry.id),
       ...(entry.registration.displayName === undefined ? {} : { name: entry.registration.displayName }),
     }))
   })

@@ -69,7 +69,7 @@ await ctx.modelCatalog.selectAgentModel({
 - 按操作、单位、金额和币种保存的结构化价格；
 - 由显式轻量请求测得的可用性、延迟和观测时间。速度不允许手填；语言模型测试会产生一次最多 8 token 的少量模型费用，豆包 Realtime 测试会建立一次最短会话。尚无运行探针的 ASR/TTS 不显示伪造指标。
 
-火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音是模型页中的另一个独立 Provider，使用单个 `DOUBAO_API_KEY`、内置 Realtime 目录和注册时连接测试。
+火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音是模型页中的另一个独立 Provider，使用单个 `DOUBAO_API_KEY`、内置 Realtime O/SC 音色目录和注册时连接测试。
 
 界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
 
@@ -117,9 +117,9 @@ multi-model-provider:
       profile: {}
 ```
 
-当前可见目录内置 `openai/gpt-image-2` 和豆包 Realtime Duplex `doubao/realtime-duplex-3.0`。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
+当前可见目录内置 `openai/gpt-image-2`，并把官方 Realtime S2S-O 与 SC 2.0 音色映射成 25 个可选语音配置。豆包 Realtime 协议仍固定使用 `session.model=1.2.6.1`；模型页选择的是实际可切换的音色配置，运行时再映射到固定协议版本。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
 
-`volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录，因此 Realtime 路由由插件内置。
+`volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
 安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 路由只有在 task runtime adapter 可用时才能通过 `invoke_task_model` 调用。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 

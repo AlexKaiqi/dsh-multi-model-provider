@@ -15,6 +15,7 @@ import {
 } from '../src/registry.ts'
 import type { TaskModelRegistryConfig } from '../src/types.ts'
 import { modelManagerTools } from '../src/tools.ts'
+import { DOUBAO_REALTIME_VOICES } from '../src/doubao-speech-catalog.ts'
 
 class MemorySettings extends SettingsProvider {
   readonly writable = true
@@ -125,9 +126,9 @@ describe('task-model registry', () => {
     expect(JSON.stringify(result)).not.toContain('sk-secret')
   })
 
-  it('ships conservative Doubao ASR, TTS, and Realtime registrations with Lore-compatible capabilities', async () => {
+  it('ships legacy speech routes plus every documented Realtime O/SC voice profile', async () => {
     const result = await listTaskModels(context(), { provider: 'doubao-speech' })
-    expect(result.count).toBe(3)
+    expect(result.count).toBe(2 + DOUBAO_REALTIME_VOICES.length)
     expect(result.models).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'doubao/volc.bigasr.sauc.duration',
@@ -139,10 +140,16 @@ describe('task-model registry', () => {
         capabilities: ['speech.synthesize.short'],
       }),
       expect.objectContaining({
-        id: 'doubao/realtime-duplex-3.0',
+        id: 'doubao/realtime/zh_female_vv_jupiter_bigtts',
         model: '1.2.6.1',
+        displayName: '豆包 S2S-O · vivi',
         capabilities: ['speech.realtime_session'],
         availability: expect.objectContaining({ status: 'registered-only', callable: false, requiredAdapter: 'doubao-realtime-duplex' }),
+      }),
+      expect.objectContaining({
+        id: 'doubao/realtime/saturn_zh_male_fuheigongzi_tob',
+        model: '1.2.6.1',
+        displayName: '豆包 SC 2.0 · 腹黑公子',
       }),
     ]))
   })
