@@ -154,6 +154,7 @@ describe('help surface', () => {
     }
     expect(pkg.exports['./client']).toBe('./lib/client.js')
     expect(pkg.files).toContain('lib/client.js')
+    expect(pkg.files).toContain('LICENSE')
     expect(pkg.dsh.client).toMatchObject({
       platform: 'web',
       inject: expect.arrayContaining([

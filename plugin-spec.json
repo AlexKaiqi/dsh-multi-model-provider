@@ -209,6 +209,10 @@
       {
         "file": "tests/volcengine-provider.spec.ts",
         "layer": "L1"
+      },
+      {
+        "file": "tests/pack-contract.spec.ts",
+        "layer": "L1"
       }
     ]
   },

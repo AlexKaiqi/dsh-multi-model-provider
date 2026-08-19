@@ -181,25 +181,52 @@ agent-default-model:
 
 ## 安装
 
-包是一个 DSH composition bundle，目标版本为 DeepSeek Harness `0.1.0-rc.6`：
+这是面向 DeepSeek Harness `0.1.0-rc.6` 的社区 composition bundle，不是 DeepSeek 官方包。Host 与 Web 运行时文件已提交进仓库，Git 安装不需要 `prepare` 或 `allowBuilds`。
+
+按 commit 固定安装（可复现）：
+
+```sh
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#REPLACE_WITH_40_CHAR_COMMIT
+```
+
+跟随 `main`（会随分支更新）：
+
+```sh
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider
+```
+
+本地开发时从 checkout 安装：
 
 ```sh
 git clone https://github.com/AlexKaiqi/dsh-multi-model-provider.git
 cd dsh-multi-model-provider
-pnpm install --frozen-lockfile --ignore-scripts
-pnpm check
-mkdir -p artifacts
-pnpm pack --pack-destination artifacts
-dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.9.tgz"
+dsh plugin --profile web add "$PWD"
 ```
 
-发布 npm 后可安装：
+发布到 npm 之后：
 
 ```sh
 dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.9'
 ```
 
-升级后重启正在运行的 DSH Web process，并新建 Agent task 以加载新的工具与 system prompt。
+被 dsh.pub 收录后：
+
+```sh
+npx dshpub add AlexKaiqi/dsh-multi-model-provider --profile web
+```
+
+确认 bundle 层已挂上，然后重启 Web 并新建 Agent task，才会加载新工具和 system prompt：
+
+```sh
+dsh --profile web --dump-config   # 应看到 "# == dsh-multi-model-provider"
+dsh web --profile web
+```
+
+从 profile 卸载：
+
+```sh
+dsh plugin --profile web remove dsh-multi-model-provider
+```
 
 ## 开发
 

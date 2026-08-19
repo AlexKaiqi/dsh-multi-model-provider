@@ -97,25 +97,52 @@ Runtime providers implement `TaskModelRuntimeAdapter`. `invoke_task_model` recor
 
 ## Install
 
-The package is a DSH composition bundle targeting DeepSeek Harness `0.1.0-rc.6`:
+This is a community composition bundle for DeepSeek Harness `0.1.0-rc.6`. It is not an official DeepSeek package. Host and Web runtime files are committed, so a Git install does not need `prepare` or `allowBuilds`.
+
+Pin a commit for a reproducible install:
+
+```sh
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#REPLACE_WITH_40_CHAR_COMMIT
+```
+
+Follow `main` (moves when the branch moves):
+
+```sh
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider
+```
+
+Install from a local checkout while developing:
 
 ```sh
 git clone https://github.com/AlexKaiqi/dsh-multi-model-provider.git
 cd dsh-multi-model-provider
-pnpm install --frozen-lockfile --ignore-scripts
-pnpm check
-mkdir -p artifacts
-pnpm pack --pack-destination artifacts
-dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.9.tgz"
+dsh plugin --profile web add "$PWD"
 ```
 
-After publication:
+After the package is published to npm:
 
 ```sh
 dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.9'
 ```
 
-Restart running DSH Web processes after upgrading, then create a new Agent task so the new tools and system-prompt guidance are loaded.
+Through dsh.pub, once listed:
+
+```sh
+npx dshpub add AlexKaiqi/dsh-multi-model-provider --profile web
+```
+
+Verify the bundle layer, then restart Web and open a new Agent task so tools and system-prompt guidance load:
+
+```sh
+dsh --profile web --dump-config   # look for "# == dsh-multi-model-provider"
+dsh web --profile web
+```
+
+Remove it from the profile:
+
+```sh
+dsh plugin --profile web remove dsh-multi-model-provider
+```
 
 ## Development
 

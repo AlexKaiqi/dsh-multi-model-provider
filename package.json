@@ -24,7 +24,17 @@
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
     "README.md",
-    "README.zh.md"
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "plugin",
+    "model",
+    "provider",
+    "multimodal"
   ],
   "license": "MIT",
   "repository": {
@@ -40,7 +50,7 @@
     "clean": "tsc -b --clean && rm -rf lib",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run build && npm run test"
   },
   "dsh": {
     "inventory": {

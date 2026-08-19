@@ -1,6 +1,11 @@
 node_modules/
-lib/
 artifacts/
 coverage/
 *.tsbuildinfo
 .DS_Store
+
+# tsc emit used only as tsdown input. Host/Web runtime entries are committed
+# so Git installs and dsh.pub do not require a prepare/allowBuilds step.
+/lib/types/**/*.js
+/lib/types/**/*.js.map
+/lib/types/**/*.d.ts.map
