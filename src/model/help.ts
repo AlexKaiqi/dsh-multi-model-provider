@@ -12,7 +12,7 @@
 import { MODEL_MANAGER_TOOL_SURFACES } from './tool-surfaces.ts'
 
 /** Package version; asserted equal to package.json by the contract tests. */
-export const VERSION = '0.1.0-rc.2'
+export const VERSION = '0.1.0-rc.7'
 
 /** Every model-callable tool name, in registration order. */
 export const TOOL_NAMES = MODEL_MANAGER_TOOL_SURFACES.map(surface => surface.name)
@@ -28,16 +28,37 @@ language / chat models:
   configure_model_route    create or update one llm-pi-ai provider profile
   select_default_model     save the default model for newly created Agents
 
-non-language task models (image, speech, audio, video, embedding, reranking):
+non-language task models (image, speech, audio, video, realtime, embedding, reranking):
   list_task_models         inspect registrations and whether they are callable
+  discover_task_models     query an authenticated provider model catalog
+  select_task_models       replace the enabled set; [] disables all
   register_task_model      create or update a registration and its connection
+  prepare_model_portraits  expand one short intent into the complete portrait workflow
+  get_model_portrait       inspect price, strengths, speed, I/O, and evidence
+  upsert_model_portrait    save an evidence-backed router-facing portrait
+  validate_model_portrait  check registration, evidence, credentials, and adapter
+  invoke_task_model        execute one registered operation through its adapter
+  summarize_model_usage    aggregate current-session invocation observations
 
 credentials:
-  Registration tools accept only a reference name such as OPENAI_API_KEY.
-  They never accept an API key value. When a reference is not configured, direct
+  Registration tools accept only reference names such as OPENAI_API_KEY. A
+  multi-credential provider may use named refs such as DOUBAO_APPID and
+  DOUBAO_TOKEN. They never accept an API key value. When a reference is not configured, direct
   the user to the secure Settings credential field; never ask for a key in chat.
 
 registration is not callability:
   A task-model registration is catalog metadata until a compatible runtime
   adapter is installed. list_task_models reports the two states separately.
+  Disabled registrations remain inspectable but cannot be routed or invoked.
+
+provider discovery and selection:
+  Volcengine is one provider connection spanning Ark and Doubao products while
+  each product keeps its own credential slots. Discovery is advisory and never
+  auto-registers or auto-enables returned models. An empty enabled selection is
+  preserved as all disabled; it never falls back to all models.
+
+portrait workflow:
+  “整理初始画像” is sufficient: the Agent calls prepare_model_portraits, gathers
+  authoritative facts, saves each portrait, and validates it automatically.
+  Native LLM and task invocation events record metrics but never content or credentials.
 `
