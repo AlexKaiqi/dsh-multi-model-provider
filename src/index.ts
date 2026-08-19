@@ -6,11 +6,14 @@
  * that cannot participate in the LLM request contract.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { MODEL_MANAGER_GUIDANCE } from './guidance.ts'
+import { MODEL_MANAGER_GUIDANCE } from './model/guidance.ts'
+import { HELP } from './model/help.ts'
 import { registerTaskModelSettings } from './registry.ts'
 import { modelManagerTools } from './tools.ts'
 
-export * from './guidance.ts'
+export * from './model/guidance.ts'
+export * from './model/tool-surfaces.ts'
+export * from './model/help.ts'
 export * from './operations.ts'
 export * from './registry.ts'
 export * from './types.ts'
@@ -25,6 +28,9 @@ export function apply(ctx: Context): void {
   ctx.systemPrompt.section({
     name: 'tool:multi-model-provider',
     order: 170,
-    text: MODEL_MANAGER_GUIDANCE,
+    // Guidance states the discipline; HELP states the surface. Both are
+    // assembled here so the model can learn which tool serves which
+    // registration path without calling one to find out.
+    text: `${MODEL_MANAGER_GUIDANCE}\n\n${HELP}`,
   })
 }

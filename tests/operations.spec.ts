@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { describe, expect, it, vi } from 'vitest'
-import { MODEL_MANAGER_GUIDANCE } from '../src/guidance.ts'
+import { MODEL_MANAGER_GUIDANCE } from '../src/model/guidance.ts'
 import {
   configureModelRoute,
   listModelRoutes,

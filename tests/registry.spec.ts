@@ -1,7 +1,7 @@
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import SettingsProvider, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { describe, expect, it, vi } from 'vitest'
-import { MODEL_MANAGER_GUIDANCE } from '../src/guidance.ts'
+import { MODEL_MANAGER_GUIDANCE } from '../src/model/guidance.ts'
 import {
   BUILTIN_TASK_MODEL_REGISTRY,
   listTaskModels,

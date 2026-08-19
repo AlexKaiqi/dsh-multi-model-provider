@@ -1,0 +1,125 @@
+{
+  "specVersion": "0.2.0",
+  "name": "dsh-multi-model-provider",
+  "pluginTypes": [
+    "F1",
+    "F2"
+  ],
+  "facts": {
+    "modelVisible": true,
+    "registersTools": true,
+    "filesystem": "none",
+    "persistentState": false,
+    "subprocess": false,
+    "subagents": false,
+    "temporaryResources": false,
+    "customProtocol": false
+  },
+  "package": {
+    "path": "package.json"
+  },
+  "model": {
+    "dir": "src/model",
+    "readme": "src/model/README.md",
+    "files": [
+      {
+        "path": "guidance.ts",
+        "export": "MODEL_MANAGER_GUIDANCE",
+        "role": "staticText"
+      },
+      {
+        "path": "help.ts",
+        "export": "HELP",
+        "role": "staticText"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "LIST_MODEL_ROUTES_SURFACE",
+        "role": "toolSurface",
+        "toolName": "list_model_routes",
+        "helpPointer": "list_model_routes"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "CONFIGURE_MODEL_ROUTE_SURFACE",
+        "role": "toolSurface",
+        "toolName": "configure_model_route",
+        "helpPointer": "list_model_routes"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "LIST_TASK_MODELS_SURFACE",
+        "role": "toolSurface",
+        "toolName": "list_task_models",
+        "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "REGISTER_TASK_MODEL_SURFACE",
+        "role": "toolSurface",
+        "toolName": "register_task_model",
+        "helpPointer": "list_task_models"
+      },
+      {
+        "path": "tool-surfaces.ts",
+        "export": "SELECT_DEFAULT_MODEL_SURFACE",
+        "role": "toolSurface",
+        "toolName": "select_default_model",
+        "helpPointer": "list_model_routes"
+      }
+    ]
+  },
+  "help": {
+    "file": "src/model/help.ts",
+    "versionExport": "VERSION",
+    "commands": [
+      "list_model_routes",
+      "configure_model_route",
+      "select_default_model",
+      "list_task_models",
+      "register_task_model"
+    ]
+  },
+  "tests": {
+    "contractTests": [
+      {
+        "file": "tests/model-surface.spec.ts",
+        "references": [
+          "MODEL_MANAGER_GUIDANCE",
+          "HELP",
+          "LIST_MODEL_ROUTES_SURFACE",
+          "CONFIGURE_MODEL_ROUTE_SURFACE",
+          "LIST_TASK_MODELS_SURFACE",
+          "REGISTER_TASK_MODEL_SURFACE",
+          "SELECT_DEFAULT_MODEL_SURFACE"
+        ]
+      }
+    ],
+    "runtimeTests": [
+      {
+        "file": "tests/model-surface.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/registry.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/operations.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/pi-ai-integration.spec.ts",
+        "layer": "L2"
+      }
+    ]
+  },
+  "errors": {
+    "file": "src/operations.ts",
+    "export": "ModelManagerError",
+    "requiredFields": [
+      "code",
+      "message"
+    ]
+  }
+}
