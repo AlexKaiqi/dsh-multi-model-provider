@@ -102,7 +102,7 @@ This is a community composition bundle for DeepSeek Harness `0.1.0-rc.6`. It is 
 Pin a commit for a reproducible install:
 
 ```sh
-dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#REPLACE_WITH_40_CHAR_COMMIT
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#857fdfded2961373d4f3b71cc7809f310711731c
 ```
 
 Follow `main` (moves when the branch moves):
