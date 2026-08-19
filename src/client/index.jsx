@@ -241,7 +241,7 @@ function TaskCapability({ api, config, reload, readOnly = false }) {
   const realtimeSelected = taskModels.some(([id, raw]) => enabledTasks.has(id) && object(raw).task === 'realtime-speech')
   const classicSpeechSelected = taskModels.some(([id, raw]) => enabledTasks.has(id) && object(raw).task !== 'realtime-speech')
   const testRealtime = async () => {
-    const response = await fetch('/dsh-chatvoice/realtime/doubao/probe', {
+    const response = await fetch('/dsh-talk-to-text/realtime/doubao/probe', {
       method: 'POST', headers: { 'x-dsh-model-probe': '1' },
     })
     const body = await response.json().catch(() => ({}))
