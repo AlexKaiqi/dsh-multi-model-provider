@@ -72,8 +72,8 @@ function normalizeEvidence(item: ModelPortraitEvidence, index: number): ModelPor
 export function portraitChecks(portrait: ModelPortrait): ModelPortraitValidationCheck[] {
   const checks: ModelPortraitValidationCheck[] = []
   const evidenceIds = new Set(portrait.evidence.map(item => item.id))
-  checks.push({ id: 'portrait.summary', status: portrait.summary === undefined ? 'warn' : 'pass', message: portrait.summary === undefined ? 'summary is missing' : 'summary is present' })
-  checks.push({ id: 'portrait.specialties', status: portrait.specialties.length === 0 ? 'warn' : 'pass', message: portrait.specialties.length === 0 ? 'specialties are missing' : 'specialties are present' })
+  const hasDescription = portrait.description !== undefined || portrait.summary !== undefined
+  checks.push({ id: 'portrait.description', status: hasDescription ? 'pass' : 'warn', message: hasDescription ? 'Markdown description is present' : 'Markdown description is missing' })
   checks.push({ id: 'portrait.pricing', status: portrait.pricing.rates.length === 0 ? 'warn' : 'pass', message: portrait.pricing.rates.length === 0 ? 'pricing is unknown' : 'pricing rates are present' })
   checks.push({ id: 'portrait.performance.speed', status: portrait.performance.speedClass === undefined ? 'warn' : 'pass', message: portrait.performance.speedClass === undefined ? 'speed class is unknown' : 'speed class is present' })
   for (const [index, rate] of portrait.pricing.rates.entries()) {
@@ -109,6 +109,14 @@ export function normalizePortrait(input: ModelPortraitInput): ModelPortrait {
     finiteNonNegative(latency.max, 'performance.typicalLatencyMs.max')
     if (latency.min > latency.max) throw new ModelManagerError('typical latency min must not exceed max', 'INVALID_MODEL_PORTRAIT')
   }
+  const lastProbe = input.performance?.lastProbe
+  if (lastProbe !== undefined) {
+    if (Number.isNaN(Date.parse(lastProbe.observedAt))) {
+      throw new ModelManagerError('performance.lastProbe.observedAt must be an ISO date/time', 'INVALID_MODEL_PORTRAIT')
+    }
+    finiteNonNegative(lastProbe.latencyMs, 'performance.lastProbe.latencyMs')
+    if (lastProbe.timeToFirstTokenMs !== undefined) finiteNonNegative(lastProbe.timeToFirstTokenMs, 'performance.lastProbe.timeToFirstTokenMs')
+  }
   const qualityScores = Object.fromEntries(Object.entries(input.qualityScores ?? {}).map(([key, value]) => {
     const normalized = optionalText(key, 'qualityScores key')!
     if (!Number.isFinite(value) || value < 0 || value > 1) {
@@ -118,6 +126,7 @@ export function normalizePortrait(input: ModelPortraitInput): ModelPortrait {
   }))
   const draft: ModelPortrait = {
     schemaVersion: 1,
+    ...(optionalText(input.description, 'description') === undefined ? {} : { description: input.description!.trim() }),
     ...(optionalText(input.summary, 'summary') === undefined ? {} : { summary: input.summary!.trim() }),
     specialties: stringList(input.specialties, 'specialties'),
     limitations: stringList(input.limitations, 'limitations'),
@@ -132,6 +141,12 @@ export function normalizePortrait(input: ModelPortraitInput): ModelPortrait {
       ...(latency === undefined ? {} : { typicalLatencyMs: { min: latency.min, max: latency.max } }),
       ...(input.performance?.throughputPerMinute === undefined ? {} : { throughputPerMinute: finiteNonNegative(input.performance.throughputPerMinute, 'performance.throughputPerMinute') }),
       ...(optionalText(input.performance?.notes, 'performance.notes') === undefined ? {} : { notes: input.performance!.notes!.trim() }),
+      ...(lastProbe === undefined ? {} : { lastProbe: {
+          observedAt: lastProbe.observedAt,
+          reachable: lastProbe.reachable,
+          latencyMs: lastProbe.latencyMs,
+          ...(lastProbe.timeToFirstTokenMs === undefined ? {} : { timeToFirstTokenMs: lastProbe.timeToFirstTokenMs }),
+        } }),
     },
     qualityScores,
     evidence,

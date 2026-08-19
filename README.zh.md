@@ -12,10 +12,12 @@ DeepSeek Harness 的 Agent 辅助模型注册插件。它把“模型登记”�
 
 ## 当前能力
 
-插件提供十三个 Agent 工具：
+插件提供十五个 Agent 工具：
 
 - `list_model_routes`：查看 `llm-pi-ai` 的活动/休眠语言模型 Provider、凭据状态和模型 catalog。
 - `configure_model_route`：创建或更新语言模型 Provider profile。
+- `inspect_volcengine_provider`：查看火山统一 Provider 的安全凭据状态、当前账号方舟模型目录、语言/VLM 选择、task route 与调用路径。
+- `select_volcengine_language_models`：整体替换方舟语言/VLM 选择；空数组明确停用全部火山 LLM。
 - `select_default_model`：选择未来新 Agent 使用的默认主语言模型。
 - `list_task_models`：按 id、Provider 或 task 查询非语言模型，并分别返回注册状态与运行时可用性。
 - `discover_task_models`：查询 connection 对应的已鉴权 Provider 模型目录，不自动注册。
@@ -32,10 +34,17 @@ DeepSeek Harness 的 Agent 辅助模型注册插件。它把“模型登记”�
 
 ## Settings UI
 
-安装后 Settings 会出现两个互补分节：
+安装后会扩展 DSH 自带“模型”页，不再增加独立“模型画像”导航。每个语言模型的展开区域同时包含：
 
-- `llm-pi-ai`：语言模型 Provider、URL、凭据引用、模型列表及 LLM profile；这是语言模型的唯一真源。
-- `multi-model-provider`：非语言 task-model 的 `connections`、`models`、按 task 的可选 `defaults`，以及以 `llm:<provider>/<model>` 为键的 LLM `portraits`。LLM 注册本身仍归 `llm-pi-ai` 所有。
+- 一份可分章节编辑的 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
+- 按操作、单位、金额和币种保存的结构化价格；
+- 由显式轻量请求测得的可用性、首 Token 延迟、总延迟和观测时间。速度不允许手填，测试会产生一次最多 8 token 的少量模型费用。
+
+火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音作为模型页中的独立任务型 Provider，管理 App ID、Access Token、Realtime API Key、内置语音目录和注册时 Realtime 连接测试。
+
+界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
+
+会话底部的模型下拉也支持按 Provider、模型 ID、显示名称和描述检索，模型目录变大后不需要滚动寻找。
 
 task-model connection 结构：
 
@@ -48,18 +57,15 @@ multi-model-provider:
       credentialRef: OPENAI_API_KEY
       baseURL: https://api.openai.com/v1
       profile: {}
-    volcengine:
-      provider: volcengine
-      displayName: 火山引擎（方舟 / 豆包）
+    doubao-speech:
+      provider: doubao-speech
+      displayName: 豆包语音
       credentialRefs:
-        arkApiKey: ARK_API_KEY
         speechAppId: DOUBAO_APPID
         speechToken: DOUBAO_TOKEN
-      baseURL: https://ark.cn-beijing.volces.com/api/v3
-      catalogEndpoint: https://ark.cn-beijing.volces.com/api/v3/models
-      catalogCredentialName: arkApiKey
+        realtimeApiKey: DOUBAO_REALTIME_API_KEY
       profile:
-        catalogDiscovery: openai-models
+        product: doubao-speech
 ```
 
 模型注册结构：
@@ -82,9 +88,11 @@ multi-model-provider:
       profile: {}
 ```
 
-当前版本内置 `openai/gpt-image-2`，以及与 Lore 一致的豆包 ASR `doubao/volc.bigasr.sauc.duration` 和 TTS `doubao/seed-tts-1.0` 保守 catalog 条目。豆包路由统一挂在 `volcengine` connection 下，并只选择自身所需的语音凭据槽。它们会出现在 `list_task_models`，不会出现在语言模型选择器；在对应 runtime adapter 接入前，其状态明确为 `registered-only`、`callable: false`。
+当前版本内置 `openai/gpt-image-2`，以及豆包 ASR `doubao/volc.bigasr.sauc.duration`、TTS `doubao/seed-tts-1.0` 和 Realtime Duplex `doubao/realtime-duplex-3.0`。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才注册。它们会出现在 `list_task_models`，不会进入语言模型选择器。
 
-`volcengine` 是统一 Provider：方舟模型目录使用 `ARK_API_KEY` 查询 `/api/v3/models`，豆包语音路由使用 `DOUBAO_APPID` / `DOUBAO_TOKEN`。统一的是 Provider 归属，不是把不同产品线的鉴权强行混为一套。方舟目录也不等价于账号已开通的全部语音资源，因此语音 resource id 仍按官方文档登记。目录发现不会自动注册或自动启用。
+`volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；批式语音路由使用 `DOUBAO_APPID` / `DOUBAO_TOKEN`；Realtime Duplex 使用 `DOUBAO_APPID` / `DOUBAO_REALTIME_API_KEY`。方舟 `/models` 不是语音资源目录，因此豆包语音模型由插件按官方资源 ID 内置。
+
+安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（Provider id、官方 Responses endpoint、四个安全凭据引用和模型所属运行时）由插件提供；当前账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 路由只有在 task runtime adapter 可用时才能通过 `invoke_task_model` 调用。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 
 每条 task route 都有显式 `enabled` 状态。可用模型选择采用整体替换语义；空数组会原样保持“全部停用”，不会回退为全选。停用模型仍可查看画像，但不能被调用。
 
@@ -96,13 +104,13 @@ multi-model-provider:
 
 ## 豆包注册示例
 
-豆包语音没有可无损发现全部资源 id 的统一 catalog，因此插件只内置 connection，不猜测用户已开通的模型。ASR/TTS 资源 id 由 Agent 按实际开通情况登记：
+豆包语音没有可无损发现全部资源 ID 的统一 catalog，因此插件内置保守的语音模型目录，但默认不启用。其他 ASR/TTS 资源 ID 可由 Agent 按实际开通情况登记：
 
 ```yaml
 multi-model-provider:
   models:
     doubao/big-asr:
-      connection: volcengine
+      connection: doubao-speech
       model: volc.bigasr.sauc.duration
       displayName: 豆包大模型录音文件识别
       task: transcription
@@ -121,7 +129,7 @@ multi-model-provider:
 
 ## 模型画像与自动路由
 
-画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait` 保存带证据的价格、擅长项、限制、速度与 0..1 路由质量分数；调用日志提供真实成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。自动路由器不应把厂商文档或人工判断冒充成实测值。
+画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait.description` 是分章节 Markdown 定性说明，`pricing` 是结构化价格，`performance.lastProbe` 是带观测时间的显式实测；调用日志提供长期成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。自动路由器不应把厂商文档或人工判断冒充成实测值。
 
 用户只需说“整理初始画像”。插件的 system prompt 会要求 Agent 立即调用 `prepare_model_portraits`，从刚注册、发现、选择或讨论的模型推断范围；没有更窄上下文时处理缺失、未验证、部分有效、无效或过期的启用画像。Agent 随后查询当前官方资料或可信 benchmark → `upsert_model_portrait` → `validate_model_portrait`；只有用户明确允许产生流量或成本时才启用 `liveProbe`。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
@@ -182,13 +190,13 @@ pnpm install --frozen-lockfile --ignore-scripts
 pnpm check
 mkdir -p artifacts
 pnpm pack --pack-destination artifacts
-dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.7.tgz"
+dsh plugin --profile web add "$PWD/artifacts/dsh-multi-model-provider-0.1.0-rc.9.tgz"
 ```
 
 发布 npm 后可安装：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.7'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.9'
 ```
 
 升级后重启正在运行的 DSH Web process，并新建 Agent task 以加载新的工具与 system prompt。

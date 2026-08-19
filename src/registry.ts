@@ -84,20 +84,16 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       baseURL: 'https://api.openai.com/v1',
       profile: {},
     },
-    volcengine: {
-      provider: 'volcengine',
-      displayName: '火山引擎（方舟 / 豆包）',
+    'doubao-speech': {
+      provider: 'doubao-speech',
+      displayName: '豆包语音',
       credentialRefs: {
-        arkApiKey: 'ARK_API_KEY',
         speechAppId: 'DOUBAO_APPID',
         speechToken: 'DOUBAO_TOKEN',
+        realtimeApiKey: 'DOUBAO_REALTIME_API_KEY',
       },
-      baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-      catalogEndpoint: 'https://ark.cn-beijing.volces.com/api/v3/models',
-      catalogCredentialName: 'arkApiKey',
       profile: {
-        products: ['ark', 'doubao-speech'],
-        catalogDiscovery: 'openai-models',
+        product: 'doubao-speech',
         speechResources: 'documented-resource-ids',
       },
     },
@@ -119,8 +115,8 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       portrait: initialPortrait('OpenAI image generation and editing model.'),
     },
     'doubao/volc.bigasr.sauc.duration': {
-      enabled: true,
-      connection: 'volcengine',
+      enabled: false,
+      connection: 'doubao-speech',
       model: 'volc.bigasr.sauc.duration',
       displayName: '豆包大模型录音文件识别',
       task: 'transcription',
@@ -136,8 +132,8 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       portrait: initialPortrait('Doubao/Volcengine large-model speech transcription resource.'),
     },
     'doubao/seed-tts-1.0': {
-      enabled: true,
-      connection: 'volcengine',
+      enabled: false,
+      connection: 'doubao-speech',
       model: 'seed-tts-1.0',
       displayName: '豆包 Seed TTS 1.0',
       task: 'speech-synthesis',
@@ -151,6 +147,29 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       roles: ['text-to-speech'],
       profile: { resourceIdRole: 'tts' },
       portrait: initialPortrait('Doubao/Volcengine short-text speech synthesis resource.'),
+    },
+    'doubao/realtime-duplex-3.0': {
+      enabled: false,
+      connection: 'doubao-speech',
+      model: '1.2.6.0',
+      displayName: '豆包 Realtime Duplex 3.0（Seeduplex）',
+      task: 'realtime-speech',
+      runtimeAdapter: 'doubao-realtime-duplex',
+      credentialNames: ['speechAppId', 'realtimeApiKey'],
+      input: ['text', 'audio'],
+      output: ['text', 'audio'],
+      execution: 'realtime',
+      capabilities: ['speech.realtime_session'],
+      operations: ['realtime-session'],
+      roles: ['voice-deliberation'],
+      profile: {
+        protocol: 'doubao-realtime-duplex',
+        endpoint: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+        inputSampleRate: 16000,
+        outputSampleRate: 24000,
+        nativeFunctionCalling: true,
+      },
+      portrait: initialPortrait('Volcengine Realtime Speech Model 3.0 full-duplex speech dialogue with native function calling.'),
     },
   },
   defaults: {},
@@ -373,6 +392,7 @@ export function validateTaskModelRegistry(config: TaskModelRegistryConfig): void
     }
     stringList(model.operations, `models.${id}.operations`)
     stringList(model.roles, `models.${id}.roles`)
+    if (model.portrait !== undefined) normalizePortrait(model.portrait)
   }
 
   for (const [task, id] of Object.entries(config.defaults)) {

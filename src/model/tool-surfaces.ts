@@ -41,6 +41,22 @@ export const CONFIGURE_MODEL_ROUTE_SURFACE = {
   helpPointer: 'list_model_routes',
 } as const
 
+export const INSPECT_VOLCENGINE_PROVIDER_SURFACE = {
+  name: 'inspect_volcengine_provider',
+  description: 'Inspect the unified Volcengine provider configuration, safe credential status, the authenticated Ark model catalog, selected language/VLM models, registered task routes, and the correct invocation path for each class. Use it immediately whenever the user asks which 火山/方舟/豆包 models are available, how to configure them, or how to call them; installation is expected to make this workflow discoverable without YAML knowledge. Do not use it to expose credential values, assume catalog entries are all language models, or claim registered-only task routes are callable.',
+  parameters: {},
+  helpPointer: 'inspect_volcengine_provider',
+} as const
+
+export const SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE = {
+  name: 'select_volcengine_language_models',
+  description: 'Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official Responses endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.',
+  parameters: {
+    models: 'Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.',
+  },
+  helpPointer: 'inspect_volcengine_provider',
+} as const
+
 /** Tool that lists non-language task-model routes. */
 export const LIST_TASK_MODELS_SURFACE = {
   name: 'list_task_models',
@@ -183,6 +199,8 @@ export const SELECT_DEFAULT_MODEL_SURFACE = {
 export const MODEL_MANAGER_TOOL_SURFACES = [
   LIST_MODEL_ROUTES_SURFACE,
   CONFIGURE_MODEL_ROUTE_SURFACE,
+  INSPECT_VOLCENGINE_PROVIDER_SURFACE,
+  SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE,
   LIST_TASK_MODELS_SURFACE,
   DISCOVER_TASK_MODELS_SURFACE,
   SELECT_TASK_MODELS_SURFACE,

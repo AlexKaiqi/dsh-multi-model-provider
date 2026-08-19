@@ -12,7 +12,7 @@
 import { MODEL_MANAGER_TOOL_SURFACES } from './tool-surfaces.ts'
 
 /** Package version; asserted equal to package.json by the contract tests. */
-export const VERSION = '0.1.0-rc.7'
+export const VERSION = '0.1.0-rc.9'
 
 /** Every model-callable tool name, in registration order. */
 export const TOOL_NAMES = MODEL_MANAGER_TOOL_SURFACES.map(surface => surface.name)
@@ -26,6 +26,8 @@ llm-pi-ai; non-language task models live in this plugin's own catalog.
 language / chat models:
   list_model_routes        inspect routes, credential status, and model catalogs
   configure_model_route    create or update one llm-pi-ai provider profile
+  inspect_volcengine_provider inspect Ark/Doubao credentials, live catalog, selections, and usage paths
+  select_volcengine_language_models replace Ark language/VLM selection; [] disables all
   select_default_model     save the default model for newly created Agents
 
 non-language task models (image, speech, audio, video, realtime, embedding, reranking):
