@@ -186,7 +186,7 @@ agent-default-model:
 按 commit 固定安装（可复现）：
 
 ```sh
-dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#REPLACE_WITH_40_CHAR_COMMIT
+dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#857fdfded2961373d4f3b71cc7809f310711731c
 ```
 
 跟随 `main`（会随分支更新）：
