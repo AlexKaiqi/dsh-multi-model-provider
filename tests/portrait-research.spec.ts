@@ -1,7 +1,40 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { ingestPortraitResearch, portraitGaps, prepareModelPortraits } from '../src/portraits.ts'
-import { DOUBAO_SPEECH_DOCS, officialResearchSources, VOLCENGINE_ARK_DOCS } from '../src/portraits/research-sources.ts'
+import {
+  ANTHROPIC_MODELS_DOCS,
+  ANTHROPIC_PRICING_DOCS,
+  DEEPSEEK_MODELS_DOCS,
+  DEEPSEEK_PRICING_DOCS,
+  DOUBAO_SPEECH_DOCS,
+  GOOGLE_MODELS_DOCS,
+  GOOGLE_PRICING_DOCS,
+  GOOGLE_VIDEO_DOCS,
+  KIMI_MODELS_DOCS,
+  KIMI_PRICING_DOCS,
+  MINIMAX_H3_DOCS,
+  MINIMAX_H3_OPEN_SOURCE_DOCS,
+  MINIMAX_IMAGE_DOCS,
+  MINIMAX_LOCAL_DEPLOY_DOCS,
+  MINIMAX_MODELS_DOCS,
+  MINIMAX_MULTIMODAL_DOCS,
+  MINIMAX_PRICING_DOCS,
+  MISTRAL_MODELS_DOCS,
+  MISTRAL_PRICING_DOCS,
+  OPENAI_IMAGE_DOCS,
+  OPENAI_MODELS_DOCS,
+  OPENAI_PRICING_DOCS,
+  OPENAI_VIDEO_DOCS,
+  officialResearchSources,
+  QWEN_MODELS_DOCS,
+  QWEN_OPEN_WEIGHTS_DOCS,
+  QWEN_PRICING_DOCS,
+  VOLCENGINE_ARK_DOCS,
+  XAI_MODELS_DOCS,
+  XAI_PRICING_DOCS,
+  ZAI_MODELS_DOCS,
+  ZAI_PRICING_DOCS,
+} from '../src/portraits/research-sources.ts'
 import { TASK_MODEL_REGISTRY_SCHEMA, TASK_MODEL_SETTINGS_NAMESPACE } from '../src/registry.ts'
 import type { ModelPortrait, TaskModelRegistryConfig } from '../src/types.ts'
 
@@ -158,9 +191,45 @@ describe('portrait research testsuite', () => {
     ])
   })
 
+  it('uses a bundled common-model portrait as the initial qualitative profile while leaving live probing open', async () => {
+    const ctx = context()
+    ctx.llm.listProviders = vi.fn(() => [{ id: 'openai', name: 'OpenAI' }])
+    ctx.llm.listModels = vi.fn(async () => [{
+      provider: 'openai', id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', inputModalities: ['text', 'image'],
+    }])
+    const result = await prepareModelPortraits(ctx, { ids: ['llm:openai/gpt-5.6-terra'] })
+    expect(result.candidates).toEqual([
+      expect.objectContaining({
+        id: 'llm:openai/gpt-5.6-terra',
+        portraitSource: 'bundled',
+        portraitState: 'valid',
+        needsInitialPortrait: false,
+        gaps: ['lastProbe'],
+      }),
+    ])
+  })
+
   it('bundles official documentation entry points by provider', () => {
     expect(officialResearchSources('volcengine')).toEqual([VOLCENGINE_ARK_DOCS])
     expect(officialResearchSources('doubao-speech')).toEqual([DOUBAO_SPEECH_DOCS])
+    expect(officialResearchSources('anthropic')).toEqual([ANTHROPIC_MODELS_DOCS, ANTHROPIC_PRICING_DOCS])
+    expect(officialResearchSources('openai')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS])
+    expect(officialResearchSources('google')).toEqual([GOOGLE_MODELS_DOCS, GOOGLE_PRICING_DOCS, GOOGLE_VIDEO_DOCS])
+    expect(officialResearchSources('deepseek')).toEqual([DEEPSEEK_MODELS_DOCS, DEEPSEEK_PRICING_DOCS])
+    expect(officialResearchSources('moonshotai')).toEqual([KIMI_MODELS_DOCS, KIMI_PRICING_DOCS])
+    expect(officialResearchSources('zai')).toEqual([ZAI_MODELS_DOCS, ZAI_PRICING_DOCS])
+    expect(officialResearchSources('xai')).toEqual([XAI_MODELS_DOCS, XAI_PRICING_DOCS])
+    expect(officialResearchSources('qwen-token-plan')).toEqual([QWEN_MODELS_DOCS, QWEN_PRICING_DOCS, QWEN_OPEN_WEIGHTS_DOCS])
+    expect(officialResearchSources('minimax')).toEqual([
+      MINIMAX_MODELS_DOCS,
+      MINIMAX_H3_DOCS,
+      MINIMAX_H3_OPEN_SOURCE_DOCS,
+      MINIMAX_MULTIMODAL_DOCS,
+      MINIMAX_IMAGE_DOCS,
+      MINIMAX_PRICING_DOCS,
+      MINIMAX_LOCAL_DEPLOY_DOCS,
+    ])
+    expect(officialResearchSources('mistral')).toEqual([MISTRAL_MODELS_DOCS, MISTRAL_PRICING_DOCS])
     expect(officialResearchSources('unknown-provider')).toEqual([])
   })
 

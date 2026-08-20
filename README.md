@@ -20,6 +20,10 @@ Language routes use `configure_model_route` / `list_model_routes`. Task routes u
 
 `prepare_model_portraits` returns seed facts, gaps, and official documentation URLs. The Agent opens those pages and calls `ingest_portrait_research` with http(s) source URLs; price rates must cite that evidence. `lastProbe` is measured by the Settings speed test, not copied from documentation. `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` still manage the stored profile.
 
+The catalog ships a source-backed starter set without a fixed model-count cap. Its provider-priced routes cover GPT-5.6 Sol / Terra, Claude Opus 5 / Sonnet 5, Gemini 3.1 Pro Preview / 3.7 Flash, DeepSeek V4 Pro / Flash, Kimi K3 / K2.6, GLM-5.3 / 5-Turbo / 5V-Turbo, Grok 4.5 / 4.3, MiniMax M3 / M2.7, and Mistral Small 4 / Ministral 8B. It also carries provider-independent capability portraits for Qwen 3.8 Max Preview / 3.7 Plus, Qwen 3.5 4B / 9B / 27B, Qwen 3.6 35B-A3B, Qwen3-Coder-Next, and the open-weight MiniMax and Mistral checkpoints. Selection is current-generation first, then accounts for usage, specialization, private-deployment adoption, and hardware footprint. These are exact-id fallbacks, not registrations. A stored user portrait always wins. Route portraits may contain effective-dated provider prices; portable portraits deliberately leave pricing empty because API and infrastructure cost depend on the selected deployment. Neither kind fabricates benchmark scores, latency ranges, or `lastProbe` results.
+
+Specialized task routes are a separate layer. The video starter set covers Google Gemini Omni Flash Preview and Veo 3.1 Standard / Fast / Lite; MiniMax H3 and Hailuo 2.3 / Fast; and OpenAI Sora 2 / Pro. It also includes MiniMax Speech 2.8 HD / Turbo, Music 3.0, and image-01. Every route keeps exact task, modality, execution, price, and source-backed capability boundaries. H3 is therefore a `video-generation` candidate with native audio output, not an Agent LLM. These routes remain `registered-only` until their declared runtime adapters and credentials are available. Google’s current video routes are enabled as candidates; Sora 2 / Pro are disabled because OpenAI now marks them Legacy. Music 3.0 is disabled because its paid API stopped accepting new users on August 20, 2026; its portrait remains visible for existing paying users and open-weight deployment decisions.
+
 ### 3. Agent model
 
 Selection is built on the catalog, not a parallel list:
@@ -34,7 +38,7 @@ await ctx.modelCatalog.selectAgentModel({
 })
 ```
 
-`snapshot().languageModels` is the live Agent-model candidate list, with portraits attached when they exist. `selectAgentModel()` refuses task models and unknown ids. It only affects newly created Agents.
+`snapshot().languageModels` is the live Agent-model candidate list, with stored or exact-match bundled portraits attached when they exist. `portraitSource` reports `stored` or `bundled`. `selectAgentModel()` refuses task models and unknown ids. It only affects newly created Agents.
 
 Other plugins that only need the directory can stop at `snapshot()`. Do not scrape `settings.yaml`, and do not ask the Agent to call tools just to read the catalog.
 
@@ -62,6 +66,8 @@ Installation extends the built-in **Models** Settings section instead of adding 
 Catalog-less directory providers such as Volcengine Ark run a read-only model-directory connectivity check before their profile is committed. Ark remains an ordinary language-model provider using `ARK_API_KEY`. Doubao Speech is a separate provider in the same Models page, using one `DOUBAO_API_KEY`, a documented Realtime O/SC voice-profile catalog, and a registration-time connection test.
 
 The UI creates no parallel source of truth. Ark language models are written to `llm-pi-ai.providers.volcengine`; Doubao Speech task models and all portrait bindings are written to `multi-model-provider`; credential values only cross the write-only Credentials API and never enter ordinary `settings.yaml`. ChatVoice only selects registered Realtime routes and does not own provider credentials.
+
+Removing Doubao Speech from Models clears its user connection, selected voice routes, and page-managed local credential. The built-in provider definition and disabled catalog remain available, so it can be configured again without reinstalling the plugin. Environment-sourced credentials are never deleted by the page.
 
 The conversation model dropdown is searchable by provider, model id, display name, and description, so a large registry does not turn into an unscannable list.
 
@@ -101,7 +107,7 @@ multi-model-provider:
       profile: {}
 ```
 
-The visible built-in catalog includes `openai/gpt-image-2` and 25 documented Realtime S2S-O/SC 2.0 voice profiles. Doubao fixes `session.model` to `1.2.6.1`; the Models picker therefore selects the actual voice profile and the runtime maps it to that fixed protocol model. The routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
+The visible built-in catalog includes Google Gemini Omni Flash Preview and Veo 3.1 Standard / Fast / Lite; OpenAI Sora 2 / Pro and `gpt-image-2`; MiniMax H3, Hailuo 2.3 / Fast, Speech 2.8 HD / Turbo, Music 3.0, and image-01; plus 25 documented Realtime S2S-O/SC 2.0 voice profiles. Doubao fixes `session.model` to `1.2.6.1`; the Models picker therefore selects the actual voice profile and the runtime maps it to that fixed protocol model. The routes belong to independent provider connections and appear in `list_task_models`, not in the language-model picker. Generative-media routes remain registered-only until their adapters are installed; legacy Sora and Music API routes are disabled by default. Doubao routes start disabled until selected in Models settings; former ASR/TTS entries remain migration-only and are not shown by this Provider.
 
 Supported tasks cover image understanding/generation, speech synthesis/transcription/translation/analysis, voice conversion/cloning/design, podcasts, realtime speech, audio/video generation, embedding, and reranking. Routes also declare Lore-compatible capability ids such as `speech.transcribe.file`, `speech.synthesize.short`, and `speech.realtime_session`; `file` is a distinct input modality. Input/output modalities, operations, and execution lifecycle remain separate so task semantics are not conflated with modality.
 
@@ -112,6 +118,8 @@ Every task route has an explicit `enabled` state. Selection is replacement-based
 ## Portraits, invocation, and routing evidence
 
 A portrait keeps one sectioned qualitative Markdown description, structured pricing, and an explicit `performance.lastProbe` observation separate from long-term measured usage. Portraits cover task route ids and LLM ids in `llm:<provider>/<model>` form. Price rates carry operation, billing unit, currency, effective dates, and an evidence id so stale claims can be detected. Registration remains authoritative for capabilities, input/output modalities, execution mode, and operations.
+
+The starter set is intentionally selective but has no fixed size: cover widely adopted providers, then include current flagships, workhorses, specialized models, and commonly self-hosted models with distinct hardware footprints. Usage, open-weight adoption, and deployment form are selection signals; every model claim and price cites first-party documentation. Matching has two exact layers: `provider/model` route profiles may carry route pricing, while an explicitly enumerated exact model id may receive a provider-independent capability profile. There is no fuzzy alias guessing and no price transfer across providers. Runtime reachability, time to first token, and latency remain separate probe/usage observations.
 
 The user can simply say “build the initial portraits.” Installed guidance requires the Harness Agent to call `prepare_model_portraits`, infer scope from recent registration/discovery context, gather current official documentation or benchmark evidence, save each portrait with `upsert_model_portrait`, and run `validate_model_portrait`. A paid or traffic-producing live probe still requires explicit approval.
 

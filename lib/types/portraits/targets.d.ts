@@ -6,6 +6,7 @@ export interface TaskPortraitTarget {
     readonly kind: 'task';
     readonly id: string;
     readonly portrait: ModelPortrait | undefined;
+    readonly portraitSource: 'stored' | 'bundled' | undefined;
     readonly storagePath: readonly string[];
     readonly declared: Record<string, unknown>;
     readonly route: ReturnType<typeof resolveTaskModelRoute>;
@@ -16,6 +17,7 @@ export interface LlmPortraitTarget {
     readonly provider: string;
     readonly model: string;
     readonly portrait: ModelPortrait | undefined;
+    readonly portraitSource: 'stored' | 'bundled' | undefined;
     readonly storagePath: readonly string[];
     readonly declared: Record<string, unknown>;
     readonly info: LlmResolvedModelInfo;

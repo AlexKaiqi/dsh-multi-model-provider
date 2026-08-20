@@ -222,6 +222,42 @@ describe('model catalog for peer plugins', () => {
     }))
   })
 
+  it('attaches the bundled H3 task portrait to the router-facing catalog snapshot', async () => {
+    const value = structuredClone(registry)
+    value.connections.minimax = {
+      provider: 'minimax',
+      credentialRef: 'MINIMAX_API_KEY',
+      baseURL: 'https://api.minimax.io',
+    }
+    value.models['minimax/MiniMax-H3'] = {
+      connection: 'minimax',
+      model: 'MiniMax-H3',
+      task: 'video-generation',
+      runtimeAdapter: 'minimax-video-v2',
+      input: ['text', 'image', 'video', 'audio'],
+      output: ['video', 'audio'],
+      execution: 'async-job',
+      capabilities: ['video.generate'],
+      operations: ['generate'],
+      roles: ['omni-video-generator'],
+      profile: {},
+    }
+
+    const snapshot = await snapshotModelCatalog(context(value, () => false))
+    expect(snapshot.taskModels.find(model => model.id === 'minimax/MiniMax-H3')).toEqual(expect.objectContaining({
+      portraitSource: 'bundled',
+      declared: expect.objectContaining({
+        task: 'video-generation',
+        input: ['text', 'image', 'video', 'audio'],
+        output: ['video', 'audio'],
+      }),
+      portrait: expect.objectContaining({
+        specialties: expect.arrayContaining(['native stereo audio', '2K video']),
+        performance: expect.objectContaining({ speedClass: 'async' }),
+      }),
+    }))
+  })
+
   it('records LLM portrait ids that the language runtime cannot resolve', async () => {
     const ctx = context()
     ctx.llm.resolveModelInfo = vi.fn(async () => {
@@ -237,6 +273,50 @@ describe('model catalog for peer plugins', () => {
       }),
     ])
     expect(snapshot.languageModels[0]).not.toHaveProperty('portrait')
+  })
+
+  it('publishes an exact-match bundled portrait when no stored portrait exists', async () => {
+    const value = { ...registry, portraits: {} }
+    const ctx = context(value)
+    ctx.llm.listProviders = vi.fn(() => [{ id: 'openai', name: 'OpenAI' }])
+    ctx.llm.listModels = vi.fn(async () => [{ provider: 'openai', id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra' }])
+    const snapshot = await snapshotModelCatalog(ctx)
+    expect(snapshot.languageModels).toEqual([
+      expect.objectContaining({
+        id: 'llm:openai/gpt-5.6-terra',
+        portraitSource: 'bundled',
+        portrait: expect.objectContaining({
+          specialties: expect.arrayContaining(['coding', 'general agent work']),
+        }),
+      }),
+    ])
+    expect((snapshot.languageModels[0]!.portrait as ModelPortrait).performance.lastProbe).toBeUndefined()
+    expect(snapshot.languagePortraits).toEqual([
+      expect.objectContaining({ id: 'llm:openai/gpt-5.6-terra', portraitSource: 'bundled' }),
+    ])
+  })
+
+  it('lets a stored portrait override the exact-match bundled portrait', async () => {
+    const stored = portrait('User-owned portrait.', undefined)
+    const value: TaskModelRegistryConfig = {
+      ...registry,
+      portraits: {
+        'llm:openai/gpt-5.6-terra': {
+          kind: 'llm', provider: 'openai', model: 'gpt-5.6-terra', portrait: stored,
+        },
+      },
+    }
+    const ctx = context(value)
+    ctx.llm.listProviders = vi.fn(() => [{ id: 'openai', name: 'OpenAI' }])
+    ctx.llm.listModels = vi.fn(async () => [{ provider: 'openai', id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra' }])
+    const snapshot = await snapshotModelCatalog(ctx)
+    expect(snapshot.languageModels[0]).toMatchObject({
+      portraitSource: 'stored',
+      portrait: {
+        summary: 'User-owned portrait.',
+        specialties: ['Mandarin'],
+      },
+    })
   })
 })
 

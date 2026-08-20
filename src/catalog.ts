@@ -3,6 +3,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { Context, Service } from '@deepseek-ai/cordis'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { listModelRoutes, ModelManagerError } from './operations.ts'
+import { builtinLlmPortrait } from './portraits/builtin.ts'
 import { getModelPortrait } from './portraits/service.ts'
 import { portraitRegistry } from './portraits/storage.ts'
 import { listTaskModels } from './registry.ts'
@@ -39,7 +40,7 @@ const CATALOG_NOTE = 'Peer plugins should inject ctx.modelCatalog and call snaps
  *   ctx: Host context that already has settings, credentials, llm, and taskModelRuntime.
  *
  * Returns:
- *   Every task-model row and live language model, with portraits when stored. Credential values are never included.
+ *   Every task-model row and live language model, with stored or curated portraits when available. Credential values are never included.
  */
 export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSnapshot> {
   const listed = await listTaskModels(ctx)
@@ -56,7 +57,8 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
 
   const languagePortraits: Record<string, unknown>[] = []
   const unresolvedLanguagePortraitIds: string[] = []
-  for (const id of Object.keys(portraitRegistry(ctx).portraits ?? {})) {
+  const configuredPortraitIds = new Set(Object.keys(portraitRegistry(ctx).portraits ?? {}))
+  for (const id of configuredPortraitIds) {
     try {
       languagePortraits.push(await getModelPortrait(ctx, { id, includeEvidence: true }))
     } catch {
@@ -74,7 +76,22 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
       const model = asString(modelRow.id)
       if (provider === '' || model === '') continue
       const id = `llm:${provider}/${model}`
-      const portraitRow = portraitsById.get(id)
+      let portraitRow = portraitsById.get(id)
+      if (portraitRow === undefined && !configuredPortraitIds.has(id)) {
+        const bundled = builtinLlmPortrait(provider, model)
+        if (bundled !== undefined) {
+          portraitRow = {
+            id,
+            kind: 'llm',
+            provider,
+            model,
+            portrait: bundled,
+            portraitSource: 'bundled',
+          }
+          portraitsById.set(id, portraitRow)
+          languagePortraits.push(portraitRow)
+        }
+      }
       languageModels.push({
         id,
         kind: 'llm',
@@ -84,7 +101,8 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
         status,
         ...(portraitRow === undefined ? {} : {
           portrait: portraitRow.portrait,
-          declared: portraitRow.declared,
+          portraitSource: portraitRow.portraitSource ?? 'stored',
+          ...(portraitRow.declared === undefined ? {} : { declared: portraitRow.declared }),
         }),
       })
     }

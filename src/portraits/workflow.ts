@@ -2,6 +2,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { llmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
 import type { ModelPortrait, PrepareModelPortraitsInput } from '../types.ts'
+import { builtinLlmPortrait } from './builtin.ts'
+import { builtinTaskPortrait } from './builtin-task.ts'
 import { portraitGaps, researchPlanFor } from './research.ts'
 import { portraitRegistry } from './storage.ts'
 
@@ -27,7 +29,9 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
     if (requested !== undefined && !requested.has(id)) continue
     if (requested === undefined && input.includeDisabled !== true && registration.enabled === false) continue
     const provider = config.connections[registration.connection]?.provider ?? registration.connection
-    const portrait = registration.portrait
+    const storedPortrait = registration.portrait
+    const bundledPortrait = builtinTaskPortrait(provider, registration.model, registration.task)
+    const portrait = storedPortrait ?? bundledPortrait
     const gaps = portraitGaps(portrait)
     candidates.push({
       id,
@@ -37,6 +41,7 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
       displayName: registration.displayName,
       declared: { task: registration.task, input: registration.input, output: registration.output, execution: registration.execution, capabilities: registration.capabilities ?? [] },
       portraitState: portrait?.validation.state ?? 'missing',
+      ...(portrait === undefined ? {} : { portraitSource: storedPortrait === undefined ? 'bundled' : 'stored' }),
       needsInitialPortrait: portrait === undefined || portrait.validation.state !== 'valid',
       seed: taskSeed(provider, registration.model, registration, portrait),
       gaps,
@@ -49,7 +54,9 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
       for (const model of await ctx.llm.listModels(provider.id)) {
         const id = llmTargetId(provider.id, model.id)
         if (requested !== undefined && !requested.has(id)) continue
-        const portrait = config.portraits?.[id]?.portrait
+        const storedPortrait = config.portraits?.[id]?.portrait
+        const bundledPortrait = builtinLlmPortrait(provider.id, model.id)
+        const portrait = storedPortrait ?? bundledPortrait
         const gaps = portraitGaps(portrait)
         let contextWindow: number | undefined
         let defaultMaxTokens: number | undefined
@@ -73,6 +80,7 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
             ...(defaultMaxTokens === undefined ? {} : { defaultMaxTokens }),
           },
           portraitState: portrait?.validation.state ?? 'missing',
+          ...(portrait === undefined ? {} : { portraitSource: storedPortrait === undefined ? 'bundled' : 'stored' }),
           needsInitialPortrait: portrait === undefined || portrait.validation.state !== 'valid',
           seed: {
             kind: 'llm',

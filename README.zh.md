@@ -20,6 +20,10 @@
 
 用户说“整理初始画像”即可。`prepare_model_portraits` 给出种子事实、缺口和官方文档入口；Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能来自 Settings 测速，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 仍负责读写画像。
 
+目录内置一组没有固定数量上限的当前模型初始画像。带 Provider 价格的路由画像覆盖 GPT-5.6 Sol / Terra、Claude Opus 5 / Sonnet 5、Gemini 3.1 Pro Preview / 3.7 Flash、DeepSeek V4 Pro / Flash、Kimi K3 / K2.6、GLM-5.3 / 5-Turbo / 5V-Turbo、Grok 4.5 / 4.3、MiniMax M3 / M2.7，以及 Mistral Small 4 / Ministral 8B。另有与 Provider 解耦的能力画像，覆盖 Qwen 3.8 Max Preview / 3.7 Plus、Qwen 3.5 4B / 9B / 27B、Qwen 3.6 35B-A3B、Qwen3-Coder-Next，以及 MiniMax、Mistral 的开源权重模型。选择先看当前代，再看调用量、领域专长、私有部署使用和硬件体量。它们只是精确模型 ID 命中时的画像兜底，不会替用户注册模型；用户保存的画像永远优先。路由画像可以带对应 Provider 的生效价格；可移植画像不填写虚假的统一价格，因为 API 与自部署成本取决于具体部署。两者都不伪造 benchmark 分数、延迟区间或 `lastProbe`。
+
+领域 task-model 是独立的一层。视频初始集合覆盖 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite、MiniMax H3 与 Hailuo 2.3 / Fast，以及 OpenAI Sora 2 / Pro；另外纳入 MiniMax Speech 2.8 HD / Turbo、Music 3.0 和 image-01。每条都保存精确 task、输入输出模态、执行方式、价格和带来源的能力边界。因此 H3 是带原生音频输出的 `video-generation` 候选，不是 Agent LLM。只有对应 runtime adapter 与凭据都可用后，这些路由才会从 `registered-only` 变成可调用。Google 当前视频路由默认作为候选；OpenAI 已把 Sora 2 / Pro 标成 Legacy，所以默认停用。Music 3.0 的付费 API 自 2026-08-20 起不再接受新用户，也默认停用；画像仍保留给已有付费用户和开源权重部署判断。
+
 ### 3. 选主模型
 
 选主模型建立在目录之上，不再另维护一份列表：
@@ -34,7 +38,7 @@ await ctx.modelCatalog.selectAgentModel({
 })
 ```
 
-`snapshot().languageModels` 是 live 的 Agent 主模型候选，有画像时会带上。`selectAgentModel()` 拒绝 task-model 和目录里没有的 id。只影响之后新建的 Agent。
+`snapshot().languageModels` 是 live 的 Agent 主模型候选，有已保存画像或精确命中的内置画像时会带上；`portraitSource` 标明 `stored` 或 `bundled`。`selectAgentModel()` 拒绝 task-model 和目录里没有的 id。只影响之后新建的 Agent。
 
 只需要读目录的插件停在 `snapshot()` 即可。不要去解析 `settings.yaml`，也不要让 Agent 为了读目录去调工具。
 
@@ -72,6 +76,8 @@ await ctx.modelCatalog.selectAgentModel({
 火山方舟仍是普通语言模型 Provider。它在添加时使用官方 Base URL、协议和 `ARK_API_KEY`，并在写入配置前自动执行只读模型目录连通性检查。豆包语音是模型页中的另一个独立 Provider，使用单个 `DOUBAO_API_KEY`、内置 Realtime O/SC 音色目录和注册时连接测试。
 
 界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
+
+在 Models 中删除豆包语音，会清除其用户 connection、已选音色路由和页面管理的本地凭据；内置 Provider 定义与停用目录仍保留，因此无需重装插件即可再次配置。来自环境变量的凭据不会被页面删除。
 
 会话底部的模型下拉也支持按 Provider、模型 ID、显示名称和描述检索，模型目录变大后不需要滚动寻找。
 
@@ -117,7 +123,7 @@ multi-model-provider:
       profile: {}
 ```
 
-当前可见目录内置 `openai/gpt-image-2`，并把官方 Realtime S2S-O 与 SC 2.0 音色映射成 25 个可选语音配置。豆包 Realtime 协议仍固定使用 `session.model=1.2.6.1`；模型页选择的是实际可切换的音色配置，运行时再映射到固定协议版本。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
+当前可见目录内置 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite；OpenAI Sora 2 / Pro 和 `gpt-image-2`；MiniMax H3、Hailuo 2.3 / Fast、Speech 2.8 HD / Turbo、Music 3.0、image-01；以及 25 个官方 Realtime S2S-O / SC 2.0 音色配置。它们挂在各自独立的 Provider connection 下，只出现在 `list_task_models`，不会混进语言模型选择器。生成媒体路由在 adapter 未安装时保持 `registered-only`；Legacy Sora 与 Music API 默认停用。豆包 Realtime 协议仍固定使用 `session.model=1.2.6.1`；模型页选择实际音色配置，运行时再映射到固定协议版本。豆包路由默认停用，旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
 
 `volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
@@ -159,6 +165,8 @@ multi-model-provider:
 ## 模型画像
 
 画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait.description` 是分章节 Markdown 定性说明，`pricing` 是结构化价格，`performance.lastProbe` 是带观测时间的显式实测；调用日志提供长期成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。不要把厂商文档或人工判断写成实测值。
+
+初始画像有意不追求全覆盖，但不设固定条数：覆盖广泛使用的 Provider，再取当前旗舰、主力工作模型、领域专用模型和实际装机量高的私有部署模型。调用量、开源权重下载与部署形态都是选型信号；具体能力与价格只引用一手资料。命中分两层：先按 `provider/model` 精确命中带路由价格的画像；没有时，再按明确列出的精确模型 ID 命中与 Provider 解耦的能力画像，不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
 
 用户只需说“整理初始画像”。插件的 system prompt 会要求 Agent 立即调用 `prepare_model_portraits`，从刚注册、发现、选择或讨论的模型推断范围；没有更窄上下文时处理缺失、未验证、部分有效、无效或过期的启用画像。Agent 随后查询当前官方资料或可信 benchmark → `upsert_model_portrait` → `validate_model_portrait`；只有用户明确允许产生流量或成本时才启用 `liveProbe`。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 

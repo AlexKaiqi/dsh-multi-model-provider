@@ -21,7 +21,7 @@ export interface ModelCatalogSnapshot {
  *   ctx: Host context that already has settings, credentials, llm, and taskModelRuntime.
  *
  * Returns:
- *   Every task-model row and live language model, with portraits when stored. Credential values are never included.
+ *   Every task-model row and live language model, with stored or curated portraits when available. Credential values are never included.
  */
 export declare function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSnapshot>;
 /**
