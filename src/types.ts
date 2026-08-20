@@ -233,6 +233,45 @@ export interface TaskModelRuntimeAdapter {
   probe?(route: ResolvedTaskModelRoute, credentials: Readonly<Record<string, string>>, signal: AbortSignal): Promise<TaskModelAdapterProbeResult>
 }
 
+export interface RealtimeModelTool {
+  readonly name: string
+  readonly [key: string]: unknown
+}
+
+export interface RealtimeModelProfile {
+  readonly id: string
+  readonly instructions: string | ((context: string) => string)
+  readonly tools?: readonly RealtimeModelTool[]
+  readonly voice?: Readonly<Record<string, string>>
+}
+
+export interface RealtimeModelRoute {
+  readonly id: string
+  readonly model: string
+  readonly displayName: string
+  readonly provider: string
+  readonly adapter: string
+  readonly protocol: string
+  readonly baseURL: string
+  readonly endpoint: string
+  readonly voice: string
+  readonly source: 'task-model'
+  readonly resolved: ResolvedTaskModelRoute
+}
+
+export interface RealtimeModelSessionAdapterInput {
+  readonly route: RealtimeModelRoute
+  readonly profile: RealtimeModelProfile
+  readonly instructions: string
+}
+
+/** Provider implementation for one registered realtime task-model adapter id. */
+export interface RealtimeModelSessionAdapter {
+  readonly id: string
+  readonly protocol: string
+  session(input: RealtimeModelSessionAdapterInput): unknown
+}
+
 export interface RegisterTaskModelInput {
   readonly id: string
   readonly connection: string
