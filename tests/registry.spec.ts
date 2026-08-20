@@ -103,7 +103,7 @@ describe('task-model registry', () => {
   })
 
   it('ships GPT Image 2 as registered catalog metadata without claiming runtime callability', async () => {
-    const result = await listTaskModels(context(), { task: 'image-generation' })
+    const result = await listTaskModels(context(), { id: 'openai/gpt-image-2' })
 
     expect(result).toMatchObject({
       count: 1,
@@ -124,6 +124,33 @@ describe('task-model registry', () => {
       }],
     })
     expect(JSON.stringify(result)).not.toContain('sk-secret')
+  })
+
+  it('ships MiniMax H3 as a profiled video task and keeps the discontinued Music API disabled', async () => {
+    const h3 = await listTaskModels(context(), { id: 'minimax/MiniMax-H3' })
+    expect(h3).toMatchObject({
+      count: 1,
+      models: [{
+        id: 'minimax/MiniMax-H3',
+        task: 'video-generation',
+        input: ['text', 'image', 'video', 'audio'],
+        output: ['video', 'audio'],
+        portraitSource: 'bundled',
+        portrait: { pricingRates: 2, validation: { state: 'valid' } },
+        availability: { status: 'registered-only', callable: false, requiredAdapter: 'minimax-video-v2' },
+      }],
+    })
+
+    const music = await listTaskModels(context(), { id: 'minimax/music-3.0' })
+    expect(music).toMatchObject({
+      models: [{
+        enabled: false,
+        availability: {
+          callable: false,
+          reason: expect.stringContaining('explicitly disabled'),
+        },
+      }],
+    })
   })
 
   it('ships legacy speech routes plus every documented Realtime O/SC voice profile', async () => {

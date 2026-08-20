@@ -29,6 +29,7 @@ export async function getModelPortrait(ctx: Context, input: GetModelPortraitInpu
     kind: target.kind,
     provider: target.kind === 'task' ? target.route.connection.provider : target.provider,
     model: target.kind === 'task' ? target.route.registration.model : target.model,
+    ...(target.portraitSource === undefined ? {} : { portraitSource: target.portraitSource }),
     declared: target.declared,
     portrait: visiblePortrait,
     ...(input.includeUsage === true ? { observed: summarizeModelUsage({ id: target.id }, events) } : {}),

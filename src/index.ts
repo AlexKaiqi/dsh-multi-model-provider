@@ -70,6 +70,9 @@ export function apply(ctx: Context): void {
       settingsNs: 'multi-model-provider',
       settingsPath: ['connections', DOUBAO_SPEECH_PROVIDER],
       ...{
+        // This is a speech route, not a pi-ai LLM route, but its connection
+        // still uses the standard API-key, endpoint, and model-list editor.
+        settingsEditor: 'provider',
         profileDefaults: {
           provider: DOUBAO_SPEECH_PROVIDER,
           displayName: '豆包语音',
