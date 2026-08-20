@@ -1,5 +1,4 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { describe, expect, it, vi } from 'vitest'
 import { MODEL_MANAGER_GUIDANCE } from '../src/model/guidance.ts'
@@ -8,7 +7,6 @@ import {
   listModelRoutes,
   ModelManagerError,
   PI_AI_SETTINGS_NAMESPACE,
-  selectDefaultModel,
 } from '../src/operations.ts'
 import { modelManagerTools } from '../src/tools.ts'
 
@@ -157,56 +155,6 @@ describe('listModelRoutes', () => {
   it('requires an exact known route when provider is requested', async () => {
     await expect(listModelRoutes(context(), { provider: 'missing' }))
       .rejects.toMatchObject({ code: 'UNKNOWN_MODEL_PROVIDER' })
-  })
-})
-
-describe('selectDefaultModel', () => {
-  it('resolves the exact model and saves a validated selection for future agents', async () => {
-    const saveSelection = vi.fn(async () => undefined)
-    const ctx = context({
-      llm: {
-        resolveModelInfo: vi.fn(async () => ({
-          provider: 'openai',
-          id: 'gpt-test',
-          name: 'GPT Test',
-          context: { contextWindow: 200_000 },
-          reasoning: {
-            efforts: [{ id: ReasoningEffortId('high'), name: 'High' }],
-          },
-        })),
-      },
-      agentDefaultModel: { saveSelection },
-    })
-
-    const result = await selectDefaultModel(ctx, {
-      provider: 'openai',
-      model: 'gpt-test',
-      reasoningEffort: 'high',
-    })
-
-    expect(saveSelection).toHaveBeenCalledWith({
-      provider: 'openai',
-      model: 'gpt-test',
-      reasoningEffort: 'high',
-    })
-    expect(result).toMatchObject({
-      selection: { provider: 'openai', model: 'gpt-test', reasoningEffort: 'high' },
-      appliesTo: 'new-agents',
-      currentSessionChanged: false,
-    })
-  })
-
-  it('rejects an effort the model does not advertise', async () => {
-    const ctx = context({
-      llm: {
-        resolveModelInfo: vi.fn(async () => ({
-          provider: 'openai', id: 'gpt-test', name: 'GPT Test',
-        })),
-      },
-    })
-    await expect(selectDefaultModel(ctx, {
-      provider: 'openai', model: 'gpt-test', reasoningEffort: 'high',
-    })).rejects.toMatchObject({ code: 'UNSUPPORTED_REASONING_EFFORT' })
   })
 })
 

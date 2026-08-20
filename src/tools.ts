@@ -1,14 +1,16 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
-import { configureModelRoute, listModelRoutes, selectDefaultModel } from './operations.ts'
+import { configureModelRoute, listModelRoutes } from './operations.ts'
+import { selectDefaultModel } from './catalog.ts'
 import { invokeTaskModel } from './invocation.ts'
 import { inspectVolcengineProvider, selectVolcengineLanguageModels } from './providers/volcengine.ts'
-import { getModelPortrait, prepareModelPortraits, summarizeModelUsage, upsertModelPortrait, validateModelPortrait } from './portraits.ts'
+import { getModelPortrait, ingestPortraitResearch, prepareModelPortraits, summarizeModelUsage, upsertModelPortrait, validateModelPortrait } from './portraits.ts'
 import { discoverTaskModels, listTaskModels, registerTaskModel, selectTaskModels } from './registry.ts'
 import {
   CONFIGURE_MODEL_ROUTE_SURFACE,
   DISCOVER_TASK_MODELS_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
+  INGEST_PORTRAIT_RESEARCH_SURFACE,
   INVOKE_TASK_MODEL_SURFACE,
   INSPECT_VOLCENGINE_PROVIDER_SURFACE,
   LIST_MODEL_ROUTES_SURFACE,
@@ -27,6 +29,7 @@ import {
   MODEL_MODALITIES,
   TASK_MODEL_CAPABILITIES,
   TASK_MODEL_TASKS,
+  type IngestPortraitResearchInput,
   type UpsertModelPortraitInput,
 } from './types.ts'
 
@@ -304,6 +307,72 @@ export function modelManagerTools(ctx: Context) {
       },
       output: jsonOutput,
       execute: async (args, exec) => asJsonValue(await prepareModelPortraits(ctx, args, exec.signal)),
+    }),
+    defineTool({
+      name: INGEST_PORTRAIT_RESEARCH_SURFACE.name,
+      description: INGEST_PORTRAIT_RESEARCH_SURFACE.description,
+      parameters: {
+        id: { type: 'string', required: true, description: INGEST_PORTRAIT_RESEARCH_SURFACE.parameters.id },
+        findings: {
+          type: 'object',
+          required: true,
+          additionalProperties: false,
+          description: INGEST_PORTRAIT_RESEARCH_SURFACE.parameters.findings,
+          properties: {
+            description: { type: 'string', description: 'Markdown description taken from official documentation.' },
+            summary: { type: 'string', description: 'Optional short summary taken from official documentation.' },
+            specialties: { type: 'array', items: { type: 'string' }, description: 'Documented strengths.' },
+            limitations: { type: 'array', items: { type: 'string' }, description: 'Documented limits.' },
+            bestFor: { type: 'array', items: { type: 'string' }, description: 'Documented suitable uses.' },
+            avoidFor: { type: 'array', items: { type: 'string' }, description: 'Documented unsuitable uses.' },
+            pricing: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                rates: { type: 'array', items: priceRateSchema, description: 'Official price rates; each rate needs an evidence id.' },
+                notes: { type: 'string', description: 'Pricing caveats copied from the source page.' },
+              },
+            },
+            performance: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                speedClass: { type: 'string', enum: ['instant', 'fast', 'balanced', 'slow', 'async'], description: 'Coarse speed class only when the source states it.' },
+                typicalLatencyMs: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    min: { type: 'number', required: true, description: 'Documented lower latency bound.' },
+                    max: { type: 'number', required: true, description: 'Documented upper latency bound.' },
+                  },
+                },
+                throughputPerMinute: { type: 'number', description: 'Documented throughput, if stated.' },
+                notes: { type: 'string', description: 'Measurement context from the source page.' },
+              },
+            },
+            qualityScores: { type: 'object', additionalProperties: true, description: 'Optional 0..1 scores only when the source supports them.' },
+            evidence: {
+              type: 'array',
+              required: true,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  id: { type: 'string', required: true, description: 'Stable evidence id.' },
+                  kind: { type: 'string', required: true, enum: ['provider-doc', 'benchmark'], description: 'Research evidence class.' },
+                  source: { type: 'string', required: true, description: 'http(s) URL of the page that stated the claims.' },
+                  observedAt: { type: 'string', required: true, description: 'ISO date/time when the page was read.' },
+                  claims: { type: 'array', required: true, items: { type: 'string' }, description: 'Claims copied from that page.' },
+                  notes: { type: 'string', description: 'Optional limitations of the source.' },
+                },
+              },
+              description: 'Required source URLs. lastProbe evidence is not accepted here.',
+            },
+          },
+        },
+      },
+      output: jsonOutput,
+      execute: async args => asJsonValue(await ingestPortraitResearch(ctx, args as unknown as IngestPortraitResearchInput)),
     }),
     defineTool({
       name: GET_MODEL_PORTRAIT_SURFACE.name,

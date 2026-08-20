@@ -1,5 +1,5 @@
 /**
- * Model-visible surfaces of the five model-management tools.
+ * Model-visible surfaces of the sixteen model-management tools.
  *
  * Names, descriptions, and parameter descriptions live here; `../tools.ts` only
  * assembles them with their execute bodies. Each description states both when to
@@ -124,10 +124,20 @@ export const REGISTER_TASK_MODEL_SURFACE = {
 
 export const PREPARE_MODEL_PORTRAITS_SURFACE = {
   name: 'prepare_model_portraits',
-  description: 'Start the complete autonomous initial-portrait workflow for registered LLM and task models. Use it immediately when the user says “整理初始画像”, “建立模型画像”, or equivalent—even if they do not list fields or tool steps—and infer model ids from the immediately preceding registration or discovery context. It returns the plugin-defined ontology, candidates needing work, and the required gather/upsert/validate sequence. Do not use it to invent undocumented facts, perform paid probes without approval, or ask the user to restate the portrait schema.',
+  description: 'Start the portrait-research workflow for registered LLM and task models. Use it immediately when the user says “整理初始画像”, “建立模型画像”, or equivalent—even if they do not list fields or tool steps—and infer model ids from the immediately preceding registration or discovery context. It returns seed facts, gaps, official documentation URLs, and the ingest/validate sequence. Do not use it to invent undocumented facts, write lastProbe from documentation, perform paid probes without approval, or ask the user to restate the portrait schema.',
   parameters: {
     ids: 'Optional exact task route ids or LLM ids in llm:<provider>/<model> form. Infer these from recent context when possible; omit to find enabled models with missing or non-valid portraits.',
     includeDisabled: 'Include disabled task routes when ids are omitted; defaults to false.',
+  },
+  helpPointer: 'prepare_model_portraits',
+} as const
+
+export const INGEST_PORTRAIT_RESEARCH_SURFACE = {
+  name: 'ingest_portrait_research',
+  description: 'Merge Agent-researched portrait facts into a registered model after opening official documentation. Use it after prepare_model_portraits when prices, strengths, and limitations have http(s) source URLs. Do not use it to guess facts, write lastProbe from documentation, store secrets, or change registered input/output modalities.',
+  parameters: {
+    id: 'Exact task-model route id, or llm:<provider>/<model> for a language model.',
+    findings: 'Researched non-secret facts. evidence is required; each source must be an http(s) URL; price rates must reference those evidence ids.',
   },
   helpPointer: 'prepare_model_portraits',
 } as const
@@ -186,7 +196,7 @@ export const SUMMARIZE_MODEL_USAGE_SURFACE = {
 /** Tool that saves the default language model for newly created Agents. */
 export const SELECT_DEFAULT_MODEL_SURFACE = {
   name: 'select_default_model',
-  description: 'Validate and save the primary provider/model used when future Agents are created. Use it when the user wants a different default going forward; run list_model_routes first to confirm the route is live and the model id is exact. Do not use it to switch the current session, which needs the session model selector, and do not use it for non-language task models.',
+  description: 'Validate and save the primary Agent language model from the registered live catalog. Use it when the user wants a different default going forward; run list_model_routes first to confirm the route is live and the model id is exact. Do not use it to switch the current session, which needs the session model selector, and do not use it for non-language task models.',
   parameters: {
     provider: 'Live provider route.',
     model: 'Exact model id on that route.',
@@ -206,6 +216,7 @@ export const MODEL_MANAGER_TOOL_SURFACES = [
   SELECT_TASK_MODELS_SURFACE,
   REGISTER_TASK_MODEL_SURFACE,
   PREPARE_MODEL_PORTRAITS_SURFACE,
+  INGEST_PORTRAIT_RESEARCH_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   UPSERT_MODEL_PORTRAIT_SURFACE,
   VALIDATE_MODEL_PORTRAIT_SURFACE,

@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "name": "model-probe-http",
+  "summary": "Same-origin HTTP probe used by the Models Settings page to measure LLM reachability and latency.",
+  "rationale": "This is not a DSH tool seam. The caller is this plugin's Settings UI. The Host streams a capped eight-token request, which can incur a provider charge, so the route must not be callable from another origin or from a request that only sets a static header.",
+  "transport": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/dsh-multi-model-provider/probe",
+    "contentType": "application/json"
+  },
+  "authorization": {
+    "requiredHeaders": {
+      "x-dsh-model-probe": "1",
+      "origin": "http(s) origin whose host equals the Host header"
+    },
+    "optionalHeaders": {
+      "sec-fetch-site": "when present, must be same-origin"
+    },
+    "rejected": [
+      "missing probe marker",
+      "missing or cross-site Origin",
+      "Sec-Fetch-Site other than same-origin"
+    ]
+  },
+  "request": {
+    "provider": "llm-pi-ai provider route id, for example volcengine",
+    "model": "exact model id on that route"
+  },
+  "response": {
+    "ok": "true on a finished stream, false on 403/502",
+    "latencyMs": "round-trip of the capped stream",
+    "timeToFirstTokenMs": "optional time to first text or reasoning delta",
+    "error": "present when ok is false; never includes credential values"
+  },
+  "cost": "One provider request capped at eight output tokens. Settings copy must warn before the user clicks Test."
+}

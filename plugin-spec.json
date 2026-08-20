@@ -13,8 +13,15 @@
     "subprocess": false,
     "subagents": false,
     "temporaryResources": false,
-    "customProtocol": false
+    "customProtocol": true
   },
+  "contracts": [
+    {
+      "name": "model-probe-http",
+      "file": "spec/model-probe.http.json",
+      "versionField": "version"
+    }
+  ],
   "package": {
     "path": "package.json"
   },
@@ -97,6 +104,13 @@
       },
       {
         "path": "tool-surfaces.ts",
+        "export": "INGEST_PORTRAIT_RESEARCH_SURFACE",
+        "role": "toolSurface",
+        "toolName": "ingest_portrait_research",
+        "helpPointer": "prepare_model_portraits"
+      },
+      {
+        "path": "tool-surfaces.ts",
         "export": "GET_MODEL_PORTRAIT_SURFACE",
         "role": "toolSurface",
         "toolName": "get_model_portrait",
@@ -153,6 +167,7 @@
       "select_task_models",
       "register_task_model",
       "prepare_model_portraits",
+      "ingest_portrait_research",
       "get_model_portrait",
       "upsert_model_portrait",
       "validate_model_portrait",
@@ -176,6 +191,7 @@
           "SELECT_TASK_MODELS_SURFACE",
           "REGISTER_TASK_MODEL_SURFACE",
           "PREPARE_MODEL_PORTRAITS_SURFACE",
+          "INGEST_PORTRAIT_RESEARCH_SURFACE",
           "GET_MODEL_PORTRAIT_SURFACE",
           "UPSERT_MODEL_PORTRAIT_SURFACE",
           "VALIDATE_MODEL_PORTRAIT_SURFACE",
@@ -208,6 +224,22 @@
       },
       {
         "file": "tests/volcengine-provider.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/portraits-runtime.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/portrait-research.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/probe-route.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/model-catalog.spec.ts",
         "layer": "L1"
       },
       {

@@ -303,6 +303,32 @@ export interface PrepareModelPortraitsInput {
   readonly includeDisabled?: boolean
 }
 
+export interface IngestPortraitResearchInput {
+  readonly id: string
+  readonly findings: {
+    readonly description?: string
+    readonly summary?: string
+    readonly specialties?: readonly string[]
+    readonly limitations?: readonly string[]
+    readonly bestFor?: readonly string[]
+    readonly avoidFor?: readonly string[]
+    readonly pricing?: {
+      readonly rates?: readonly ModelPriceRate[]
+      readonly notes?: string
+    }
+    readonly performance?: {
+      readonly speedClass?: SpeedClass
+      readonly typicalLatencyMs?: { readonly min: number; readonly max: number }
+      readonly throughputPerMinute?: number
+      readonly notes?: string
+      /** Rejected when present. lastProbe is measured, not researched. */
+      readonly lastProbe?: unknown
+    }
+    readonly qualityScores?: Readonly<Record<string, number>>
+    readonly evidence: readonly ModelPortraitEvidence[]
+  }
+}
+
 export interface TaskModelInvocationMetrics {
   readonly inputUnits?: number
   readonly outputUnits?: number
