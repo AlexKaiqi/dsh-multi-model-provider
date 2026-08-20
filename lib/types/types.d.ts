@@ -108,11 +108,20 @@ export interface ModelPortraitInput {
 export interface TaskModelConnection {
     readonly provider: string;
     readonly displayName?: string;
+    /** Conventional single-key reference used by the standard Provider editor. */
+    readonly apiKeyEnv?: string;
     /** Legacy single-secret reference retained for backward compatibility. */
     readonly credentialRef?: string;
     /** Named secret references for providers that require multiple credentials. */
     readonly credentialRefs?: Readonly<Record<string, string>>;
     readonly baseURL?: string;
+    /** Provider-local model directory edited by the standard Provider editor. */
+    readonly models?: readonly {
+        readonly id: string;
+        readonly name?: string;
+        readonly contextWindow?: number;
+        readonly maxTokens?: number;
+    }[];
     /** Optional provider model-catalog endpoint. Defaults to `${baseURL}/models`. */
     readonly catalogEndpoint?: string;
     /** Credential slot used for catalog discovery: `default` or a credentialRefs key. */

@@ -81,14 +81,14 @@ export declare const SELECT_TASK_MODELS_SURFACE: {
 /** Tool that creates or updates a non-language task-model registration. */
 export declare const REGISTER_TASK_MODEL_SURFACE: {
     readonly name: "register_task_model";
-    readonly description: "Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, reranking, and realtime routes, including providers such as Doubao that require multiple named credential references; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value or another secret value.";
+    readonly description: "Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, reranking, and realtime routes; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value or another secret value.";
     readonly parameters: {
         readonly id: "Stable route id, for example openai/gpt-image-2.";
         readonly connection: "Reusable connection id, for example openai.";
         readonly provider: "Provider family; required when creating a new connection.";
         readonly connectionDisplayName: "Human-readable connection name.";
         readonly credentialRef: "Legacy single credential reference such as OPENAI_API_KEY. Never pass a secret; pass a reference name only.";
-        readonly credentialRefs: "Named credential references for multi-credential providers, for example appId=DOUBAO_APPID and token=DOUBAO_TOKEN. Values are reference names, not secrets. Never pass a secret; pass a reference name only.";
+        readonly credentialRefs: "Named credential references for providers that require multiple credential slots. Values are reference names, not secrets. Never pass a secret; pass a reference name only.";
         readonly baseURL: "Optional absolute API base URL.";
         readonly catalogEndpoint: "Optional absolute model-catalog URL; when omitted discovery uses baseURL/models.";
         readonly catalogCredentialName: "Credential slot used for catalog discovery, for example arkApiKey or default.";
@@ -248,14 +248,14 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     readonly helpPointer: "list_task_models";
 }, {
     readonly name: "register_task_model";
-    readonly description: "Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, reranking, and realtime routes, including providers such as Doubao that require multiple named credential references; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value or another secret value.";
+    readonly description: "Create or update a non-language task-model registration and its reusable connection profile. Use it for image, speech, audio, video, embedding, reranking, and realtime routes; run list_task_models first to see what is already registered. Do not use it for language/chat models, which must go through configure_model_route so llm-pi-ai stays authoritative, and never describe a route registered this way as callable until a compatible runtime adapter is installed. It stores catalog metadata and credential references only and never accepts an API key value or another secret value.";
     readonly parameters: {
         readonly id: "Stable route id, for example openai/gpt-image-2.";
         readonly connection: "Reusable connection id, for example openai.";
         readonly provider: "Provider family; required when creating a new connection.";
         readonly connectionDisplayName: "Human-readable connection name.";
         readonly credentialRef: "Legacy single credential reference such as OPENAI_API_KEY. Never pass a secret; pass a reference name only.";
-        readonly credentialRefs: "Named credential references for multi-credential providers, for example appId=DOUBAO_APPID and token=DOUBAO_TOKEN. Values are reference names, not secrets. Never pass a secret; pass a reference name only.";
+        readonly credentialRefs: "Named credential references for providers that require multiple credential slots. Values are reference names, not secrets. Never pass a secret; pass a reference name only.";
         readonly baseURL: "Optional absolute API base URL.";
         readonly catalogEndpoint: "Optional absolute model-catalog URL; when omitted discovery uses baseURL/models.";
         readonly catalogCredentialName: "Credential slot used for catalog discovery, for example arkApiKey or default.";
