@@ -1,6 +1,6 @@
 {
   "name": "dsh-multi-model-provider",
-  "description": "Evidence-backed model portraits, multimodal registration, invocation, and routing observations for DeepSeek Harness",
+  "description": "Register models, assist with portraits, and select the Agent model from a secret-free catalog for DeepSeek Harness.",
   "version": "0.1.0-rc.9",
   "publishConfig": {
     "access": "public"
@@ -55,8 +55,8 @@
   "dsh": {
     "inventory": {
       "summary": {
-        "zh": "让 Agent 安全注册和调用多模态模型，维护证据化模型画像，并收集自动路由所需的调用观测。",
-        "en": "Lets agents register and invoke multimodal models, maintain evidence-backed portraits, and collect observations for automatic routing."
+        "zh": "三件事：登记模型、辅助构建画像、从目录里选 Agent 主模型。peer 插件 inject modelCatalog 后用 snapshot() 读取全部已登记模型；selectAgentModel() 只选 live 语言模型。Settings 负责登记、画像和测速；默认安装不可调用。",
+        "en": "Three capabilities: register models, assist with portraits, and select the Agent model from that catalog. Inject modelCatalog, call snapshot() to read every registered model, then selectAgentModel() for a live language model. Settings owns registration, portraits, and speed tests; a default install is not callable."
       },
       "tags": [
         "model",

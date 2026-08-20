@@ -2,17 +2,45 @@
 
 [English](README.md) | 中文
 
-DeepSeek Harness 的 Agent 辅助模型注册插件。它把“模型登记”与“模型执行”分开：
+这个插件做三件事：
 
-- 主语言模型继续由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行，可用于 Agent 主模型选择。
-- 图片、语音、音频、视频、Embedding、Reranking 等模型登记在本插件的 task-model catalog 中。
-- task-model 被登记后只代表 Harness 知道它的 Provider、模型 id 和能力；必须另有运行时 adapter 才能调用。
+1. **登记模型** — 语言模型仍由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行；图片、语音、音频、视频、Embedding、Reranking 登记在本插件的 task-model catalog。
+2. **辅助构建画像** — 证据化画像，加上最多 8 token 的显式测速。写入走 Settings。
+3. **选 Agent 主模型** — `selectAgentModel()` / `select_default_model` 从目录里的 live 语言模型中，为之后新建的 Agent 保存主模型。不会自动给 task-model 做路由。
 
-这避免了把图片或视频模型伪装成 LLM，也为后续多模型动态路由保留稳定的注册层。
+其它插件 `inject: ['modelCatalog']` 后调用 `snapshot()` 读取全部已登记模型、画像和测速。安装本包**不会**让图片、语音或 Realtime 变成可调用。Settings 里的豆包 Realtime 连接测试需要 `dsh-talk-to-text`。
 
-## 当前能力
+## 三件事
 
-插件提供十五个 Agent 工具：
+### 1. 登记
+
+语言模型走 `configure_model_route` / `list_model_routes`。非语言模型走 `register_task_model` / `list_task_models`。登记只表示 Harness 知道这条 route；必须另有 runtime adapter 才能调用。`select_task_models` 传入 `ids: []` 会停用该 connection 上全部 route，不会回退成全开。
+
+### 2. 画像
+
+用户说“整理初始画像”即可。`prepare_model_portraits` 给出种子事实、缺口和官方文档入口；Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能来自 Settings 测速，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 仍负责读写画像。
+
+### 3. 选主模型
+
+选主模型建立在目录之上，不再另维护一份列表：
+
+```ts
+export const inject = ['modelCatalog']
+
+const snapshot = await ctx.modelCatalog.snapshot()
+await ctx.modelCatalog.selectAgentModel({
+  provider: 'volcengine',
+  model: 'doubao-seed-1-6',
+})
+```
+
+`snapshot().languageModels` 是 live 的 Agent 主模型候选，有画像时会带上。`selectAgentModel()` 拒绝 task-model 和目录里没有的 id。只影响之后新建的 Agent。
+
+只需要读目录的插件停在 `snapshot()` 即可。不要去解析 `settings.yaml`，也不要让 Agent 为了读目录去调工具。
+
+## Agent 工具
+
+插件仍提供十五个 Agent 工具，覆盖登记、画像和选主模型：
 
 - `list_model_routes`：查看 `llm-pi-ai` 的活动/休眠语言模型 Provider、凭据状态和模型 catalog。
 - `configure_model_route`：创建或更新语言模型 Provider profile。
@@ -23,7 +51,8 @@ DeepSeek Harness 的 Agent 辅助模型注册插件。它把“模型登记”�
 - `discover_task_models`：查询 connection 对应的已鉴权 Provider 模型目录，不自动注册。
 - `select_task_models`：整体替换启用集合；`ids: []` 明确表示该 connection 全部停用。
 - `register_task_model`：登记或更新一条非语言模型路由及其 connection profile。
-- `prepare_model_portraits`：把一句“整理初始画像”展开为候选识别、画像概念、资料整理、落库与验证工作流。
+- `prepare_model_portraits`：给出种子事实、缺口和官方文档入口。
+- `ingest_portrait_research`：把带 http(s) 出处的调研结果合并进画像。
 - `get_model_portrait`：查看价格、擅长项、限制、速度、I/O、证据、验证状态与可选实测汇总。
 - `upsert_model_portrait`：让 Harness Agent 保存整理后的证据化初始画像，并立即做结构验证。
 - `validate_model_portrait`：核对画像、注册信息、凭据、adapter，并可选择实时探测。
@@ -127,9 +156,9 @@ multi-model-provider:
 
 这条记录仍会返回 `registered-only`、`callable: false`；只有 `doubao-speech` 运行时 adapter 接入后才能真正发送请求。
 
-## 模型画像与自动路由
+## 模型画像
 
-画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait.description` 是分章节 Markdown 定性说明，`pricing` 是结构化价格，`performance.lastProbe` 是带观测时间的显式实测；调用日志提供长期成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。自动路由器不应把厂商文档或人工判断冒充成实测值。
+画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait.description` 是分章节 Markdown 定性说明，`pricing` 是结构化价格，`performance.lastProbe` 是带观测时间的显式实测；调用日志提供长期成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。不要把厂商文档或人工判断写成实测值。
 
 用户只需说“整理初始画像”。插件的 system prompt 会要求 Agent 立即调用 `prepare_model_portraits`，从刚注册、发现、选择或讨论的模型推断范围；没有更窄上下文时处理缺失、未验证、部分有效、无效或过期的启用画像。Agent 随后查询当前官方资料或可信 benchmark → `upsert_model_portrait` → `validate_model_portrait`；只有用户明确允许产生流量或成本时才启用 `liveProbe`。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
@@ -149,7 +178,7 @@ multi-model-provider:
 1. 用 `list_task_models` 检查已有条目。
 2. 用 `register_task_model` 登记 connection、Provider、模型 id、task 和能力 profile。
 3. 用户在安全 Settings 字段输入 API Key。
-4. 只有查询结果报告存在可调用的运行时 adapter 后，上层能力插件或动态路由器才能执行该模型。
+4. 只有查询结果报告存在可调用的运行时 adapter 后，上层能力插件才能执行该模型。
 
 API Key 不应出现在聊天、工具参数或普通 `settings.yaml` 字段中。
 
@@ -176,8 +205,8 @@ agent-default-model:
 - 本插件负责注册、画像、Settings UI schema、安全凭据引用、统一调用入口和隐私安全的调用观测。
 - `llm-pi-ai` 负责语言模型协议适配与调用。
 - 图片/音频/视频等运行时 adapter 通过 `TaskModelRuntimeAdapter` 注册并消费本注册表；没有对应 adapter 的 route 仍保持 `registered-only`。
-- 动态路由应作为后续策略层，从已注册且真正可调用的候选中选择；它不应拥有凭据或复制 catalog。
-- `select_default_model` 只影响之后创建的 Agent，已有会话保留自己的选择。
+- 其它插件应 `inject: ['modelCatalog']` 后调用 `ctx.modelCatalog.snapshot()`。不要去解析 `settings.yaml`，也不要让 Agent 为了读目录去调这些工具。
+- `selectAgentModel()` / `select_default_model` 从 `snapshot().languageModels` 里选 Agent 主模型。不会给 task-model 做自动路由，只影响之后新建的 Agent。
 
 ## 安装
 

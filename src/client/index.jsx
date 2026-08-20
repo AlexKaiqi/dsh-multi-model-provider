@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { t } from './i18n.js'
 
 const MULTI_NS = 'multi-model-provider'
 const LLM_NS = 'llm-pi-ai'
@@ -35,8 +36,50 @@ function object(value) {
 }
 
 function responseValue(response) {
-  if (!response?.result?.ok) throw new Error(response?.result?.error?.message ?? '请求失败')
+  if (!response?.result?.ok) throw new Error(response?.result?.error?.message ?? t('requestFailed'))
   return response.result.value
+}
+
+const TALK_TO_TEXT_PROBE = '/dsh-talk-to-text/realtime/doubao/probe'
+
+/**
+ * Decide whether a probe response means dsh-talk-to-text is not mounted.
+ *
+ * Args:
+ *   response: Fetch Response from the Doubao Realtime probe path.
+ *   body: Parsed JSON object, or `{}` when the body was not JSON.
+ *
+ * Returns:
+ *   True when Settings should tell the user to install dsh-talk-to-text.
+ */
+function isMissingTalkToText(response, body) {
+  if (response.status === 404 || response.status === 405) return true
+  const contentType = String(response.headers.get('content-type') || '')
+  if (contentType && !contentType.includes('json')) return true
+  return typeof body.error === 'string' && /cannot POST|not found|Cannot GET/i.test(body.error)
+}
+
+/**
+ * POST the sibling Talk to Text Doubao Realtime probe.
+ *
+ * Returns:
+ *   JSON body from a successful probe.
+ */
+async function probeDoubaoRealtime() {
+  let response
+  try {
+    response = await fetch(TALK_TO_TEXT_PROBE, {
+      method: 'POST',
+      headers: { 'x-dsh-model-probe': '1' },
+      credentials: 'same-origin',
+    })
+  } catch {
+    throw new Error(t('talkToTextUnreachable'))
+  }
+  const body = await response.json().catch(() => ({}))
+  if (isMissingTalkToText(response, body)) throw new Error(t('talkToTextMissing'))
+  if (!response.ok || body.ok !== true) throw new Error(body.error ?? t('realtimeProbeFailed', { status: response.status }))
+  return body
 }
 
 function textList(value) {
@@ -130,8 +173,8 @@ function useConfig(api) {
 
 function SecretField({ label, name, status, value, onChange }) {
   return <div className="mmp-field">
-    <label htmlFor={`mmp-${name}`}>{label} <span className="mmp-status" data-ok={status?.configured === true}>{status?.configured ? `已配置 · ${status.source ?? '安全存储'}` : '未配置'}</span></label>
-    <input id={`mmp-${name}`} className="mmp-input" type="password" autoComplete="off" value={value} onChange={event => onChange(event.target.value)} placeholder={status?.configured ? '留空则保持现有值' : '仅写入本机安全凭据存储'} disabled={status?.writable === false} />
+    <label htmlFor={`mmp-${name}`}>{label} <span className="mmp-status" data-ok={status?.configured === true}>{status?.configured ? t('configured', { source: status.source ?? t('secureStore') }) : t('notConfigured')}</span></label>
+    <input id={`mmp-${name}`} className="mmp-input" type="password" autoComplete="off" value={value} onChange={event => onChange(event.target.value)} placeholder={status?.configured ? t('keepExisting') : t('writeOnlyPlaceholder')} disabled={status?.writable === false} />
   </div>
 }
 
@@ -166,11 +209,11 @@ function ArkCapability({ api, config, reload }) {
   }
   const discover = () => run(async () => {
     const key = arkKey.trim()
-    if (!key && config.credentials.ARK_API_KEY?.configured !== true) throw new Error('请先输入方舟 API Key；查询只会临时使用它，不会回显。')
+    if (!key && config.credentials.ARK_API_KEY?.configured !== true) throw new Error(t('needArkKeyToDiscover'))
     const result = responseValue(await api.llm.discoverModels({ settingsNs: LLM_NS, provider: 'volcengine', baseURL: baseURL.trim(), api: ARK_API, ...(key ? { apiKey: key } : {}) }))
     setAvailable(result.models)
     setQuery('')
-    setMessage(`查询到 ${result.models.length} 个模型；请勾选后保存。`)
+    setMessage(t('discoveredModels', { count: result.models.length }))
   })
   const addManual = () => {
     const id = manual.trim()
@@ -178,15 +221,15 @@ function ArkCapability({ api, config, reload }) {
     setSelected({ id }, true); setManual('')
   }
   const saveArk = () => run(async () => {
-    if (!config.llm) throw new Error('llm-pi-ai 设置未加载')
+    if (!config.llm) throw new Error(t('llmSettingsMissing'))
     const key = arkKey.trim()
-    if (models.length > 0 && !key && config.credentials.ARK_API_KEY?.configured !== true) throw new Error('启用方舟模型前需要配置 API Key')
+    if (models.length > 0 && !key && config.credentials.ARK_API_KEY?.configured !== true) throw new Error(t('needArkKeyToEnable'))
     const ops = models.length === 0
       ? [{ op: 'unset', path: ['providers', 'volcengine'] }]
       : [{ op: 'set', path: ['providers', 'volcengine'], value: { displayName: '火山方舟', apiKeyEnv: 'ARK_API_KEY', api: ARK_API, baseURL: baseURL.trim(), models } }]
     responseValue(await api.settings.mutate({ ns: LLM_NS, ops, expectedRevision: config.llm.revision }))
     if (key) responseValue(await api.credentials.set({ ref: 'ARK_API_KEY', value: key }))
-    setArkKey(''); setMessage(models.length ? `已启用 ${models.length} 个方舟模型。` : '已取消全部方舟语言模型。')
+    setArkKey(''); setMessage(models.length ? t('arkEnabled', { count: models.length }) : t('arkDisabled'))
     await reload()
   })
 
@@ -197,18 +240,18 @@ function ArkCapability({ api, config, reload }) {
     .some(value => value.toLocaleLowerCase().includes(normalizedQuery)))
 
   return <div className="mmp-capability">
-    <div><div className="mmp-subtitle">方舟 · 语言 / 视觉语言模型</div><div className="mmp-muted">标准 Provider ID：volcengine。模型写入 DSH 的 llm-pi-ai 注册表。</div></div>
+    <div><div className="mmp-subtitle">{t('arkTitle')}</div><div className="mmp-muted">{t('arkHint')}</div></div>
     <div className="mmp-grid">
-      <SecretField label="方舟 API Key" name="ark-key" status={config.credentials.ARK_API_KEY} value={arkKey} onChange={setArkKey} />
+      <SecretField label={t('arkApiKey')} name="ark-key" status={config.credentials.ARK_API_KEY} value={arkKey} onChange={setArkKey} />
       <div className="mmp-field"><label htmlFor="mmp-ark-url">API Base URL</label><input id="mmp-ark-url" className="mmp-input" value={baseURL} onChange={event => setBaseURL(event.target.value)} /></div>
     </div>
-    <div className="mmp-actions"><button className="mmp-button" onClick={discover} disabled={busy}>查询可用模型</button><button className="mmp-button" onClick={() => setModels([])} disabled={busy}>全部取消</button><span className="mmp-muted">协议：{ARK_API}</span></div>
-    <div className="mmp-actions"><input className="mmp-input" style={{ maxWidth: 360 }} value={manual} onChange={event => setManual(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') addManual() }} placeholder="手动添加模型 / ep-* Endpoint ID" /><button className="mmp-button" onClick={addManual}>添加</button></div>
-    {candidates.length > 0 && <div className="mmp-field"><label htmlFor="mmp-ark-search">检索模型</label><input id="mmp-ark-search" className="mmp-input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="按模型 ID 或显示名称检索" /><span className="mmp-search-summary">显示 {filtered.length} / {candidates.length} 个模型</span></div>}
-    <div className="mmp-list">{filtered.map(candidate => <label className="mmp-row" key={candidate.id}><input type="checkbox" checked={selected.has(candidate.id)} onChange={event => setSelected(candidate, event.target.checked)} /><span className="mmp-row-main"><span className="mmp-id">{candidate.id}</span>{candidate.name && <span className="mmp-muted"> · {candidate.name}</span>}<span className="mmp-tags">{candidate.contextWindow && <span className="mmp-tag">上下文 {candidate.contextWindow}</span>}{candidate.maxTokens && <span className="mmp-tag">输出 {candidate.maxTokens}</span>}</span></span></label>)}</div>
-    {candidates.length > 0 && filtered.length === 0 && <div className="mmp-muted">没有匹配的模型。</div>}
-    {!available.length && !models.length && <div className="mmp-muted">尚未选择模型。可以查询目录、手动填模型 ID，或保持全不选。</div>}
-    <div className="mmp-actions"><button className="mmp-button" data-primary="true" onClick={saveArk} disabled={busy || !config.settingsWritable}>{models.length ? `保存方舟配置（${models.length}）` : '保存：全部不选'}</button></div>
+    <div className="mmp-actions"><button className="mmp-button" onClick={discover} disabled={busy}>{t('queryCatalog')}</button><button className="mmp-button" onClick={() => setModels([])} disabled={busy}>{t('clearAll')}</button><span className="mmp-muted">{t('protocol', { api: ARK_API })}</span></div>
+    <div className="mmp-actions"><input className="mmp-input" style={{ maxWidth: 360 }} value={manual} onChange={event => setManual(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') addManual() }} placeholder={t('manualModelPlaceholder')} /><button className="mmp-button" onClick={addManual}>{t('add')}</button></div>
+    {candidates.length > 0 && <div className="mmp-field"><label htmlFor="mmp-ark-search">{t('searchModels')}</label><input id="mmp-ark-search" className="mmp-input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('searchModelsPlaceholder')} /><span className="mmp-search-summary">{t('showingModels', { shown: filtered.length, total: candidates.length })}</span></div>}
+    <div className="mmp-list">{filtered.map(candidate => <label className="mmp-row" key={candidate.id}><input type="checkbox" checked={selected.has(candidate.id)} onChange={event => setSelected(candidate, event.target.checked)} /><span className="mmp-row-main"><span className="mmp-id">{candidate.id}</span>{candidate.name && <span className="mmp-muted"> · {candidate.name}</span>}<span className="mmp-tags">{candidate.contextWindow && <span className="mmp-tag">{t('contextWindow', { value: candidate.contextWindow })}</span>}{candidate.maxTokens && <span className="mmp-tag">{t('maxTokens', { value: candidate.maxTokens })}</span>}</span></span></label>)}</div>
+    {candidates.length > 0 && filtered.length === 0 && <div className="mmp-muted">{t('noMatchingModels')}</div>}
+    {!available.length && !models.length && <div className="mmp-muted">{t('noArkSelection')}</div>}
+    <div className="mmp-actions"><button className="mmp-button" data-primary="true" onClick={saveArk} disabled={busy || !config.settingsWritable}>{models.length ? t('saveArkWithCount', { count: models.length }) : t('saveArkNone')}</button></div>
     {error && <div className="mmp-error" role="alert">{error}</div>}{message && <div className="mmp-success" role="status">{message}</div>}
   </div>
 }
@@ -240,36 +283,40 @@ function TaskCapability({ api, config, reload, readOnly = false }) {
   const hasCredential = (ref, draft) => Boolean(draft.trim() || config.credentials[ref]?.configured === true)
   const realtimeSelected = taskModels.some(([id, raw]) => enabledTasks.has(id) && object(raw).task === 'realtime-speech')
   const classicSpeechSelected = taskModels.some(([id, raw]) => enabledTasks.has(id) && object(raw).task !== 'realtime-speech')
-  const testRealtime = async () => {
-    const response = await fetch('/dsh-talk-to-text/realtime/doubao/probe', {
-      method: 'POST', headers: { 'x-dsh-model-probe': '1' },
-    })
-    const body = await response.json().catch(() => ({}))
-    if (!response.ok || body.ok !== true) throw new Error(body.error ?? `豆包 Realtime 测试失败（HTTP ${response.status}）`)
-    return body
-  }
+  const testRealtime = () => probeDoubaoRealtime()
   const saveProvider = () => run(async () => {
-    if (!config.multi) throw new Error('multi-model-provider 设置未加载')
-    if (enabledTasks.size > 0 && !hasCredential('DOUBAO_APPID', appId)) throw new Error('已选模型需要豆包 App ID')
-    if (classicSpeechSelected && !hasCredential('DOUBAO_TOKEN', token)) throw new Error('ASR / TTS 模型需要语音 Access Token')
-    if (realtimeSelected && !hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey)) throw new Error('Realtime Duplex 模型需要 Realtime API Key')
+    if (!config.multi) throw new Error(t('settingsMissing'))
+    if (enabledTasks.size > 0 && !hasCredential('DOUBAO_APPID', appId)) throw new Error(t('needDoubaoAppId'))
+    if (classicSpeechSelected && !hasCredential('DOUBAO_TOKEN', token)) throw new Error(t('needSpeechToken'))
+    if (realtimeSelected && !hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey)) throw new Error(t('needRealtimeApiKey'))
     const writes = [["DOUBAO_APPID", appId], ["DOUBAO_TOKEN", token], ["DOUBAO_REALTIME_API_KEY", realtimeKey]].filter(([, value]) => value.trim())
     for (const [ref, value] of writes) responseValue(await api.credentials.set({ ref, value: value.trim() }))
     const ops = taskModels.map(([id]) => ({ op: 'set', path: ['models', id, 'enabled'], value: enabledTasks.has(id) }))
     if (ops.length) responseValue(await api.settings.mutate({ ns: MULTI_NS, ops, expectedRevision: config.multi.revision }))
     setAppId(''); setToken(''); setRealtimeKey('')
     await reload()
-    if (realtimeSelected) {
-      const probe = await testRealtime()
-      setMessage(`已注册 ${enabledTasks.size} 个豆包语音模型；Realtime 连接测试通过（${probe.latencyMs} ms）。`)
+    if (!enabledTasks.size) {
+      setMessage(t('speechDisabled'))
       return
     }
-    setMessage(enabledTasks.size ? `已注册 ${enabledTasks.size} 个豆包语音模型。` : '已停用全部豆包语音模型。')
+    if (!realtimeSelected) {
+      setMessage(t('speechSaved', { count: enabledTasks.size }))
+      return
+    }
+    try {
+      const probe = await testRealtime()
+      setMessage(t('speechSavedRealtimeOk', { count: enabledTasks.size, ms: probe.latencyMs }))
+    } catch (cause) {
+      setMessage(t('speechSavedRealtimeSkipped', {
+        count: enabledTasks.size,
+        reason: cause instanceof Error ? cause.message : String(cause),
+      }))
+    }
   })
   const probeRealtime = () => run(async () => {
-    if (!hasCredential('DOUBAO_APPID', appId) || !hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey)) throw new Error('请先保存 App ID 和 Realtime API Key')
+    if (!hasCredential('DOUBAO_APPID', appId) || !hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey)) throw new Error(t('needRealtimeCreds'))
     const probe = await testRealtime()
-    setMessage(`Realtime 连接测试通过（${probe.latencyMs} ms）。`)
+    setMessage(t('realtimeOk', { ms: probe.latencyMs }))
   })
 
   const normalizedQuery = query.trim().toLocaleLowerCase()
@@ -282,14 +329,15 @@ function TaskCapability({ api, config, reload, readOnly = false }) {
   })
 
   return <div className="mmp-capability">
-    <div><div className="mmp-subtitle">豆包语音</div><div className="mmp-muted">独立 Provider ID：doubao-speech。模型来自内置语音能力目录，不使用方舟 /models 接口。</div></div>
-    <div className="mmp-grid3"><SecretField label="豆包 App ID" name="doubao-appid" status={config.credentials.DOUBAO_APPID} value={appId} onChange={setAppId} /><SecretField label="语音 Token" name="doubao-token" status={config.credentials.DOUBAO_TOKEN} value={token} onChange={setToken} /><SecretField label="Realtime API Key" name="doubao-realtime-key" status={config.credentials.DOUBAO_REALTIME_API_KEY} value={realtimeKey} onChange={setRealtimeKey} /></div>
-    <div className="mmp-actions"><button className="mmp-button" onClick={() => setEnabledTasks(new Set())} disabled={busy || readOnly}>全部取消</button></div>
-    {taskModels.length > 0 && <div className="mmp-field"><label htmlFor="mmp-task-search">检索任务模型</label><input id="mmp-task-search" className="mmp-input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="按模型、能力或输入输出类型检索" /><span className="mmp-search-summary">显示 {filteredTasks.length} / {taskModels.length} 个模型</span></div>}
-    <div className="mmp-list">{filteredTasks.map(([id, raw]) => { const model = object(raw); const realtime = model.task === 'realtime-speech'; const credentialReady = hasCredential('DOUBAO_APPID', appId) && (realtime ? hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey) : hasCredential('DOUBAO_TOKEN', token)); return <label className="mmp-row" key={id}><input type="checkbox" checked={enabledTasks.has(id)} disabled={busy || readOnly} onChange={event => setEnabledTasks(current => { const next = new Set(current); event.target.checked ? next.add(id) : next.delete(id); return next })} /><span className="mmp-row-main"><span>{model.displayName ?? model.model}</span><div className="mmp-id">{id}</div><span className="mmp-tags"><span className="mmp-tag">{model.task}</span><span className="mmp-tag">{(model.input ?? []).join(' + ')} → {(model.output ?? []).join(' + ')}</span><span className="mmp-tag">{model.execution}</span>{enabledTasks.has(id) && <span className="mmp-tag">{credentialReady ? '凭据就绪' : '缺少凭据'}</span>}</span></span></label> })}</div>
-    {taskModels.length > 0 && filteredTasks.length === 0 && <div className="mmp-muted">没有匹配的任务模型。</div>}
-    <div className="mmp-actions"><button className="mmp-button" data-primary="true" onClick={saveProvider} disabled={busy || readOnly || !config.settingsWritable}>{enabledTasks.size ? `保存并注册（${enabledTasks.size}）` : '保存：全部停用'}</button><button className="mmp-button" onClick={probeRealtime} disabled={busy || readOnly || !realtimeSelected}>测试 Realtime 连接</button></div>
-    <div className="mmp-muted">保存时会自动测试已启用的 Realtime Duplex；只有测试通过才显示注册成功。</div>
+    <div className="mmp-muted">{t('honestyBanner')}</div>
+    <div><div className="mmp-subtitle">{t('doubaoSpeech')}</div><div className="mmp-muted">{t('doubaoHint')}</div></div>
+    <div className="mmp-grid3"><SecretField label={t('doubaoAppId')} name="doubao-appid" status={config.credentials.DOUBAO_APPID} value={appId} onChange={setAppId} /><SecretField label={t('speechToken')} name="doubao-token" status={config.credentials.DOUBAO_TOKEN} value={token} onChange={setToken} /><SecretField label={t('realtimeApiKey')} name="doubao-realtime-key" status={config.credentials.DOUBAO_REALTIME_API_KEY} value={realtimeKey} onChange={setRealtimeKey} /></div>
+    <div className="mmp-actions"><button className="mmp-button" onClick={() => setEnabledTasks(new Set())} disabled={busy || readOnly}>{t('clearAll')}</button></div>
+    {taskModels.length > 0 && <div className="mmp-field"><label htmlFor="mmp-task-search">{t('searchTaskModels')}</label><input id="mmp-task-search" className="mmp-input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('searchTaskPlaceholder')} /><span className="mmp-search-summary">{t('showingModels', { shown: filteredTasks.length, total: taskModels.length })}</span></div>}
+    <div className="mmp-list">{filteredTasks.map(([id, raw]) => { const model = object(raw); const realtime = model.task === 'realtime-speech'; const credentialReady = hasCredential('DOUBAO_APPID', appId) && (realtime ? hasCredential('DOUBAO_REALTIME_API_KEY', realtimeKey) : hasCredential('DOUBAO_TOKEN', token)); return <label className="mmp-row" key={id}><input type="checkbox" checked={enabledTasks.has(id)} disabled={busy || readOnly} onChange={event => setEnabledTasks(current => { const next = new Set(current); event.target.checked ? next.add(id) : next.delete(id); return next })} /><span className="mmp-row-main"><span>{model.displayName ?? model.model}</span><div className="mmp-id">{id}</div><span className="mmp-tags"><span className="mmp-tag">{model.task}</span><span className="mmp-tag">{(model.input ?? []).join(' + ')} → {(model.output ?? []).join(' + ')}</span><span className="mmp-tag">{model.execution}</span>{enabledTasks.has(id) && <span className="mmp-tag">{credentialReady ? t('credentialReady') : t('credentialMissing')}</span>}</span></span></label> })}</div>
+    {taskModels.length > 0 && filteredTasks.length === 0 && <div className="mmp-muted">{t('noMatchingTasks')}</div>}
+    <div className="mmp-actions"><button className="mmp-button" data-primary="true" onClick={saveProvider} disabled={busy || readOnly || !config.settingsWritable}>{enabledTasks.size ? t('saveSpeechWithCount', { count: enabledTasks.size }) : t('saveSpeechNone')}</button><button className="mmp-button" onClick={probeRealtime} disabled={busy || readOnly || !realtimeSelected}>{t('testRealtime')}</button></div>
+    <div className="mmp-muted">{t('realtimeSaveHint')}</div>
     {error && <div className="mmp-error" role="alert">{error}</div>}{message && <div className="mmp-success" role="status">{message}</div>}
   </div>
 }
@@ -306,11 +354,11 @@ function DoubaoSpeechProviderRow({ api, readOnly }) {
   const ready = enabled.length > 0 && credentialReady
   return <li className="mmp-provider-row">
     <div className="mmp-provider-head">
-      <span className="mmp-provider-name">豆包语音</span>
-      <span className="mmp-tag">任务模型</span>
-      <span className="mmp-provider-dot" data-ready={ready} role="img" aria-label={ready ? '豆包语音凭据已配置' : '豆包语音尚未就绪'} title={ready ? '凭据已配置' : '尚未就绪'} />
-      <span className="mmp-muted">{enabled.length ? `已启用 ${enabled.length} 个模型` : '尚未启用模型'}</span>
-      <span className="mmp-provider-actions"><button type="button" className="mmp-button" onClick={() => setOpen(value => !value)}>{open ? '收起' : '编辑'}</button></span>
+      <span className="mmp-provider-name">{t('doubaoSpeech')}</span>
+      <span className="mmp-tag">{t('taskModelTag')}</span>
+      <span className="mmp-provider-dot" data-ready={ready} role="img" aria-label={ready ? t('doubaoReady') : t('doubaoNotReady')} title={ready ? t('credentialsConfigured') : t('notReady')} />
+      <span className="mmp-muted">{enabled.length ? t('enabledModelCount', { count: enabled.length }) : t('noModelsEnabled')}</span>
+      <span className="mmp-provider-actions"><button type="button" className="mmp-button" onClick={() => setOpen(value => !value)}>{open ? t('collapse') : t('edit')}</button></span>
     </div>
     {open && <div className="mmp-provider-editor"><TaskCapability api={api} config={config} reload={reload} readOnly={readOnly} /></div>}
   </li>
@@ -318,7 +366,7 @@ function DoubaoSpeechProviderRow({ api, readOnly }) {
 
 function ProviderPanel({ api, config, reload }) {
   return <section className="mmp-card">
-    <div><div className="mmp-title">火山引擎</div><div className="mmp-muted">方舟语言模型、豆包语音和 Realtime 统一归属 Provider：volcengine；仅凭据与运行协议按能力区分。</div></div>
+    <div><div className="mmp-title">{t('volcengineTitle')}</div><div className="mmp-muted">{t('volcengineHint')}</div></div>
     <ArkCapability api={api} config={config} reload={reload} />
     <div className="mmp-divider" />
     <TaskCapability api={api} config={config} reload={reload} />
@@ -327,7 +375,7 @@ function ProviderPanel({ api, config, reload }) {
 
 function VolcengineProviderExtension({ api }) {
   const [config, reload] = useConfig(api)
-  if (config.status === 'loading' && !config.multi) return <div className="mmp-provider-extension"><div className="mmp-muted">正在加载火山语音能力…</div></div>
+  if (config.status === 'loading' && !config.multi) return <div className="mmp-provider-extension"><div className="mmp-muted">{t('loadingSpeech')}</div></div>
   if (config.status === 'error') return <div className="mmp-provider-extension"><div className="mmp-error">{config.error}</div></div>
   return <div className="mmp-provider-extension"><TaskCapability api={api} config={config} reload={reload} /></div>
 }
@@ -343,7 +391,7 @@ function PortraitEditor({ api, config, reload }) {
 
   useEffect(() => { if (targets.length && !targets.some(item => item.id === targetId)) setTargetId(targets[0].id) }, [targets, targetId])
   useEffect(() => { if (target) setDraft({ ...initialPortrait(target.name), ...object(target.portrait), pricing: { rates: [], ...object(object(target.portrait).pricing) }, performance: object(object(target.portrait).performance), validation: object(object(target.portrait).validation) }) }, [target?.id, config.multi?.revision])
-  if (!target) return <section className="mmp-card"><div className="mmp-title">模型画像</div><div className="mmp-muted">先注册或选择至少一个模型，画像目标才会出现在这里。</div></section>
+  if (!target) return <section className="mmp-card"><div className="mmp-title">{t('portraitsTitle')}</div><div className="mmp-muted">{t('portraitsEmpty')}</div></section>
 
   const update = (key, value) => setDraft(current => ({ ...current, [key]: value }))
   const updatePerformance = (key, value) => setDraft(current => ({ ...current, performance: { ...current.performance, [key]: value } }))
@@ -352,7 +400,7 @@ function PortraitEditor({ api, config, reload }) {
   const save = async () => {
     setBusy(true); setError(undefined); setMessage(undefined)
     try {
-      if (!config.multi) throw new Error('multi-model-provider 设置未加载')
+      if (!config.multi) throw new Error(t('settingsMissing'))
       const performance = { ...draft.performance }
       if (!performance.speedClass) delete performance.speedClass
       if (!performance.typicalLatencyMs?.min && !performance.typicalLatencyMs?.max) delete performance.typicalLatencyMs
@@ -368,22 +416,22 @@ function PortraitEditor({ api, config, reload }) {
       portrait.validation = validatePortrait(portrait)
       const value = target.kind === 'llm' ? { kind: 'llm', provider: target.provider, model: target.model, portrait } : portrait
       responseValue(await api.settings.mutate({ ns: MULTI_NS, ops: [{ op: 'set', path: target.path, value }], expectedRevision: config.multi.revision }))
-      setMessage('画像已保存并完成结构校验。'); await reload()
+      setMessage(t('portraitSaved')); await reload()
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) } finally { setBusy(false) }
   }
 
   return <section className="mmp-card">
-    <div><div className="mmp-title">模型画像</div><div className="mmp-muted">画像用于后续自动路由；价格和延迟应保留证据及观测日期。调用统计由独立观测模块采集，不写进这里。</div></div>
+    <div><div className="mmp-title">{t('portraitsTitle')}</div><div className="mmp-muted">{t('portraitsHint')}</div></div>
     <div className="mmp-portrait-layout">
       <div className="mmp-list">{targets.map(item => <button className="mmp-target" data-active={item.id === target.id} key={item.id} onClick={() => setTargetId(item.id)}><div>{item.name}</div><div className="mmp-id">{item.id}</div><div className="mmp-tags"><span className="mmp-tag">{item.kind}</span>{item.task && <span className="mmp-tag">{item.task}</span>}<span className="mmp-tag">{object(item.portrait).validation?.state ?? 'missing'}</span></div></button>)}</div>
       <div className="mmp-card">
-        <div><div className="mmp-subtitle">{target.name}</div><div className="mmp-id">{target.id}</div><div className="mmp-tags"><span className="mmp-tag">输入：{target.input.join(' + ') || '未知'}</span><span className="mmp-tag">输出：{target.output.join(' + ') || '未知'}</span></div></div>
-        <div className="mmp-field"><label>摘要</label><textarea className="mmp-textarea" value={draft.summary ?? ''} onChange={event => update('summary', event.target.value)} /></div>
-        <div className="mmp-grid"><div className="mmp-field"><label>擅长（每行一项）</label><textarea className="mmp-textarea" value={listText(draft.specialties)} onChange={event => update('specialties', event.target.value)} /></div><div className="mmp-field"><label>局限（每行一项）</label><textarea className="mmp-textarea" value={listText(draft.limitations)} onChange={event => update('limitations', event.target.value)} /></div><div className="mmp-field"><label>适合</label><textarea className="mmp-textarea" value={listText(draft.bestFor)} onChange={event => update('bestFor', event.target.value)} /></div><div className="mmp-field"><label>避免用于</label><textarea className="mmp-textarea" value={listText(draft.avoidFor)} onChange={event => update('avoidFor', event.target.value)} /></div></div>
-        <div className="mmp-grid3"><div className="mmp-field"><label>速度分级</label><select className="mmp-select" value={draft.performance?.speedClass ?? ''} onChange={event => updatePerformance('speedClass', event.target.value)}>{SPEEDS.map(speed => <option key={speed} value={speed}>{speed || '未知'}</option>)}</select></div><div className="mmp-field"><label>典型延迟最小值（ms）</label><input className="mmp-input" type="number" min="0" value={draft.performance?.typicalLatencyMs?.min ?? ''} onChange={event => updatePerformance('typicalLatencyMs', { min: Number(event.target.value), max: draft.performance?.typicalLatencyMs?.max ?? Number(event.target.value) })} /></div><div className="mmp-field"><label>典型延迟最大值（ms）</label><input className="mmp-input" type="number" min="0" value={draft.performance?.typicalLatencyMs?.max ?? ''} onChange={event => updatePerformance('typicalLatencyMs', { min: draft.performance?.typicalLatencyMs?.min ?? Number(event.target.value), max: Number(event.target.value) })} /></div></div>
-        <div className="mmp-subtitle">价格</div>{rates.map((rate, index) => <div className="mmp-price" key={index}><div className="mmp-field"><label>操作</label><input className="mmp-input" value={rate.operation ?? ''} onChange={event => setRate(index, 'operation', event.target.value)} placeholder="input / output / generate" /></div><div className="mmp-field"><label>计费单位</label><input className="mmp-input" value={rate.unit ?? ''} onChange={event => setRate(index, 'unit', event.target.value)} placeholder="1M tokens" /></div><div className="mmp-field"><label>金额</label><input className="mmp-input" type="number" min="0" step="any" value={rate.amount ?? ''} onChange={event => setRate(index, 'amount', event.target.value)} /></div><div className="mmp-field"><label>币种</label><input className="mmp-input" value={rate.currency ?? 'CNY'} onChange={event => setRate(index, 'currency', event.target.value.toUpperCase())} /></div><button className="mmp-button" data-danger="true" onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: rates.filter((_, at) => at !== index) } }))}>删除</button></div>)}<button className="mmp-button" onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: [...rates, { operation: '', unit: '', amount: '', currency: 'CNY' }] } }))}>添加价格项</button>
-        <div className="mmp-grid"><div><div className="mmp-subtitle">证据</div>{(draft.evidence ?? []).length ? <div className="mmp-list">{draft.evidence.map(item => <div className="mmp-row" key={item.id}><div className="mmp-row-main"><div>{item.source}</div><div className="mmp-tags"><span className="mmp-tag">{item.kind}</span><span className="mmp-tag">{item.observedAt}</span></div></div></div>)}</div> : <div className="mmp-muted">暂无证据。让 Agent“整理初始画像”会按画像本体定义补齐来源并自动校验。</div>}</div><div><div className="mmp-subtitle">校验</div><div className="mmp-checks">{(draft.validation?.checks ?? []).map(check => <div className="mmp-check" data-status={check.status} key={check.id}>{check.status === 'pass' ? '✓' : '△'} {check.message}</div>)}{!(draft.validation?.checks ?? []).length && <div className="mmp-muted">尚未校验</div>}</div></div></div>
-        <div className="mmp-actions"><button className="mmp-button" data-primary="true" disabled={busy || !config.settingsWritable} onClick={save}>保存并校验画像</button>{message && <span className="mmp-success" role="status">{message}</span>}</div>{error && <div className="mmp-error" role="alert">{error}</div>}
+        <div><div className="mmp-subtitle">{target.name}</div><div className="mmp-id">{target.id}</div><div className="mmp-tags"><span className="mmp-tag">{t('inputLabel', { value: target.input.join(' + ') || t('unknown') })}</span><span className="mmp-tag">{t('outputLabel', { value: target.output.join(' + ') || t('unknown') })}</span></div></div>
+        <div className="mmp-field"><label>{t('summary')}</label><textarea className="mmp-textarea" value={draft.summary ?? ''} onChange={event => update('summary', event.target.value)} /></div>
+        <div className="mmp-grid"><div className="mmp-field"><label>{t('specialties')}</label><textarea className="mmp-textarea" value={listText(draft.specialties)} onChange={event => update('specialties', event.target.value)} /></div><div className="mmp-field"><label>{t('limitations')}</label><textarea className="mmp-textarea" value={listText(draft.limitations)} onChange={event => update('limitations', event.target.value)} /></div><div className="mmp-field"><label>{t('bestFor')}</label><textarea className="mmp-textarea" value={listText(draft.bestFor)} onChange={event => update('bestFor', event.target.value)} /></div><div className="mmp-field"><label>{t('avoidFor')}</label><textarea className="mmp-textarea" value={listText(draft.avoidFor)} onChange={event => update('avoidFor', event.target.value)} /></div></div>
+        <div className="mmp-grid3"><div className="mmp-field"><label>{t('speedClass')}</label><select className="mmp-select" value={draft.performance?.speedClass ?? ''} onChange={event => updatePerformance('speedClass', event.target.value)}>{SPEEDS.map(speed => <option key={speed} value={speed}>{speed || t('unknown')}</option>)}</select></div><div className="mmp-field"><label>{t('latencyMin')}</label><input className="mmp-input" type="number" min="0" value={draft.performance?.typicalLatencyMs?.min ?? ''} onChange={event => updatePerformance('typicalLatencyMs', { min: Number(event.target.value), max: draft.performance?.typicalLatencyMs?.max ?? Number(event.target.value) })} /></div><div className="mmp-field"><label>{t('latencyMax')}</label><input className="mmp-input" type="number" min="0" value={draft.performance?.typicalLatencyMs?.max ?? ''} onChange={event => updatePerformance('typicalLatencyMs', { min: draft.performance?.typicalLatencyMs?.min ?? Number(event.target.value), max: Number(event.target.value) })} /></div></div>
+        <div className="mmp-subtitle">{t('pricing')}</div>{rates.map((rate, index) => <div className="mmp-price" key={index}><div className="mmp-field"><label>{t('operation')}</label><input className="mmp-input" value={rate.operation ?? ''} onChange={event => setRate(index, 'operation', event.target.value)} placeholder="input / output / generate" /></div><div className="mmp-field"><label>{t('unit')}</label><input className="mmp-input" value={rate.unit ?? ''} onChange={event => setRate(index, 'unit', event.target.value)} placeholder="1M tokens" /></div><div className="mmp-field"><label>{t('amount')}</label><input className="mmp-input" type="number" min="0" step="any" value={rate.amount ?? ''} onChange={event => setRate(index, 'amount', event.target.value)} /></div><div className="mmp-field"><label>{t('currency')}</label><input className="mmp-input" value={rate.currency ?? 'CNY'} onChange={event => setRate(index, 'currency', event.target.value.toUpperCase())} /></div><button className="mmp-button" data-danger="true" onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: rates.filter((_, at) => at !== index) } }))}>{t('remove')}</button></div>)}<button className="mmp-button" onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: [...rates, { operation: '', unit: '', amount: '', currency: 'CNY' }] } }))}>{t('addPrice')}</button>
+        <div className="mmp-grid"><div><div className="mmp-subtitle">{t('evidence')}</div>{(draft.evidence ?? []).length ? <div className="mmp-list">{draft.evidence.map(item => <div className="mmp-row" key={item.id}><div className="mmp-row-main"><div>{item.source}</div><div className="mmp-tags"><span className="mmp-tag">{item.kind}</span><span className="mmp-tag">{item.observedAt}</span></div></div></div>)}</div> : <div className="mmp-muted">{t('noEvidence')}</div>}</div><div><div className="mmp-subtitle">{t('validation')}</div><div className="mmp-checks">{(draft.validation?.checks ?? []).map(check => <div className="mmp-check" data-status={check.status} key={check.id}>{check.status === 'pass' ? '✓' : '△'} {check.message}</div>)}{!(draft.validation?.checks ?? []).length && <div className="mmp-muted">{t('notValidated')}</div>}</div></div></div>
+        <div className="mmp-actions"><button className="mmp-button" data-primary="true" disabled={busy || !config.settingsWritable} onClick={save}>{t('savePortrait')}</button>{message && <span className="mmp-success" role="status">{message}</span>}</div>{error && <div className="mmp-error" role="alert">{error}</div>}
       </div>
     </div>
   </section>
@@ -392,15 +440,15 @@ function PortraitEditor({ api, config, reload }) {
 function MultiModelSettings({ api }) {
   const [tab, setTab] = useState('provider')
   const [config, reload] = useConfig(api)
-  if (config.status === 'loading' && !config.multi) return <div className="mmp-page"><div className="mmp-muted">正在加载模型配置…</div></div>
-  if (config.status === 'error') return <div className="mmp-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>重试</button></div>
-  return <div className="mmp-page"><div className="mmp-tabs"><button className="mmp-tab" data-active={tab === 'provider'} onClick={() => setTab('provider')}>火山 / 方舟 / 豆包</button><button className="mmp-tab" data-active={tab === 'portraits'} onClick={() => setTab('portraits')}>模型画像</button></div>{tab === 'provider' ? <ProviderPanel api={api} config={config} reload={reload} /> : <PortraitEditor api={api} config={config} reload={reload} />}</div>
+  if (config.status === 'loading' && !config.multi) return <div className="mmp-page"><div className="mmp-muted">{t('loadingConfig')}</div></div>
+  if (config.status === 'error') return <div className="mmp-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>{t('retry')}</button></div>
+  return <div className="mmp-page"><div className="mmp-tabs"><button className="mmp-tab" data-active={tab === 'provider'} onClick={() => setTab('provider')}>{t('tabProvider')}</button><button className="mmp-tab" data-active={tab === 'portraits'} onClick={() => setTab('portraits')}>{t('tabPortraits')}</button></div>{tab === 'provider' ? <ProviderPanel api={api} config={config} reload={reload} /> : <PortraitEditor api={api} config={config} reload={reload} />}</div>
 }
 
 function PortraitSettings({ api }) {
   const [config, reload] = useConfig(api)
-  if (config.status === 'loading' && !config.multi) return <div className="mmp-page"><div className="mmp-muted">正在加载模型画像…</div></div>
-  if (config.status === 'error') return <div className="mmp-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>重试</button></div>
+  if (config.status === 'loading' && !config.multi) return <div className="mmp-page"><div className="mmp-muted">{t('loadingPortraits')}</div></div>
+  if (config.status === 'error') return <div className="mmp-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>{t('retry')}</button></div>
   return <div className="mmp-page"><PortraitEditor api={api} config={config} reload={reload} /></div>
 }
 
@@ -443,7 +491,7 @@ function ModelPortraitDetails({ api, provider, model, displayName, disabled }) {
   }, [config.multi?.revision, targetId, displayName])
 
   if (!model) return null
-  if (config.status === 'loading' && !config.multi) return <div className="mmp-muted">正在加载模型说明…</div>
+  if (config.status === 'loading' && !config.multi) return <div className="mmp-muted">{t('loadingModelNotes')}</div>
   if (config.status === 'error') return <div className="mmp-error">{config.error}</div>
 
   const rates = Array.isArray(draft.pricing?.rates) ? draft.pricing.rates : []
@@ -464,7 +512,7 @@ function ModelPortraitDetails({ api, provider, model, displayName, disabled }) {
     return portrait
   }
   const persist = async (source, successMessage) => {
-    if (!config.multi) throw new Error('multi-model-provider 设置未加载')
+    if (!config.multi) throw new Error(t('settingsMissing'))
     const portrait = normalizedPortrait(source)
     const value = { kind: 'llm', provider, model, portrait }
     responseValue(await api.settings.mutate({ ns: MULTI_NS, ops: [{ op: 'set', path: ['portraits', targetId], value }], expectedRevision: config.multi.revision }))
@@ -476,11 +524,13 @@ function ModelPortraitDetails({ api, provider, model, displayName, disabled }) {
     setBusy(true); setError(undefined); setMessage(undefined)
     try { await action() } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) } finally { setBusy(false) }
   }
-  const save = () => run(() => persist(draft, '模型说明已保存。'))
+  const save = () => run(() => persist(draft, t('notesSaved')))
   const probe = () => run(async () => {
     const started = Date.now()
     const response = await fetch('/dsh-multi-model-provider/probe', {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-dsh-model-probe': '1' },
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-dsh-model-probe': '1' },
+      credentials: 'same-origin',
       body: JSON.stringify({ provider, model }),
     })
     const result = await response.json().catch(() => ({}))
@@ -502,24 +552,24 @@ function ModelPortraitDetails({ api, provider, model, displayName, disabled }) {
       ...object(draft.performance), lastProbe,
       ...(reachable ? { speedClass: speedClassOf(lastProbe), typicalLatencyMs: { min: lastProbe.latencyMs, max: lastProbe.latencyMs } } : {}),
     }, evidence }
-    await persist(next, reachable ? '实测完成，结果已保存。' : '探测失败，失败结果已保存。')
-    if (!reachable) throw new Error(String(result.error ?? `模型不可访问（HTTP ${response.status}）`))
+    await persist(next, reachable ? t('probeSaved') : t('probeFailedSaved'))
+    if (!reachable) throw new Error(String(result.error ?? t('modelUnreachable', { status: response.status })))
   })
   const lastProbe = object(draft.performance?.lastProbe)
 
   return <section className="mmp-provider-extension">
-    <div><div className="mmp-subtitle">模型说明与运行指标</div><div className="mmp-muted">文字信息集中为一份分章节 Markdown；可用性和速度来自实测，不再手填。价格仍按计费单位结构化保存。</div></div>
-    <div className="mmp-field"><label>模型说明（Markdown）</label><textarea className="mmp-textarea" style={{ minHeight: 180 }} value={draft.description ?? ''} disabled={disabled || busy} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} /></div>
+    <div><div className="mmp-subtitle">{t('notesTitle')}</div><div className="mmp-muted">{t('notesHint')}</div></div>
+    <div className="mmp-field"><label>{t('notesMarkdown')}</label><textarea className="mmp-textarea" style={{ minHeight: 180 }} value={draft.description ?? ''} disabled={disabled || busy} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} /></div>
     <div className="mmp-grid3">
-      <div><div className="mmp-muted">可用性</div><div>{lastProbe.observedAt ? (lastProbe.reachable ? '可访问' : '不可访问') : '尚未实测'}</div></div>
-      <div><div className="mmp-muted">首 Token</div><div>{Number.isFinite(lastProbe.timeToFirstTokenMs) ? `${lastProbe.timeToFirstTokenMs} ms` : '—'}</div></div>
-      <div><div className="mmp-muted">总延迟</div><div>{Number.isFinite(lastProbe.latencyMs) ? `${lastProbe.latencyMs} ms` : '—'}</div></div>
+      <div><div className="mmp-muted">{t('availability')}</div><div>{lastProbe.observedAt ? (lastProbe.reachable ? t('reachable') : t('unreachable')) : t('notProbed')}</div></div>
+      <div><div className="mmp-muted">{t('timeToFirstToken')}</div><div>{Number.isFinite(lastProbe.timeToFirstTokenMs) ? `${lastProbe.timeToFirstTokenMs} ms` : '—'}</div></div>
+      <div><div className="mmp-muted">{t('totalLatency')}</div><div>{Number.isFinite(lastProbe.latencyMs) ? `${lastProbe.latencyMs} ms` : '—'}</div></div>
     </div>
-    {lastProbe.observedAt && <div className="mmp-muted">观测时间：{new Date(lastProbe.observedAt).toLocaleString()} · 单次极小请求，仅代表当时链路状态</div>}
-    <div className="mmp-subtitle">价格</div>
-    {rates.map((rate, index) => <div className="mmp-price" key={index}><div className="mmp-field"><label>操作</label><input className="mmp-input" value={rate.operation ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'operation', event.target.value)} placeholder="input / output" /></div><div className="mmp-field"><label>计费单位</label><input className="mmp-input" value={rate.unit ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'unit', event.target.value)} placeholder="1M tokens" /></div><div className="mmp-field"><label>金额</label><input className="mmp-input" type="number" min="0" step="any" value={rate.amount ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'amount', event.target.value)} /></div><div className="mmp-field"><label>币种</label><input className="mmp-input" value={rate.currency ?? 'CNY'} disabled={disabled || busy} onChange={event => setRate(index, 'currency', event.target.value.toUpperCase())} /></div><button className="mmp-button" data-danger="true" disabled={disabled || busy} onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: rates.filter((_, at) => at !== index) } }))}>删除</button></div>)}
-    <div className="mmp-actions"><button className="mmp-button" disabled={disabled || busy} onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: [...rates, { operation: '', unit: '', amount: '', currency: 'CNY' }] } }))}>添加价格项</button><button className="mmp-button" data-primary="true" disabled={disabled || busy || !config.settingsWritable} onClick={save}>保存说明与价格</button><button className="mmp-button" disabled={disabled || busy || !config.settingsWritable} onClick={probe}>测试可用性与速度</button></div>
-    <div className="mmp-muted">速度测试会向该模型发送一次最多 8 token 的极小请求，可能产生少量费用。</div>
+    {lastProbe.observedAt && <div className="mmp-muted">{t('probeObservedAt', { time: new Date(lastProbe.observedAt).toLocaleString() })}</div>}
+    <div className="mmp-subtitle">{t('pricing')}</div>
+    {rates.map((rate, index) => <div className="mmp-price" key={index}><div className="mmp-field"><label>{t('operation')}</label><input className="mmp-input" value={rate.operation ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'operation', event.target.value)} placeholder="input / output" /></div><div className="mmp-field"><label>{t('unit')}</label><input className="mmp-input" value={rate.unit ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'unit', event.target.value)} placeholder="1M tokens" /></div><div className="mmp-field"><label>{t('amount')}</label><input className="mmp-input" type="number" min="0" step="any" value={rate.amount ?? ''} disabled={disabled || busy} onChange={event => setRate(index, 'amount', event.target.value)} /></div><div className="mmp-field"><label>{t('currency')}</label><input className="mmp-input" value={rate.currency ?? 'CNY'} disabled={disabled || busy} onChange={event => setRate(index, 'currency', event.target.value.toUpperCase())} /></div><button className="mmp-button" data-danger="true" disabled={disabled || busy} onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: rates.filter((_, at) => at !== index) } }))}>{t('remove')}</button></div>)}
+    <div className="mmp-actions"><button className="mmp-button" disabled={disabled || busy} onClick={() => setDraft(current => ({ ...current, pricing: { ...current.pricing, rates: [...rates, { operation: '', unit: '', amount: '', currency: 'CNY' }] } }))}>{t('addPrice')}</button><button className="mmp-button" data-primary="true" disabled={disabled || busy || !config.settingsWritable} onClick={save}>{t('saveNotes')}</button><button className="mmp-button" disabled={disabled || busy || !config.settingsWritable} onClick={probe}>{t('testSpeed')}</button></div>
+    <div className="mmp-muted">{t('probeCostHint')}</div>
     {message && <div className="mmp-success" role="status">{message}</div>}{error && <div className="mmp-error" role="alert">{error}</div>}
   </section>
 }

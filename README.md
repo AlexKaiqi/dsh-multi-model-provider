@@ -2,13 +2,41 @@
 
 English | [中文](README.zh.md)
 
-Agent-assisted model registration for DeepSeek Harness. It deliberately separates registration from execution:
+This plugin has three capabilities:
 
-- Primary language models remain registered and executed by `@deepseek-ai/dsh-llm-pi-ai`.
-- Image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog.
-- A task-model registration describes a route; a separate runtime adapter is still required to invoke it.
+1. **Register models** — language models stay in `@deepseek-ai/dsh-llm-pi-ai`; image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog.
+2. **Assist with portraits** — evidence-backed profiles plus an explicit eight-token speed probe. Settings owns these writes.
+3. **Select the Agent model** — `selectAgentModel()` / `select_default_model` picks the primary language model for newly created Agents from the live language catalog. It does not auto-route task models.
 
-This keeps non-language models out of the LLM contract and provides a stable registration layer for future dynamic routing.
+Peer plugins inject `modelCatalog` and call `snapshot()` to read every registered model, portrait, and last probe. Installing this package does **not** make image, speech, or realtime models callable. Doubao Realtime connection tests in Settings require `dsh-talk-to-text`.
+
+## Capabilities
+
+### 1. Registration
+
+Language routes use `configure_model_route` / `list_model_routes`. Task routes use `register_task_model` / `list_task_models`. A task-model registration describes a route; a separate runtime adapter is still required to invoke it. `select_task_models` with `ids: []` disables every route on that connection without fallback.
+
+### 2. Portraits
+
+`prepare_model_portraits` returns seed facts, gaps, and official documentation URLs. The Agent opens those pages and calls `ingest_portrait_research` with http(s) source URLs; price rates must cite that evidence. `lastProbe` is measured by the Settings speed test, not copied from documentation. `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` still manage the stored profile.
+
+### 3. Agent model
+
+Selection is built on the catalog, not a parallel list:
+
+```ts
+export const inject = ['modelCatalog']
+
+const snapshot = await ctx.modelCatalog.snapshot()
+await ctx.modelCatalog.selectAgentModel({
+  provider: 'volcengine',
+  model: 'doubao-seed-1-6',
+})
+```
+
+`snapshot().languageModels` is the live Agent-model candidate list, with portraits attached when they exist. `selectAgentModel()` refuses task models and unknown ids. It only affects newly created Agents.
+
+Other plugins that only need the directory can stop at `snapshot()`. Do not scrape `settings.yaml`, and do not ask the Agent to call tools just to read the catalog.
 
 ## Agent tools
 
@@ -19,8 +47,9 @@ This keeps non-language models out of the LLM contract and provides a stable reg
 - `discover_task_models` queries a connection's authenticated provider catalog without registering anything.
 - `select_task_models` replaces the enabled set; `ids: []` explicitly disables every route on that connection.
 - `register_task_model` creates or updates a task-model route and its reusable connection profile.
-- `prepare_model_portraits` expands a short “build initial portraits” request into candidate discovery, the portrait ontology, evidence gathering, persistence, and validation.
-- `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` manage evidence-backed router profiles.
+- `prepare_model_portraits` expands a short “build initial portraits” request into seed facts, gaps, and official documentation URLs.
+- `ingest_portrait_research` merges Agent-researched facts that have http(s) source URLs.
+- `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` manage evidence-backed model profiles.
 - `invoke_task_model` invokes a callable multimodal route through its runtime adapter.
 - `summarize_model_usage` aggregates native LLM and task-model observations from the current durable session.
 
@@ -93,7 +122,8 @@ Runtime providers implement `TaskModelRuntimeAdapter`. `invoke_task_model` recor
 - This plugin owns registration, portraits, Settings schemas, safe credential references, the unified invocation entry point, and privacy-safe invocation observations.
 - llm-pi-ai owns language-model protocol adaptation and execution.
 - Independent provider adapters execute image/audio/video routes and handle binary artifacts through `TaskModelRuntimeAdapter`; routes without one remain registered-only.
-- A future router should select only among registered routes that an execution runtime has actually claimed. It should not duplicate catalog or credential state.
+- A peer plugin should inject `modelCatalog` and call `snapshot()`. It must not scrape `settings.yaml`, and it should not ask the Agent to call these tools just to read the catalog.
+- `selectAgentModel()` / `select_default_model` chooses the Agent language model from `snapshot().languageModels`. It does not auto-route task models and only affects newly created Agents.
 
 ## Install
 

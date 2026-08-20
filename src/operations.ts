@@ -1,8 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { ModelSelection } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { HarnessError, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { settingsNamespace, type SettingsDescriptor, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import type {
   ConfigureModelRouteInput,
@@ -10,7 +8,6 @@ import type {
   ListModelRoutesInput,
   ModelProfileInput,
   ModelRouteView,
-  SelectDefaultModelInput,
 } from './types.ts'
 
 export const PI_AI_SETTINGS_NAMESPACE = settingsNamespace('llm-pi-ai')
@@ -215,43 +212,5 @@ export async function listModelRoutes(
     providers,
     liveCount: liveEntries.length,
     dormantCount: directory.filter(entry => !liveById.has(entry.provider)).length,
-  }
-}
-
-export async function selectDefaultModel(
-  ctx: Context,
-  input: SelectDefaultModelInput,
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  const provider = nonBlank(input.provider, 'provider')
-  const model = nonBlank(input.model, 'model')
-  const reasoningEffort = optionalText(input.reasoningEffort)
-  const info = await ctx.llm.resolveModelInfo(provider, model, signal)
-  if (reasoningEffort !== undefined) {
-    const supported = info.reasoning?.efforts.some(effort => effort.id === reasoningEffort) === true
-    if (!supported) {
-      throw new ModelManagerError(
-        `model '${provider}/${model}' does not advertise reasoning effort '${reasoningEffort}'`,
-        'UNSUPPORTED_REASONING_EFFORT',
-      )
-    }
-  }
-
-  const selection: ModelSelection = {
-    provider,
-    model,
-    ...(reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(reasoningEffort) }),
-  }
-  await ctx.agentDefaultModel.saveSelection(selection)
-  return {
-    selection,
-    model: {
-      name: info.name,
-      ...(info.description === undefined ? {} : { description: info.description }),
-      ...(info.inputModalities === undefined ? {} : { inputModalities: [...info.inputModalities] }),
-      ...(info.context === undefined ? {} : { contextWindow: info.context.contextWindow }),
-    },
-    appliesTo: 'new-agents',
-    currentSessionChanged: false,
   }
 }

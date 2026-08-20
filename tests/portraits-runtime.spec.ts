@@ -143,7 +143,7 @@ describe('model portraits', () => {
         commercial: expect.arrayContaining(['effective-dated rates']),
         observations: expect.arrayContaining(['token usage']),
       },
-      workflow: expect.arrayContaining([expect.stringContaining('upsert_model_portrait')]),
+      workflow: expect.arrayContaining([expect.stringContaining('ingest_portrait_research')]),
       candidates: expect.arrayContaining([
         expect.objectContaining({ id: 'llm:volcengine/doubao-seed-1-6', kind: 'llm', needsInitialPortrait: true }),
       ]),

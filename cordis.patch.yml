@@ -1,7 +1,8 @@
 # dsh-base already mounts llm-pi-ai, settings, credentials, tools, the system
-# prompt registry, and agent-default-model. This bundle adds only the
-# model-facing registration surface. Language models keep llm-pi-ai as their
-# source of truth; non-language task models use this plugin's catalog.
+# prompt registry, and agent-default-model. This bundle publishes registration,
+# portrait assistance, and Agent-model selection on a secret-free modelCatalog.
+# Language models keep llm-pi-ai as their source of truth; non-language task
+# models use this catalog.
 - insert:
     - id: multi-model-provider
       name: dsh-multi-model-provider
