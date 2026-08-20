@@ -4,11 +4,11 @@
 
 这个插件做三件事：
 
-1. **登记模型** — 语言模型仍由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行；图片、语音、音频、视频、Embedding、Reranking 登记在本插件的 task-model catalog。
+1. **登记模型** — 语言模型仍由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行；图片、语音、音频、视频、Embedding、Reranking 登记在本插件的 task-model catalog。内置 `realtimeModelRuntime` 统一管理 Realtime 路由、凭据解析和角色 profile，Provider 插件只注册 wire adapter。
 2. **辅助构建画像** — 证据化画像，加上最多 8 token 的显式测速。写入走 Settings。
 3. **选 Agent 主模型** — `selectAgentModel()` / `select_default_model` 从目录里的 live 语言模型中，为之后新建的 Agent 保存主模型。不会自动给 task-model 做路由。
 
-其它插件 `inject: ['modelCatalog']` 后调用 `snapshot()` 读取全部已登记模型、画像和测速。安装本包**不会**让图片、语音或 Realtime 变成可调用。Settings 里的豆包 Realtime 连接测试需要 `dsh-talk-to-text`。
+其它插件 `inject: ['modelCatalog']` 后调用 `snapshot()` 读取全部已登记模型、画像和测速。安装本包**不会**让图片、语音或 Realtime 变成可调用；GPT／豆包双工协议由 `dsh-realtime-voice` adapter 提供。
 
 ## 三件事
 
@@ -117,7 +117,7 @@ multi-model-provider:
       profile: {}
 ```
 
-当前可见目录内置 `openai/gpt-image-2`，并把官方 Realtime S2S-O 与 SC 2.0 音色映射成 25 个可选语音配置。豆包 Realtime 协议仍固定使用 `session.model=1.2.6.1`；模型页选择的是实际可切换的音色配置，运行时再映射到固定协议版本。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
+当前可见目录内置 `openai/gpt-image-2`、`openai/gpt-realtime`，并把官方 Realtime S2S-O 与 SC 2.0 音色映射成 25 个可选语音配置。豆包 Realtime 协议仍固定使用 `session.model=1.2.6.1`；模型页选择的是实际可切换的音色配置，运行时再映射到固定协议版本。豆包路由挂在独立的 `doubao-speech` connection 下，默认停用，用户在模型页选择后才启用。旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
 
 `volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
@@ -162,7 +162,7 @@ multi-model-provider:
 
 用户只需说“整理初始画像”。插件的 system prompt 会要求 Agent 立即调用 `prepare_model_portraits`，从刚注册、发现、选择或讨论的模型推断范围；没有更窄上下文时处理缺失、未验证、部分有效、无效或过期的启用画像。Agent 随后查询当前官方资料或可信 benchmark → `upsert_model_portrait` → `validate_model_portrait`；只有用户明确允许产生流量或成本时才启用 `liveProbe`。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
-多模态执行采用可插拔 `TaskModelRuntimeAdapter`。Provider adapter（包括 `doubao-speech`）只处理本厂商的鉴权与 wire protocol；核心插件统一校验 route/operation、逐次解析安全凭据、返回标准结果并记录观测。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
+多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择 route、解析安全凭据、裁剪上下文并保存角色 profile；GPT/豆包 adapter 只处理 wire protocol 和浏览器音频传输。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 
 ## Agent 推荐流程
 

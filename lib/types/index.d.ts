@@ -14,6 +14,7 @@ export * from './operations.ts';
 export * from './providers/index.ts';
 export * from './registry.ts';
 export * from './runtime.ts';
+export * from './realtime.ts';
 export * from './catalog.ts';
 export * from './portrait-core.ts';
 export * from './portraits.ts';

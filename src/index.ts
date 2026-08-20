@@ -18,6 +18,7 @@ import {
 } from './doubao-speech-catalog.ts'
 import { registerTaskModelSettings } from './registry.ts'
 import { TaskModelRuntime } from './runtime.ts'
+import { RealtimeModelRuntime } from './realtime.ts'
 import { modelManagerTools } from './tools.ts'
 import { registerModelProbeRoute } from './probe-route.ts'
 
@@ -28,6 +29,7 @@ export * from './operations.ts'
 export * from './providers/index.ts'
 export * from './registry.ts'
 export * from './runtime.ts'
+export * from './realtime.ts'
 export * from './catalog.ts'
 export * from './portrait-core.ts'
 export * from './portraits.ts'
@@ -100,6 +102,7 @@ export function apply(ctx: Context): void {
     }))
   })
   new TaskModelRuntime(ctx)
+  new RealtimeModelRuntime(ctx)
   new ModelCatalog(ctx)
   registerTaskModelSettings(ctx)
   registerModelProbeRoute(ctx)

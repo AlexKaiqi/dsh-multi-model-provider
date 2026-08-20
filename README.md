@@ -4,11 +4,11 @@ English | [中文](README.zh.md)
 
 This plugin has three capabilities:
 
-1. **Register models** — language models stay in `@deepseek-ai/dsh-llm-pi-ai`; image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog.
+1. **Register models** — language models stay in `@deepseek-ai/dsh-llm-pi-ai`; image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog. The built-in `realtimeModelRuntime` owns Realtime route selection, credential resolution, and role profiles while provider plugins register wire adapters.
 2. **Assist with portraits** — evidence-backed profiles plus an explicit eight-token speed probe. Settings owns these writes.
 3. **Select the Agent model** — `selectAgentModel()` / `select_default_model` picks the primary language model for newly created Agents from the live language catalog. It does not auto-route task models.
 
-Peer plugins inject `modelCatalog` and call `snapshot()` to read every registered model, portrait, and last probe. Installing this package does **not** make image, speech, or realtime models callable. Doubao Realtime connection tests in Settings require `dsh-talk-to-text`.
+Peer plugins inject `modelCatalog` and call `snapshot()` to read every registered model, portrait, and last probe. Installing this package does **not** make image, speech, or realtime models callable; `dsh-realtime-voice` supplies the GPT and Doubao full-duplex adapters.
 
 ## Capabilities
 
@@ -101,7 +101,7 @@ multi-model-provider:
       profile: {}
 ```
 
-The visible built-in catalog includes `openai/gpt-image-2` and 25 documented Realtime S2S-O/SC 2.0 voice profiles. Doubao fixes `session.model` to `1.2.6.1`; the Models picker therefore selects the actual voice profile and the runtime maps it to that fixed protocol model. The routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
+The visible built-in catalog includes `openai/gpt-image-2`, `openai/gpt-realtime`, and 25 documented Realtime S2S-O/SC 2.0 voice profiles. Doubao fixes `session.model` to `1.2.6.1`; the Models picker therefore selects the actual voice profile and the runtime maps it to that fixed protocol model. The routes belong to the independent `doubao-speech` connection and start disabled until selected in Models settings. They appear in `list_task_models`, not in the language-model picker. Former ASR/TTS entries remain migration-only and are not shown by this Provider.
 
 Supported tasks cover image understanding/generation, speech synthesis/transcription/translation/analysis, voice conversion/cloning/design, podcasts, realtime speech, audio/video generation, embedding, and reranking. Routes also declare Lore-compatible capability ids such as `speech.transcribe.file`, `speech.synthesize.short`, and `speech.realtime_session`; `file` is a distinct input modality. Input/output modalities, operations, and execution lifecycle remain separate so task semantics are not conflated with modality.
 
@@ -115,11 +115,11 @@ A portrait keeps one sectioned qualitative Markdown description, structured pric
 
 The user can simply say “build the initial portraits.” Installed guidance requires the Harness Agent to call `prepare_model_portraits`, infer scope from recent registration/discovery context, gather current official documentation or benchmark evidence, save each portrait with `upsert_model_portrait`, and run `validate_model_portrait`. A paid or traffic-producing live probe still requires explicit approval.
 
-Runtime providers implement `TaskModelRuntimeAdapter`. `invoke_task_model` records privacy-safe task metrics. LLM observations reuse native durable Harness `request/header`, `step/start`, and `assistant/message.usage` events, so no wrapper or duplicate content log is added. `summarize_model_usage` aggregates counts, success, latency, tokens, and cost without copying prompts, responses, media, or credentials.
+Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex speech providers implement `RealtimeModelSessionAdapter` against `realtimeModelRuntime`. `invoke_task_model` records privacy-safe task metrics. LLM observations reuse native durable Harness `request/header`, `step/start`, and `assistant/message.usage` events, so no wrapper or duplicate content log is added. `summarize_model_usage` aggregates counts, success, latency, tokens, and cost without copying prompts, responses, media, or credentials.
 
 ## Runtime boundary
 
-- This plugin owns registration, portraits, Settings schemas, safe credential references, the unified invocation entry point, and privacy-safe invocation observations.
+- This plugin owns registration, portraits, Settings schemas, safe credential references, the unified invocation entry point, `realtimeModelRuntime`, and privacy-safe invocation observations.
 - llm-pi-ai owns language-model protocol adaptation and execution.
 - Independent provider adapters execute image/audio/video routes and handle binary artifacts through `TaskModelRuntimeAdapter`; routes without one remain registered-only.
 - A peer plugin should inject `modelCatalog` and call `snapshot()`. It must not scrape `settings.yaml`, and it should not ask the Agent to call these tools just to read the catalog.

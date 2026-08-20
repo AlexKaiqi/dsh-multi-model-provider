@@ -133,6 +133,21 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       profile: {},
       portrait: initialPortrait('OpenAI image generation and editing model.'),
     },
+    'openai/gpt-realtime': {
+      connection: 'openai',
+      model: 'gpt-realtime',
+      displayName: 'GPT Realtime',
+      task: 'realtime-speech',
+      runtimeAdapter: 'openai-webrtc',
+      input: ['text', 'audio'],
+      output: ['text', 'audio'],
+      execution: 'realtime',
+      capabilities: ['speech.realtime_session'],
+      operations: ['realtime-session'],
+      roles: ['voice-deliberation'],
+      profile: { protocol: 'openai-webrtc', voice: 'marin' },
+      portrait: initialPortrait('OpenAI full-duplex Realtime speech model.'),
+    },
     ...Object.fromEntries([...DOUBAO_SPEECH_LEGACY_CATALOG, ...DOUBAO_SPEECH_CATALOG].map(entry => [entry.id, {
       ...entry.registration,
       portrait: initialPortrait(entry.summary),
@@ -675,8 +690,11 @@ export async function listTaskModels(
     const credentialReady = status?.configured !== false
       && Object.values(statuses ?? {}).every(item => item.configured)
     const runtime = (ctx as Context & { taskModelRuntime?: { hasAdapter(id: string | undefined, route?: ResolvedTaskModelRoute): boolean } }).taskModelRuntime
+    const realtimeRuntime = (ctx as Context & { realtimeModelRuntime?: { hasAdapter(id: string | undefined): boolean } }).realtimeModelRuntime
     const route: ResolvedTaskModelRoute = { id, connection, registration: model }
-    const adapterAvailable = runtime?.hasAdapter(model.runtimeAdapter, route) ?? false
+    const adapterAvailable = model.execution === 'realtime'
+      ? realtimeRuntime?.hasAdapter(model.runtimeAdapter) ?? false
+      : runtime?.hasAdapter(model.runtimeAdapter, route) ?? false
     const enabled = model.enabled !== false
     const callable = enabled && adapterAvailable && credentialReady
     models.push({

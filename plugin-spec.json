@@ -243,6 +243,10 @@
         "layer": "L1"
       },
       {
+        "file": "tests/realtime-runtime.spec.ts",
+        "layer": "L2"
+      },
+      {
         "file": "tests/pack-contract.spec.ts",
         "layer": "L1"
       }

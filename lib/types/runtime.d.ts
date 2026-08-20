@@ -14,7 +14,7 @@ export declare class TaskModelRuntime extends Service {
     invoke(route: ResolvedTaskModelRoute, operation: string, request: Readonly<Record<string, JsonValue>>, signal: AbortSignal): Promise<TaskModelInvocationResult>;
     probe(route: ResolvedTaskModelRoute, signal: AbortSignal): Promise<TaskModelAdapterProbeResult>;
     private requiredAdapter;
-    private resolveCredentials;
+    credentials(route: ResolvedTaskModelRoute): Promise<Record<string, string>>;
 }
 export default TaskModelRuntime;
 //# sourceMappingURL=runtime.d.ts.map
