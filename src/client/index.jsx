@@ -147,7 +147,7 @@ function ModelPortraitDetails({ api, provider, model, displayName, disabled }) {
   const probe = () => run(async () => {
     const started = Date.now()
     const response = provider === 'doubao-speech'
-      ? await fetch('/dsh-talk-to-text/realtime/doubao/probe', {
+      ? await fetch('/dsh-realtime-voice/doubao/probe', {
         method: 'POST', headers: { 'x-dsh-model-probe': '1' }, credentials: 'same-origin',
       })
       : await fetch('/dsh-multi-model-provider/probe', {

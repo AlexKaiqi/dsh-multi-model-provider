@@ -509,6 +509,40 @@ function resolvedConfig(descriptor: SettingsDescriptor): TaskModelRegistryConfig
   return descriptor.value as TaskModelRegistryConfig
 }
 
+/**
+ * Provider-editor model rows are an explicit route selection when they exist
+ * in the user layer. The standard editor stores provider-native ids, while the
+ * task registry owns stable route ids and provider metadata, so selection must
+ * join across all three identities instead of expecting the ids to be equal.
+ */
+function providerModelSelection(
+  descriptor: SettingsDescriptor,
+  connectionId: string,
+): ReadonlySet<string> | undefined {
+  if (typeof descriptor.user !== 'object' || descriptor.user === null || Array.isArray(descriptor.user)) return undefined
+  const connections = (descriptor.user as { connections?: unknown }).connections
+  if (typeof connections !== 'object' || connections === null || Array.isArray(connections)) return undefined
+  const connection = (connections as Record<string, unknown>)[connectionId]
+  if (typeof connection !== 'object' || connection === null || Array.isArray(connection)) return undefined
+  const models = (connection as { models?: unknown }).models
+  if (!Array.isArray(models)) return undefined
+  return new Set(models.flatMap(row => {
+    if (typeof row === 'string') return row.trim() === '' ? [] : [row]
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) return []
+    const id = (row as { id?: unknown }).id
+    return typeof id === 'string' && id.trim() !== '' ? [id] : []
+  }))
+}
+
+function selectedByProviderEditor(
+  selected: ReadonlySet<string>,
+  routeId: string,
+  model: TaskModelRegistryConfig['models'][string],
+): boolean {
+  const voice = typeof model.profile?.voice === 'string' ? model.profile.voice : undefined
+  return selected.has(routeId) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
+}
+
 export function resolveTaskModelRoute(ctx: Context, id: string): ResolvedTaskModelRoute {
   const routeId = nonBlank(id, 'id')
   const config = resolvedConfig(requiredDescriptor(ctx))
@@ -877,6 +911,7 @@ export async function listTaskModels(
   const userModels = typeof descriptor.user === 'object' && descriptor.user !== null && !Array.isArray(descriptor.user)
     ? (descriptor.user as { models?: Record<string, unknown> }).models ?? {}
     : {}
+  const providerSelections = new Map<string, ReadonlySet<string> | undefined>()
   const models: Array<Record<string, unknown> & { readonly task: TaskModelTask }> = []
   for (const [id, model] of Object.entries(config.models)) {
     if (requestedId !== undefined && id !== requestedId) continue
@@ -897,7 +932,13 @@ export async function listTaskModels(
     const adapterAvailable = model.execution === 'realtime'
       ? realtimeRuntime?.hasAdapter(model.runtimeAdapter) ?? false
       : runtime?.hasAdapter(model.runtimeAdapter, route) ?? false
-    const enabled = model.enabled !== false
+    if (!providerSelections.has(model.connection)) {
+      providerSelections.set(model.connection, providerModelSelection(descriptor, model.connection))
+    }
+    const providerSelection = providerSelections.get(model.connection)
+    const enabled = providerSelection === undefined
+      ? model.enabled !== false
+      : selectedByProviderEditor(providerSelection, id, model)
     const callable = enabled && adapterAvailable && credentialReady
     const bundledPortrait = builtinTaskPortrait(connection.provider, model.model, model.task)
     const portrait = model.portrait ?? bundledPortrait
