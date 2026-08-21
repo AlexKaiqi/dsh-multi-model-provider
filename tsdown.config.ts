@@ -19,7 +19,7 @@ export default defineConfig([
     format: 'cjs',
     platform: 'browser',
     target: 'es2022',
-    external: ['react', 'react/jsx-runtime'],
+    deps: { neverBundle: ['react', 'react/jsx-runtime'] },
     dts: false,
     sourcemap: true,
     clean: false,

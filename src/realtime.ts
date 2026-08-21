@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { Service } from '@deepseek-ai/cordis'
 import { ModelManagerError } from './operations.ts'
-import { listTaskModels, resolveTaskModelRoute } from './registry.ts'
+import { effectiveTaskModelAvailability, resolveTaskModelRoute, TASK_MODEL_SETTINGS_NAMESPACE } from './registry.ts'
 import type {
   RealtimeModelProfile,
   RealtimeModelRoute,
@@ -84,12 +84,23 @@ export class RealtimeModelRuntime extends Service {
   }
 
   async models(): Promise<RealtimeModelRoute[]> {
-    const listed = await listTaskModels(this.ctx, { task: 'realtime-speech', includeProfile: true })
-    const rows = Array.isArray(listed.models) ? listed.models as Array<Record<string, unknown>> : []
+    const descriptor = this.ctx.settings.describe({ redactSecrets: true })
+      .find(item => item.ns === TASK_MODEL_SETTINGS_NAMESPACE)
+    if (descriptor === undefined) {
+      throw new ModelManagerError(
+        'multi-model-provider settings are unavailable; register the plugin before listing realtime models',
+        'TASK_MODEL_SETTINGS_UNAVAILABLE',
+      )
+    }
+    const config = descriptor?.value as { models?: Record<string, { task?: string }> } | undefined
     const routes: RealtimeModelRoute[] = []
-    for (const row of rows) {
-      if (row.enabled === false || typeof row.id !== 'string') continue
-      const resolved = resolveTaskModelRoute(this.ctx, row.id)
+    for (const [id, registration] of Object.entries(config?.models ?? {})) {
+      if (registration.task !== 'realtime-speech') continue
+      const resolved = resolveTaskModelRoute(this.ctx, id, descriptor)
+      const availability = await effectiveTaskModelAvailability(this.ctx, resolved, descriptor)
+      // Keep credential-missing routes discoverable so the Client can explain
+      // which credential is required. Opening the route still fails closed.
+      if (!availability.enabled || !availability.adapterAvailable) continue
       const adapterId = resolved.registration.runtimeAdapter
       const adapter = adapterId === undefined ? undefined : this.adapters.get(adapterId)
       if (adapter === undefined) continue
@@ -111,13 +122,17 @@ export class RealtimeModelRuntime extends Service {
     return routes
   }
 
-  async model(routeId: string, protocol = ''): Promise<RealtimeModelRoute | undefined> {
+  async model(routeId?: string, protocol = ''): Promise<RealtimeModelRoute | undefined> {
     const routes = await this.models()
     const candidates = protocol === '' ? routes : routes.filter(route => route.protocol === protocol)
-    const selected = String(routeId ?? '')
-    return candidates.find(route => route.id === selected)
-      ?? candidates.find(route => route.model === selected)
-      ?? candidates[0]
+    const selected = String(routeId ?? '').trim()
+    if (selected === '') return candidates[0]
+    const route = candidates.find(candidate => candidate.id === selected)
+      ?? candidates.find(candidate => candidate.model === selected)
+    if (route === undefined) {
+      throw new ModelManagerError(`unknown realtime model '${selected}'`, 'UNKNOWN_REALTIME_MODEL')
+    }
+    return route
   }
 
   async credential(route: RealtimeModelRoute): Promise<{ value: string, credentialRef: string }> {

@@ -124,13 +124,24 @@ describe('realtime runtime evaluation cases', () => {
     ['exact route id', 'doubao/realtime-duplex', '', 'doubao/realtime-duplex'],
     ['provider model id', '1.2.6.1', '', 'doubao/realtime-duplex'],
     ['protocol fallback', '', 'openai-webrtc', 'openai/gpt-realtime'],
-    ['unknown selection fallback', 'missing', 'doubao-realtime-duplex', 'doubao/realtime-duplex'],
   ])('selects the expected route for %s', async (_name, routeId, protocol, expected) => {
     const ctx = context(async () => ({ default: 'secret' }))
     try {
       const runtime = new RealtimeModelRuntime(ctx)
       registerAdapters(runtime)
       expect((await runtime.model(routeId, protocol))?.id).toBe(expected)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('rejects a nonblank unknown route id instead of silently selecting a default', async () => {
+    const ctx = context(async () => ({ default: 'secret' }))
+    try {
+      const runtime = new RealtimeModelRuntime(ctx)
+      registerAdapters(runtime)
+      await expect(runtime.model('missing', 'doubao-realtime-duplex'))
+        .rejects.toMatchObject({ code: 'UNKNOWN_REALTIME_MODEL' })
     } finally {
       await ctx.fiber.dispose()
     }

@@ -23,6 +23,8 @@
     "lib/client.js.map",
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
+    "plugin-spec.json",
+    "spec",
     "README.md",
     "README.zh.md",
     "LICENSE"

@@ -251,6 +251,28 @@ describe('task-model registry', () => {
     })
   })
 
+  it('uses the realtime runtime adapter registry for realtime callability', async () => {
+    const value = structuredClone(BUILTIN_TASK_MODEL_REGISTRY)
+    value.connections['doubao-speech'] = {
+      ...value.connections['doubao-speech']!,
+      credentialRefs: { apiKey: 'DOUBAO_API_KEY' },
+    }
+    value.models['doubao/realtime/zh_female_vv_jupiter_bigtts'] = {
+      ...value.models['doubao/realtime/zh_female_vv_jupiter_bigtts']!,
+      enabled: true,
+    }
+    const ctx = context(value)
+    vi.mocked(ctx.credentials.describe).mockResolvedValue({ configured: true, writable: true, source: 'file' })
+    ;(ctx as Context & { taskModelRuntime: { hasAdapter(): boolean } }).taskModelRuntime = { hasAdapter: () => false }
+    ;(ctx as Context & { realtimeModelRuntime: { hasAdapter(id: string | undefined): boolean } }).realtimeModelRuntime = {
+      hasAdapter: id => id === 'doubao-realtime-duplex',
+    }
+    const result = await listTaskModels(ctx, { id: 'doubao/realtime/zh_female_vv_jupiter_bigtts' })
+    expect(result).toMatchObject({
+      models: [{ availability: { status: 'callable', callable: true } }],
+    })
+  })
+
   it('writes connection and task-model fields using task defaults and credential references only', async () => {
     const ctx = context()
     const result = await registerTaskModel(ctx, {

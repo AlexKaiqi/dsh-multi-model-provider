@@ -3,16 +3,17 @@
   "name": "dsh-multi-model-provider",
   "pluginTypes": [
     "F1",
-    "F2"
+    "F2",
+    "F3"
   ],
   "facts": {
     "modelVisible": true,
     "registersTools": true,
     "filesystem": "none",
-    "persistentState": false,
+    "persistentState": true,
     "subprocess": false,
     "subagents": false,
-    "temporaryResources": false,
+    "temporaryResources": true,
     "customProtocol": true
   },
   "contracts": [

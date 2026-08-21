@@ -18,11 +18,15 @@ const registry: TaskModelRegistryConfig = {
   defaults: {},
 }
 
-function context(value: TaskModelRegistryConfig = registry): Context {
+function context(value: TaskModelRegistryConfig = registry, user?: Record<string, unknown>): Context {
   return {
-    settings: { describe: vi.fn(() => [{ ns: TASK_MODEL_SETTINGS_NAMESPACE, schema: TASK_MODEL_REGISTRY_SCHEMA.toJSON(), value, revision: 7, applies: 'live' }]) },
-    credentials: { resolve: vi.fn(async () => ({ value: 'secret-that-must-not-leak', source: 'file' })) },
+    settings: { describe: vi.fn(() => [{ ns: TASK_MODEL_SETTINGS_NAMESPACE, schema: TASK_MODEL_REGISTRY_SCHEMA.toJSON(), value, ...(user === undefined ? {} : { user }), revision: 7, applies: 'live' }]) },
+    credentials: {
+      describe: vi.fn(async () => ({ configured: true, writable: true, source: 'file' })),
+      resolve: vi.fn(async () => ({ value: 'secret-that-must-not-leak', source: 'file' })),
+    },
     taskModelRuntime: {
+      hasAdapter: vi.fn(() => true),
       invoke: vi.fn(async () => ({
         output: { audio: { uri: 'attachment://audio-1', mimeType: 'audio/mpeg' } },
         outputModalities: ['audio'],
@@ -38,6 +42,27 @@ describe('task-model observation recording', () => {
     value.models['doubao/tts'] = { ...value.models['doubao/tts']!, enabled: false }
     await expect(invokeTaskModel(context(value), { id: 'doubao/tts', operation: 'synthesize', request: {} }, { signal: new AbortController().signal } as ToolRunContext))
       .rejects.toMatchObject({ code: 'TASK_MODEL_DISABLED' })
+  })
+
+  it('honors provider-editor selection during direct invocation', async () => {
+    const ctx = context(registry, { connections: { doubao: { models: [] } } })
+    await expect(invokeTaskModel(ctx, { id: 'doubao/tts', operation: 'synthesize', request: {} }, { signal: new AbortController().signal } as ToolRunContext))
+      .rejects.toMatchObject({ code: 'TASK_MODEL_DISABLED' })
+    expect(ctx.taskModelRuntime.invoke).not.toHaveBeenCalled()
+  })
+
+  it('rejects realtime routes from the generic invocation runtime', async () => {
+    const value = structuredClone(registry)
+    value.models['doubao/realtime'] = {
+      ...value.models['doubao/tts']!,
+      task: 'realtime-speech',
+      execution: 'realtime',
+      runtimeAdapter: 'doubao-realtime-duplex',
+      capabilities: ['speech.realtime_session'],
+      operations: ['realtime-session'],
+    }
+    await expect(invokeTaskModel(context(value), { id: 'doubao/realtime', operation: 'realtime-session', request: {} }, { signal: new AbortController().signal } as ToolRunContext))
+      .rejects.toMatchObject({ code: 'REALTIME_TASK_MODEL_REQUIRES_RUNTIME', message: expect.stringContaining('realtimeModelRuntime') })
   })
 
   it('records metrics without request content or credentials', async () => {

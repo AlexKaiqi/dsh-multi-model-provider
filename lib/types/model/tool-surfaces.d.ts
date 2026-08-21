@@ -158,7 +158,7 @@ export declare const VALIDATE_MODEL_PORTRAIT_SURFACE: {
 };
 export declare const INVOKE_TASK_MODEL_SURFACE: {
     readonly name: "invoke_task_model";
-    readonly description: "Invoke a registered multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for image, speech, audio, video, realtime, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.";
+    readonly description: "Invoke a registered non-realtime multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for request/response image, speech, audio, video, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for realtime-speech routes; those require realtimeModelRuntime. Also do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.";
     readonly parameters: {
         readonly id: "Exact registered task-model route id.";
         readonly operation: "One operation declared by the route, for example synthesize or transcribe-file.";
@@ -319,7 +319,7 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     readonly helpPointer: "get_model_portrait";
 }, {
     readonly name: "invoke_task_model";
-    readonly description: "Invoke a registered multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for image, speech, audio, video, realtime, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.";
+    readonly description: "Invoke a registered non-realtime multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for request/response image, speech, audio, video, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for realtime-speech routes; those require realtimeModelRuntime. Also do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.";
     readonly parameters: {
         readonly id: "Exact registered task-model route id.";
         readonly operation: "One operation declared by the route, for example synthesize or transcribe-file.";
