@@ -26,11 +26,11 @@ const RESEARCHABLE_GAPS = ['description', 'pricing', 'specialties', 'limitations
 export function portraitGaps(portrait: ModelPortrait | undefined): readonly string[] {
   const gaps: string[] = []
   if (portrait === undefined || (portrait.description === undefined && portrait.summary === undefined)) gaps.push('description')
-  if (portrait === undefined || portrait.pricing.rates.length === 0) gaps.push('pricing')
-  if (portrait === undefined || portrait.specialties.length === 0) gaps.push('specialties')
-  if (portrait === undefined || portrait.limitations.length === 0) gaps.push('limitations')
-  if (portrait === undefined || portrait.evidence.length === 0) gaps.push('evidence')
-  if (portrait?.performance.lastProbe === undefined) gaps.push('lastProbe')
+  if (portrait === undefined || (portrait.pricing?.rates?.length ?? 0) === 0) gaps.push('pricing')
+  if (portrait === undefined || (portrait.specialties?.length ?? 0) === 0) gaps.push('specialties')
+  if (portrait === undefined || (portrait.limitations?.length ?? 0) === 0) gaps.push('limitations')
+  if (portrait === undefined || (portrait.evidence?.length ?? 0) === 0) gaps.push('evidence')
+  if (portrait?.performance?.lastProbe === undefined) gaps.push('lastProbe')
   return gaps
 }
 
@@ -57,7 +57,7 @@ export function researchPlanFor(provider: string, gaps: readonly string[]): Reco
     suggestedSources,
     questions,
     lastProbe: gaps.includes('lastProbe')
-      ? 'Run the Settings speed test or an approved live probe. Do not copy documentation latency into lastProbe.'
+      ? 'After explicit user approval, run validate_model_portrait with liveProbe=true. Do not copy documentation latency into lastProbe.'
       : undefined,
   }
 }
@@ -83,7 +83,7 @@ export async function ingestPortraitResearch(
   const findings = input.findings
   if (findings.performance !== undefined && Object.prototype.hasOwnProperty.call(findings.performance, 'lastProbe')) {
     throw new ModelManagerError(
-      'ingest_portrait_research cannot write lastProbe; use the Settings speed test or an approved live probe',
+      'ingest_portrait_research cannot write lastProbe; only validate_model_portrait(liveProbe=true) may record an approved Agent live probe',
       'RESEARCH_CANNOT_WRITE_PROBE',
     )
   }

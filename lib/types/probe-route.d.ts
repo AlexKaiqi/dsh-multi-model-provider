@@ -45,11 +45,12 @@ export declare function authorizePaidModelProbe(req: ProbeHttpRequest): {
  *   llm: Host language-model runtime used for the billed ping.
  *   provider: llm-pi-ai provider route id.
  *   model: Exact model id on that route.
+ *   signal: Optional caller cancellation signal.
  *
  * Returns:
  *   Reachability payload with latency; throws when the model stream fails.
  */
-export declare function runPaidModelProbe(llm: Context['llm'], provider: string, model: string): Promise<{
+export declare function runPaidModelProbe(llm: Context['llm'], provider: string, model: string, signal?: AbortSignal): Promise<{
     ok: true;
     provider: string;
     model: string;

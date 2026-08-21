@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm'
 import { parseLlmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
+import { normalizeStoredPortrait } from '../portrait-core.ts'
 import { resolveTaskModelRoute } from '../registry.ts'
 import type { ModelPortrait } from '../types.ts'
 import { builtinLlmPortrait } from './builtin.ts'
@@ -46,7 +47,7 @@ export async function resolvePortraitTarget(ctx: Context, id: string, signal?: A
     return {
       kind: 'task',
       id: route.id,
-      portrait: route.registration.portrait ?? bundled,
+      portrait: route.registration.portrait === undefined ? bundled : normalizeStoredPortrait(route.registration.portrait),
       portraitSource: route.registration.portrait !== undefined ? 'stored' : bundled !== undefined ? 'bundled' : undefined,
       storagePath: ['models', route.id, 'portrait'],
       declared: {
@@ -77,7 +78,7 @@ export async function resolvePortraitTarget(ctx: Context, id: string, signal?: A
     id: targetId,
     provider: parsed.provider,
     model: parsed.model,
-    portrait: binding?.portrait ?? bundled,
+    portrait: binding?.portrait === undefined ? bundled : normalizeStoredPortrait(binding.portrait),
     portraitSource: binding !== undefined ? 'stored' : bundled !== undefined ? 'bundled' : undefined,
     storagePath: ['portraits', targetId],
     declared: {

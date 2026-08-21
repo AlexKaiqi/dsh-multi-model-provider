@@ -171,6 +171,13 @@ describe('portrait research testsuite', () => {
       .not.toContain('lastProbe')
   })
 
+  it('treats legacy partial portraits without pricing as research candidates', () => {
+    expect(portraitGaps({
+      summary: 'legacy portrait',
+      validation: { state: 'unvalidated', checks: [] },
+    } as never)).toContain('pricing')
+  })
+
   it('seeds LLM context from resolveModelInfo and points at Ark docs', async () => {
     const result = await prepareModelPortraits(context(), { ids: ['llm:volcengine/doubao-seed-1-6'] })
     expect(result.candidates).toEqual([
@@ -184,7 +191,7 @@ describe('portrait research testsuite', () => {
         }),
         researchPlan: expect.objectContaining({
           suggestedSources: [VOLCENGINE_ARK_DOCS],
-          lastProbe: expect.stringContaining('Settings speed test'),
+          lastProbe: expect.stringContaining('validate_model_portrait'),
         }),
         gaps: expect.arrayContaining(['lastProbe', 'pricing']),
       }),
@@ -214,6 +221,7 @@ describe('portrait research testsuite', () => {
     expect(officialResearchSources('doubao-speech')).toEqual([DOUBAO_SPEECH_DOCS])
     expect(officialResearchSources('anthropic')).toEqual([ANTHROPIC_MODELS_DOCS, ANTHROPIC_PRICING_DOCS])
     expect(officialResearchSources('openai')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS])
+    expect(officialResearchSources('gpt-proxy')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS])
     expect(officialResearchSources('google')).toEqual([GOOGLE_MODELS_DOCS, GOOGLE_PRICING_DOCS, GOOGLE_VIDEO_DOCS])
     expect(officialResearchSources('deepseek')).toEqual([DEEPSEEK_MODELS_DOCS, DEEPSEEK_PRICING_DOCS])
     expect(officialResearchSources('moonshotai')).toEqual([KIMI_MODELS_DOCS, KIMI_PRICING_DOCS])

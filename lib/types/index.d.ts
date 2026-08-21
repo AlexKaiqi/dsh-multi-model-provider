@@ -20,6 +20,8 @@ export * from './portrait-core.ts';
 export * from './portraits.ts';
 export * from './observations/index.ts';
 export * from './portraits/index.ts';
+export * from './portraits/job-contract.ts';
+export * from './portrait-jobs.ts';
 export * from './invocation.ts';
 export * from './types.ts';
 export { modelManagerTools } from './tools.ts';

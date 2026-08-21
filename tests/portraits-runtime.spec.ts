@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { normalizePortrait } from '../src/portrait-core.ts'
-import { getModelPortrait, prepareModelPortraits, upsertModelPortrait } from '../src/portraits.ts'
+import { normalizePortrait, normalizeStoredPortrait } from '../src/portrait-core.ts'
+import { getModelPortrait, prepareModelPortraits, upsertModelPortrait, validateModelPortrait } from '../src/portraits.ts'
 import { TASK_MODEL_REGISTRY_SCHEMA, TASK_MODEL_SETTINGS_NAMESPACE } from '../src/registry.ts'
 import type { TaskModelRegistryConfig } from '../src/types.ts'
 
@@ -57,6 +57,7 @@ function context(value: TaskModelRegistryConfig = registry): Context {
     },
     llm: {
       listProviders: vi.fn(() => [{ id: 'volcengine', name: 'Volcengine Ark' }]),
+      listConfigurableProviders: vi.fn(() => []),
       listModels: vi.fn(async () => [{ provider: 'volcengine', id: 'doubao-seed-1-6', name: 'Doubao Seed 1.6', inputModalities: ['text', 'image'] }]),
       resolveModelInfo: vi.fn(async (provider: string, model: string) => ({
         provider,
@@ -66,11 +67,26 @@ function context(value: TaskModelRegistryConfig = registry): Context {
         context: { contextWindow: 256000 },
         defaultMaxTokens: 32000,
       })),
+      stream: vi.fn(async function* () {
+        yield { type: 'text-delta', text: 'OK' }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }),
     },
   } as unknown as Context
 }
 
 describe('model portraits', () => {
+  it('hydrates legacy stored portraits before runtime reads', () => {
+    const portrait = normalizeStoredPortrait({
+      summary: 'legacy portrait',
+      validation: { state: 'unvalidated', checks: [] },
+    } as never)
+    expect(portrait.pricing.rates).toEqual([])
+    expect(portrait.performance).toEqual({})
+    expect(portrait.evidence).toEqual([])
+    expect(portrait.validation.state).toBe('unvalidated')
+  })
+
   it('normalizes evidence-backed price, speed, strengths, and routing scores', () => {
     const portrait = normalizePortrait({
       summary: 'Low-latency Mandarin speech synthesis.',
@@ -181,5 +197,59 @@ describe('model portraits', () => {
       declared: { input: ['text', 'image'], output: ['text'], contextWindow: 256000 },
       portrait: { summary: 'Multimodal Doubao language model.' },
     })
+  })
+
+  it('lets an explicitly approved Agent probe an LLM and writes the measured result into its portrait', async () => {
+    const value = {
+      ...registry,
+      portraits: {
+        'llm:volcengine/doubao-seed-1-6': {
+          kind: 'llm' as const,
+          provider: 'volcengine',
+          model: 'doubao-seed-1-6',
+          portrait: normalizePortrait({
+            description: '# Doubao Seed 1.6',
+            evidence: [{
+              id: 'provider-doc',
+              kind: 'provider-doc',
+              source: 'https://www.volcengine.com/docs/example',
+              observedAt: '2026-08-20T00:00:00.000Z',
+              claims: ['model identity'],
+            }],
+          }),
+        },
+      },
+    }
+    const ctx = context(value)
+
+    const result = await validateModelPortrait(
+      ctx,
+      { id: 'llm:volcengine/doubao-seed-1-6', liveProbe: true },
+      new AbortController().signal,
+    )
+
+    expect(ctx.llm.stream).toHaveBeenCalledWith(expect.objectContaining({
+      provider: 'volcengine',
+      model: 'doubao-seed-1-6',
+      maxTokens: 8,
+    }))
+    expect(result).toMatchObject({
+      kind: 'llm',
+      lastProbe: { reachable: true, latencyMs: expect.any(Number) },
+      validation: { checks: expect.arrayContaining([expect.objectContaining({ id: 'runtime.live-probe', status: 'pass' })]) },
+    })
+    expect(ctx.settings.mutate).toHaveBeenCalledWith(
+      TASK_MODEL_SETTINGS_NAMESPACE,
+      [expect.objectContaining({
+        path: ['portraits', 'llm:volcengine/doubao-seed-1-6'],
+        value: expect.objectContaining({
+          portrait: expect.objectContaining({
+            performance: expect.objectContaining({ lastProbe: expect.objectContaining({ reachable: true }) }),
+            evidence: expect.arrayContaining([expect.objectContaining({ id: 'runtime-probe:latest', kind: 'runtime-probe' })]),
+          }),
+        }),
+      })],
+      7,
+    )
   })
 })
