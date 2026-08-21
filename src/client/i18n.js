@@ -1,4 +1,6 @@
-const EN = {
+export const NS = 'multiModelProvider'
+
+export const EN = {
   honestyBanner: 'This plugin registers models and portraits. Image, speech, and realtime invoke need a separate runtime adapter. Doubao Realtime tests need dsh-realtime-voice.',
   configured: 'Configured · {source}',
   secureStore: 'secure store',
@@ -7,12 +9,15 @@ const EN = {
   writeOnlyPlaceholder: 'Written only to the local credential store',
   needArkKeyToDiscover: 'Enter an Ark API key first. Discovery uses it once and never echoes it.',
   discoveredModels: 'Found {count} models. Select some, then save.',
+  autoDiscoveredModels: 'Automatically loaded {count} models from Ark.',
   llmSettingsMissing: 'llm-pi-ai settings are not loaded',
   needArkKeyToEnable: 'Configure an API key before enabling Ark models',
+  arkEndpointInvalid: 'The Ark API base URL must be an https:// URL.',
   arkEnabled: 'Enabled {count} Ark language models.',
-  arkDisabled: 'Cleared every Ark language-model selection.',
+  arkDisabled: 'Saved Ark with no selected language models.',
   arkTitle: 'Ark · language / vision-language models',
   arkHint: 'Provider ID: volcengine. Models are written to the host llm-pi-ai registry.',
+  arkProviderHint: 'Official OpenAI-compatible endpoint. When a stored key is available, opening this page automatically loads the account model catalog from /models.',
   arkApiKey: 'Ark API Key',
   queryCatalog: 'Query available models',
   clearAll: 'Clear all',
@@ -28,6 +33,10 @@ const EN = {
   noArkSelection: 'No models selected. Query the catalog, add an id, or leave everything unselected.',
   saveArkWithCount: 'Save Ark config ({count})',
   saveArkNone: 'Save: select none',
+  removeArk: 'Remove Ark',
+  removeArkConfirm: 'Remove the Ark provider profile and its page-managed local API key?',
+  arkRemoved: 'Ark was removed. Reopen this page to configure it again.',
+  loadingArk: 'Loading Ark configuration…',
   requestFailed: 'Request failed',
   speechSavedRealtimeOk: 'Registered {count} Doubao speech models. Realtime probe passed ({ms} ms).',
   speechSaved: 'Registered {count} Doubao speech models.',
@@ -40,6 +49,16 @@ const EN = {
   realtimeOk: 'Realtime probe passed ({ms} ms).',
   doubaoSpeech: 'Doubao Speech',
   doubaoHint: 'Separate provider ID: doubao-speech. Models come from the built-in speech catalog, not Ark /models.',
+  doubaoProviderTitle: 'Doubao Speech provider',
+  doubaoProviderHint: 'Configure the Realtime provider here. Secrets stay in the secure credential store and never enter settings.yaml.',
+  doubaoApiKey: 'Doubao API Key',
+  doubaoVoices: 'Realtime voices',
+  doubaoVoicesHint: '{count} documented voice profiles are available. Select only the voices that should be callable.',
+  doubaoEndpointInvalid: 'The Doubao Realtime endpoint must be a wss:// URL.',
+  needDoubaoApiKey: 'Select at least one voice and configure DOUBAO_API_KEY first.',
+  removeDoubao: 'Remove provider',
+  removeDoubaoConfirm: 'Remove the Doubao Speech connection, selected voices, and page-managed local credentials?',
+  doubaoRemoved: 'Doubao Speech was removed. Its disabled built-in catalog remains available for reconfiguration.',
   doubaoAppId: 'Doubao App ID',
   speechToken: 'Speech token',
   realtimeApiKey: 'Realtime API Key',
@@ -66,12 +85,48 @@ const EN = {
   edit: 'Edit',
   volcengineTitle: 'Volcengine',
   volcengineHint: 'Ark language models, Doubao speech, and Realtime share provider volcengine; credentials and wire protocols stay per capability.',
+  volcengineSettings: 'Volcengine',
+  volcengineSettingsTitle: 'Volcengine providers',
+  volcengineSettingsHint: 'Ark and Doubao belong to Volcengine, but use separate credentials, endpoints, model catalogs, and runtime protocols.',
   loadingSpeech: 'Loading Volcengine speech capabilities…',
   settingsMissing: 'multi-model-provider settings are not loaded',
   portraitSaved: 'Portrait saved and structurally validated.',
   portraitsTitle: 'Model portraits',
   portraitsEmpty: 'Register or select at least one model before portraits appear here.',
-  portraitsHint: 'Portraits feed later routing. Keep evidence and observation dates on price and latency. Usage stats live in a separate observation module.',
+  portraitsHint: 'Read-only Agent output used by automatic routing. Research claims retain sources; live measurements retain observation times.',
+  portraitsAgentOwned: 'This plugin defines the portrait contract and acceptance checks. A background Agent researches inside an anonymous temporary workspace; Settings only starts jobs and displays validated results.',
+  portraitResearchAll: 'Generate / refresh needed portraits',
+  portraitResearchCurrent: 'Refresh this portrait',
+  portraitProbeCurrent: 'Authorize live test for this model',
+  portraitSelectTitle: '1. Select a model',
+  portraitSelectHint: 'Search or filter the registered catalog, then choose the exact portrait target.',
+  portraitSelectedModel: 'Selected model',
+  portraitSelectRequired: 'Choose a model from the filtered results first.',
+  portraitKindFilter: 'Type',
+  portraitProviderFilter: 'Provider',
+  portraitStateFilter: 'Portrait state',
+  portraitAvailabilityFilter: 'Availability',
+  filterAll: 'All',
+  filterLlm: 'Language models',
+  filterTask: 'Task models',
+  filterEnabled: 'Enabled',
+  filterDisabled: 'Disabled',
+  clearFilters: 'Clear filters',
+  portraitProbeConfirm: 'Authorize a live test of {id}? This creates provider traffic and may incur a small charge.',
+  portraitJobResearch: 'research',
+  portraitJobProbe: 'live test',
+  'portraitJob.queued': 'queued',
+  'portraitJob.running': 'running',
+  'portraitJob.completed': 'completed',
+  'portraitJob.failed': 'failed',
+  portraitInlineHint: 'Read-only Agent result. Research and updates run as private background jobs; no Settings form or conversation input is required.',
+  portraitDescriptionMissing: 'No researched description has been saved yet. The Agent will fill it from cited sources.',
+  pricingUnknown: 'No sourced pricing has been saved yet.',
+  'portraitState.valid': 'valid',
+  'portraitState.partial': 'partial',
+  'portraitState.invalid': 'invalid',
+  'portraitState.unvalidated': 'unvalidated',
+  'portraitState.missing': 'missing',
   inputLabel: 'Input: {value}',
   outputLabel: 'Output: {value}',
   unknown: 'unknown',
@@ -91,7 +146,7 @@ const EN = {
   remove: 'Remove',
   addPrice: 'Add a price row',
   evidence: 'Evidence',
-  noEvidence: 'No evidence yet. Ask the Agent to build initial portraits; it fills sources and validates them.',
+  noEvidence: 'No evidence yet. The Agent adds cited sources while building the portrait.',
   validation: 'Validation',
   notValidated: 'Not validated yet',
   savePortrait: 'Save and validate portrait',
@@ -118,9 +173,11 @@ const EN = {
   saveNotes: 'Save notes and prices',
   testSpeed: 'Test availability and speed',
   probeCostHint: 'The speed test sends one request capped at eight tokens and may incur a small provider charge.',
+  realtimePortraitProbeHint: 'The Realtime test opens one minimal Doubao session and may incur a small provider charge.',
+  taskPortraitProbeHint: 'This task-model portrait can be edited here. Run an approved Agent portrait validation when its runtime adapter needs a live probe.',
 }
 
-const ZH = {
+export const ZH = {
   honestyBanner: '本插件负责登记模型和画像。图片 / 语音 / Realtime 的真正调用需要另装 runtime adapter。豆包 Realtime 连接测试需要 dsh-realtime-voice。',
   configured: '已配置 · {source}',
   secureStore: '安全存储',
@@ -129,12 +186,15 @@ const ZH = {
   writeOnlyPlaceholder: '仅写入本机安全凭据存储',
   needArkKeyToDiscover: '请先输入方舟 API Key；查询只会临时使用它，不会回显。',
   discoveredModels: '查询到 {count} 个模型；请勾选后保存。',
+  autoDiscoveredModels: '已从方舟自动拉取 {count} 个模型。',
   llmSettingsMissing: 'llm-pi-ai 设置未加载',
   needArkKeyToEnable: '启用方舟模型前需要配置 API Key',
+  arkEndpointInvalid: '方舟 API Base URL 必须使用 https:// 地址。',
   arkEnabled: '已启用 {count} 个方舟模型。',
-  arkDisabled: '已取消全部方舟语言模型。',
+  arkDisabled: '方舟已保存，当前未选择语言模型。',
   arkTitle: '方舟 · 语言 / 视觉语言模型',
   arkHint: '标准 Provider ID：volcengine。模型写入 DSH 的 llm-pi-ai 注册表。',
+  arkProviderHint: '使用官方 OpenAI 兼容端点；已有密钥时，点击进入本页会自动通过 /models 拉取账号可用模型。',
   arkApiKey: '方舟 API Key',
   queryCatalog: '查询可用模型',
   clearAll: '全部取消',
@@ -150,6 +210,10 @@ const ZH = {
   noArkSelection: '尚未选择模型。可以查询目录、手动填模型 ID，或保持全不选。',
   saveArkWithCount: '保存方舟配置（{count}）',
   saveArkNone: '保存：全部不选',
+  removeArk: '删除方舟',
+  removeArkConfirm: '确定删除方舟 Provider 配置和本页管理的本地 API Key 吗？',
+  arkRemoved: '已删除方舟；以后可重新进入本页配置。',
+  loadingArk: '正在加载方舟配置…',
   requestFailed: '请求失败',
   speechSavedRealtimeOk: '已注册 {count} 个豆包语音模型；Realtime 连接测试通过（{ms} ms）。',
   speechSaved: '已注册 {count} 个豆包语音模型。',
@@ -162,6 +226,16 @@ const ZH = {
   realtimeOk: 'Realtime 连接测试通过（{ms} ms）。',
   doubaoSpeech: '豆包语音',
   doubaoHint: '独立 Provider ID：doubao-speech。模型来自内置语音能力目录，不使用方舟 /models 接口。',
+  doubaoProviderTitle: '豆包语音 Provider',
+  doubaoProviderHint: '在页面中管理 Realtime Provider。密钥只写入安全凭据库，不会进入 settings.yaml。',
+  doubaoApiKey: '豆包 API Key',
+  doubaoVoices: 'Realtime 音色',
+  doubaoVoicesHint: '共 {count} 个官方音色 Profile；只勾选需要开放调用的音色。',
+  doubaoEndpointInvalid: '豆包 Realtime 地址必须是 wss:// URL。',
+  needDoubaoApiKey: '请先选择至少一个音色并配置 DOUBAO_API_KEY。',
+  removeDoubao: '删除 Provider',
+  removeDoubaoConfirm: '确定删除豆包语音连接、已选音色和页面管理的本地凭据吗？',
+  doubaoRemoved: '已删除豆包语音。内置目录已恢复为停用状态，可随时重新配置。',
   doubaoAppId: '豆包 App ID',
   speechToken: '语音 Token',
   realtimeApiKey: 'Realtime API Key',
@@ -188,12 +262,48 @@ const ZH = {
   edit: '编辑',
   volcengineTitle: '火山引擎',
   volcengineHint: '方舟语言模型、豆包语音和 Realtime 统一归属 Provider：volcengine；仅凭据与运行协议按能力区分。',
+  volcengineSettings: '火山引擎',
+  volcengineSettingsTitle: '火山引擎 Provider',
+  volcengineSettingsHint: '方舟与豆包同属火山引擎，但凭据、端点、模型目录和运行协议彼此独立。',
   loadingSpeech: '正在加载火山语音能力…',
   settingsMissing: 'multi-model-provider 设置未加载',
   portraitSaved: '画像已保存并完成结构校验。',
   portraitsTitle: '模型画像',
   portraitsEmpty: '先注册或选择至少一个模型，画像目标才会出现在这里。',
-  portraitsHint: '画像用于后续自动路由；价格和延迟应保留证据及观测日期。调用统计由独立观测模块采集，不写进这里。',
+  portraitsHint: '这里仅展示供自动路由使用的 Agent 画像结果；调研结论保留出处，实测数据保留观测时间。',
+  portraitsAgentOwned: '插件负责定义画像契约和验收规则；后台 Agent 在匿名临时工作目录中调研。设置页只负责启动任务和展示通过校验的结果。',
+  portraitResearchAll: '生成 / 刷新待完善画像',
+  portraitResearchCurrent: '刷新当前画像',
+  portraitProbeCurrent: '授权实测当前模型',
+  portraitSelectTitle: '1. 选择模型',
+  portraitSelectHint: '先检索或筛选模型目录，再明确选择要查看或调研的画像目标。',
+  portraitSelectedModel: '当前选中模型',
+  portraitSelectRequired: '请先从筛选结果中选择模型。',
+  portraitKindFilter: '类型',
+  portraitProviderFilter: 'Provider',
+  portraitStateFilter: '画像状态',
+  portraitAvailabilityFilter: '启用状态',
+  filterAll: '全部',
+  filterLlm: '语言模型',
+  filterTask: '任务模型',
+  filterEnabled: '仅启用',
+  filterDisabled: '仅停用',
+  clearFilters: '清除筛选',
+  portraitProbeConfirm: '确认授权实测 {id} 吗？这会产生 Provider 流量，并可能产生少量费用。',
+  portraitJobResearch: '调研',
+  portraitJobProbe: '实测',
+  'portraitJob.queued': '排队中',
+  'portraitJob.running': '进行中',
+  'portraitJob.completed': '已完成',
+  'portraitJob.failed': '失败',
+  portraitInlineHint: '这里只读展示 Agent 产出的结果；调研与更新由私有后台任务完成，不需要设置页手填，也不占用用户对话。',
+  portraitDescriptionMissing: '尚未保存经过调研的说明；Agent 会根据带出处的资料补齐。',
+  pricingUnknown: '尚未保存有来源支持的价格。',
+  'portraitState.valid': '有效',
+  'portraitState.partial': '部分有效',
+  'portraitState.invalid': '无效',
+  'portraitState.unvalidated': '未校验',
+  'portraitState.missing': '缺失',
   inputLabel: '输入：{value}',
   outputLabel: '输出：{value}',
   unknown: '未知',
@@ -213,7 +323,7 @@ const ZH = {
   remove: '删除',
   addPrice: '添加价格项',
   evidence: '证据',
-  noEvidence: '暂无证据。让 Agent“整理初始画像”会按画像本体定义补齐来源并自动校验。',
+  noEvidence: '暂无证据；Agent 建立画像时会补入带出处的资料。',
   validation: '校验',
   notValidated: '尚未校验',
   savePortrait: '保存并校验画像',
@@ -240,21 +350,62 @@ const ZH = {
   saveNotes: '保存说明与价格',
   testSpeed: '测试可用性与速度',
   probeCostHint: '速度测试会向该模型发送一次最多 8 token 的极小请求，可能产生少量费用。',
+  realtimePortraitProbeHint: 'Realtime 测试会建立一次最短豆包会话，可能产生少量费用。',
+  taskPortraitProbeHint: '可在这里编辑该任务模型画像；需要运行时实测时，请由 Agent 在明确授权后执行画像校验。',
 }
 
-/**
- * Pick Settings copy from the document language, then the browser language.
- *
- * Returns:
- *   `zh` when the UI language starts with zh, otherwise `en`.
- */
-export function settingsLocale() {
-  const lang = String(
-    (typeof document !== 'undefined' && document.documentElement?.lang)
-    || (typeof navigator !== 'undefined' && navigator.language)
-    || 'en',
-  ).toLowerCase()
-  return lang.startsWith('zh') ? 'zh' : 'en'
+const withEnglish = (overrides) => ({ ...EN, ...overrides })
+
+// High-frequency settings chrome is native in every built-in language. Detailed
+// provider diagnostics inherit the complete English base instead of leaking ids.
+export const DICTIONARIES = {
+  en: EN,
+  zh: ZH,
+  'zh-TW': withEnglish({
+    volcengineSettings: '火山引擎', volcengineSettingsTitle: '火山引擎 Provider', tabProvider: '火山 / 方舟 / 豆包', tabPortraits: '模型畫像', arkTitle: '方舟 · 語言 / 視覺語言模型', queryCatalog: '查詢可用模型', clearAll: '全部取消', add: '新增', searchModels: '搜尋模型', noMatchingModels: '沒有相符的模型。', saveArkWithCount: '儲存方舟設定（{count}）', saveArkNone: '儲存：全部不選', removeArk: '移除方舟', loadingArk: '正在載入方舟設定…', doubaoSpeech: '豆包語音', searchTaskModels: '搜尋任務模型', credentialReady: '憑據就緒', credentialMissing: '缺少憑據', saveSpeechWithCount: '儲存並註冊（{count}）', saveSpeechNone: '儲存：全部停用', testRealtime: '測試 Realtime 連線', portraitsTitle: '模型畫像', loadingPortraits: '正在載入模型畫像…', filterAll: '全部', filterEnabled: '已啟用', filterDisabled: '已停用', loadingConfig: '正在載入模型設定…', retry: '重試',
+  }),
+  ja: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Volcengine プロバイダー', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'モデルプロファイル', arkTitle: 'Ark · 言語 / 視覚言語モデル', queryCatalog: '利用可能なモデルを取得', clearAll: 'すべて解除', add: '追加', searchModels: 'モデルを検索', noMatchingModels: '一致するモデルがありません。', saveArkWithCount: 'Ark 設定を保存（{count}）', saveArkNone: '保存：選択なし', removeArk: 'Ark を削除', loadingArk: 'Ark 設定を読み込み中…', doubaoSpeech: 'Doubao 音声', searchTaskModels: 'タスクモデルを検索', credentialReady: '認証情報あり', credentialMissing: '認証情報なし', saveSpeechWithCount: '保存して登録（{count}）', saveSpeechNone: '保存：すべて無効', testRealtime: 'Realtime 接続をテスト', portraitsTitle: 'モデルプロファイル', loadingPortraits: 'モデルプロファイルを読み込み中…', filterAll: 'すべて', filterEnabled: '有効', filterDisabled: '無効', loadingConfig: 'モデル設定を読み込み中…', retry: '再試行',
+  }),
+  ko: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Volcengine 공급자', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: '모델 프로필', arkTitle: 'Ark · 언어 / 비전 언어 모델', queryCatalog: '사용 가능한 모델 조회', clearAll: '모두 해제', add: '추가', searchModels: '모델 검색', noMatchingModels: '일치하는 모델이 없습니다.', saveArkWithCount: 'Ark 설정 저장({count})', saveArkNone: '저장: 선택 없음', removeArk: 'Ark 제거', loadingArk: 'Ark 설정 불러오는 중…', doubaoSpeech: 'Doubao 음성', searchTaskModels: '작업 모델 검색', credentialReady: '자격 증명 준비됨', credentialMissing: '자격 증명 없음', saveSpeechWithCount: '저장 및 등록({count})', saveSpeechNone: '저장: 모두 비활성화', testRealtime: 'Realtime 연결 테스트', portraitsTitle: '모델 프로필', loadingPortraits: '모델 프로필 불러오는 중…', filterAll: '전체', filterEnabled: '활성화', filterDisabled: '비활성화', loadingConfig: '모델 설정 불러오는 중…', retry: '다시 시도',
+  }),
+  es: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Proveedores de Volcengine', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'Perfiles de modelos', arkTitle: 'Ark · modelos de lenguaje y visión', queryCatalog: 'Consultar modelos disponibles', clearAll: 'Borrar selección', add: 'Añadir', searchModels: 'Buscar modelos', noMatchingModels: 'No hay modelos coincidentes.', saveArkWithCount: 'Guardar configuración de Ark ({count})', saveArkNone: 'Guardar sin selección', removeArk: 'Eliminar Ark', loadingArk: 'Cargando configuración de Ark…', doubaoSpeech: 'Voz de Doubao', searchTaskModels: 'Buscar modelos de tareas', credentialReady: 'Credenciales listas', credentialMissing: 'Faltan credenciales', saveSpeechWithCount: 'Guardar y registrar ({count})', saveSpeechNone: 'Guardar y desactivar todo', testRealtime: 'Probar conexión Realtime', portraitsTitle: 'Perfiles de modelos', loadingPortraits: 'Cargando perfiles…', filterAll: 'Todos', filterEnabled: 'Activados', filterDisabled: 'Desactivados', loadingConfig: 'Cargando configuración de modelos…', retry: 'Reintentar',
+  }),
+  fr: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Fournisseurs Volcengine', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'Profils de modèles', arkTitle: 'Ark · modèles de langage et de vision', queryCatalog: 'Rechercher les modèles disponibles', clearAll: 'Tout désélectionner', add: 'Ajouter', searchModels: 'Rechercher des modèles', noMatchingModels: 'Aucun modèle correspondant.', saveArkWithCount: 'Enregistrer Ark ({count})', saveArkNone: 'Enregistrer sans sélection', removeArk: 'Supprimer Ark', loadingArk: 'Chargement de la configuration Ark…', doubaoSpeech: 'Voix Doubao', searchTaskModels: 'Rechercher des modèles de tâche', credentialReady: 'Identifiants prêts', credentialMissing: 'Identifiants manquants', saveSpeechWithCount: 'Enregistrer et inscrire ({count})', saveSpeechNone: 'Enregistrer et tout désactiver', testRealtime: 'Tester la connexion Realtime', portraitsTitle: 'Profils de modèles', loadingPortraits: 'Chargement des profils…', filterAll: 'Tous', filterEnabled: 'Activés', filterDisabled: 'Désactivés', loadingConfig: 'Chargement de la configuration…', retry: 'Réessayer',
+  }),
+  de: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Volcengine-Anbieter', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'Modellprofile', arkTitle: 'Ark · Sprach- und Bildsprachmodelle', queryCatalog: 'Verfügbare Modelle abrufen', clearAll: 'Auswahl löschen', add: 'Hinzufügen', searchModels: 'Modelle suchen', noMatchingModels: 'Keine passenden Modelle.', saveArkWithCount: 'Ark-Konfiguration speichern ({count})', saveArkNone: 'Ohne Auswahl speichern', removeArk: 'Ark entfernen', loadingArk: 'Ark-Konfiguration wird geladen…', doubaoSpeech: 'Doubao Sprache', searchTaskModels: 'Aufgabenmodelle suchen', credentialReady: 'Zugangsdaten bereit', credentialMissing: 'Zugangsdaten fehlen', saveSpeechWithCount: 'Speichern und registrieren ({count})', saveSpeechNone: 'Speichern und alle deaktivieren', testRealtime: 'Realtime-Verbindung testen', portraitsTitle: 'Modellprofile', loadingPortraits: 'Modellprofile werden geladen…', filterAll: 'Alle', filterEnabled: 'Aktiviert', filterDisabled: 'Deaktiviert', loadingConfig: 'Modellkonfiguration wird geladen…', retry: 'Erneut versuchen',
+  }),
+  'pt-BR': withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Provedores Volcengine', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'Perfis de modelos', arkTitle: 'Ark · modelos de linguagem e visão', queryCatalog: 'Consultar modelos disponíveis', clearAll: 'Limpar seleção', add: 'Adicionar', searchModels: 'Pesquisar modelos', noMatchingModels: 'Nenhum modelo correspondente.', saveArkWithCount: 'Salvar configuração do Ark ({count})', saveArkNone: 'Salvar sem seleção', removeArk: 'Remover Ark', loadingArk: 'Carregando configuração do Ark…', doubaoSpeech: 'Voz Doubao', searchTaskModels: 'Pesquisar modelos de tarefa', credentialReady: 'Credenciais prontas', credentialMissing: 'Faltam credenciais', saveSpeechWithCount: 'Salvar e registrar ({count})', saveSpeechNone: 'Salvar e desativar tudo', testRealtime: 'Testar conexão Realtime', portraitsTitle: 'Perfis de modelos', loadingPortraits: 'Carregando perfis…', filterAll: 'Todos', filterEnabled: 'Ativados', filterDisabled: 'Desativados', loadingConfig: 'Carregando configuração de modelos…', retry: 'Tentar novamente',
+  }),
+  ru: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Провайдеры Volcengine', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'Профили моделей', arkTitle: 'Ark · языковые и визуально-языковые модели', queryCatalog: 'Получить доступные модели', clearAll: 'Снять выбор', add: 'Добавить', searchModels: 'Поиск моделей', noMatchingModels: 'Подходящих моделей нет.', saveArkWithCount: 'Сохранить Ark ({count})', saveArkNone: 'Сохранить без выбора', removeArk: 'Удалить Ark', loadingArk: 'Загрузка настроек Ark…', doubaoSpeech: 'Речь Doubao', searchTaskModels: 'Поиск моделей задач', credentialReady: 'Учётные данные готовы', credentialMissing: 'Нет учётных данных', saveSpeechWithCount: 'Сохранить и зарегистрировать ({count})', saveSpeechNone: 'Сохранить и отключить все', testRealtime: 'Проверить Realtime-соединение', portraitsTitle: 'Профили моделей', loadingPortraits: 'Загрузка профилей…', filterAll: 'Все', filterEnabled: 'Включены', filterDisabled: 'Отключены', loadingConfig: 'Загрузка конфигурации моделей…', retry: 'Повторить',
+  }),
+  ar: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'موفرو Volcengine', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'ملفات النماذج', arkTitle: 'Ark · نماذج اللغة والرؤية', queryCatalog: 'جلب النماذج المتاحة', clearAll: 'مسح التحديد', add: 'إضافة', searchModels: 'بحث عن النماذج', noMatchingModels: 'لا توجد نماذج مطابقة.', saveArkWithCount: 'حفظ إعداد Ark ({count})', saveArkNone: 'حفظ بلا تحديد', removeArk: 'إزالة Ark', loadingArk: 'جارٍ تحميل إعداد Ark…', doubaoSpeech: 'صوت Doubao', searchTaskModels: 'بحث عن نماذج المهام', credentialReady: 'بيانات الاعتماد جاهزة', credentialMissing: 'بيانات الاعتماد ناقصة', saveSpeechWithCount: 'حفظ وتسجيل ({count})', saveSpeechNone: 'حفظ وتعطيل الكل', testRealtime: 'اختبار اتصال Realtime', portraitsTitle: 'ملفات النماذج', loadingPortraits: 'جارٍ تحميل الملفات…', filterAll: 'الكل', filterEnabled: 'مفعّلة', filterDisabled: 'معطّلة', loadingConfig: 'جارٍ تحميل إعداد النماذج…', retry: 'إعادة المحاولة',
+  }),
+  hi: withEnglish({
+    volcengineSettings: 'Volcengine', volcengineSettingsTitle: 'Volcengine प्रदाता', tabProvider: 'Volcengine / Ark / Doubao', tabPortraits: 'मॉडल प्रोफ़ाइल', arkTitle: 'Ark · भाषा और विज़न मॉडल', queryCatalog: 'उपलब्ध मॉडल पाएँ', clearAll: 'चयन हटाएँ', add: 'जोड़ें', searchModels: 'मॉडल खोजें', noMatchingModels: 'कोई मिलता मॉडल नहीं।', saveArkWithCount: 'Ark सेटिंग सहेजें ({count})', saveArkNone: 'बिना चयन सहेजें', removeArk: 'Ark हटाएँ', loadingArk: 'Ark सेटिंग लोड हो रही है…', doubaoSpeech: 'Doubao वॉइस', searchTaskModels: 'टास्क मॉडल खोजें', credentialReady: 'क्रेडेंशियल तैयार', credentialMissing: 'क्रेडेंशियल नहीं', saveSpeechWithCount: 'सहेजें और पंजीकृत करें ({count})', saveSpeechNone: 'सहेजें और सभी बंद करें', testRealtime: 'Realtime कनेक्शन जाँचें', portraitsTitle: 'मॉडल प्रोफ़ाइल', loadingPortraits: 'प्रोफ़ाइल लोड हो रही हैं…', filterAll: 'सभी', filterEnabled: 'चालू', filterDisabled: 'बंद', loadingConfig: 'मॉडल सेटिंग लोड हो रही है…', retry: 'फिर प्रयास करें',
+  }),
+}
+
+let translate = (key, vars) => {
+  let text = EN[key] ?? key
+  if (vars) {
+    for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value))
+  }
+  return text
+}
+
+/** Bind this legacy JSX surface to the shared host locale service. */
+export function installTranslator(next) {
+  const previous = translate
+  translate = next
+  return () => { translate = previous }
 }
 
 /**
@@ -268,12 +419,5 @@ export function settingsLocale() {
  *   Localized text. Unknown keys fall back to English, then to the key itself.
  */
 export function t(key, vars) {
-  const table = settingsLocale() === 'zh' ? ZH : EN
-  let text = table[key] ?? EN[key] ?? key
-  if (vars) {
-    for (const [name, value] of Object.entries(vars)) {
-      text = text.replaceAll(`{${name}}`, String(value))
-    }
-  }
-  return text
+  return translate(key, vars)
 }

@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { llmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
+import { normalizeStoredPortrait } from '../portrait-core.ts'
 import type { ModelPortrait, PrepareModelPortraitsInput } from '../types.ts'
 import { builtinLlmPortrait } from './builtin.ts'
 import { builtinTaskPortrait } from './builtin-task.ts'
@@ -29,7 +30,7 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
     if (requested !== undefined && !requested.has(id)) continue
     if (requested === undefined && input.includeDisabled !== true && registration.enabled === false) continue
     const provider = config.connections[registration.connection]?.provider ?? registration.connection
-    const storedPortrait = registration.portrait
+    const storedPortrait = registration.portrait === undefined ? undefined : normalizeStoredPortrait(registration.portrait)
     const bundledPortrait = builtinTaskPortrait(provider, registration.model, registration.task)
     const portrait = storedPortrait ?? bundledPortrait
     const gaps = portraitGaps(portrait)
@@ -54,7 +55,8 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
       for (const model of await ctx.llm.listModels(provider.id)) {
         const id = llmTargetId(provider.id, model.id)
         if (requested !== undefined && !requested.has(id)) continue
-        const storedPortrait = config.portraits?.[id]?.portrait
+        const storedValue = config.portraits?.[id]?.portrait
+        const storedPortrait = storedValue === undefined ? undefined : normalizeStoredPortrait(storedValue)
         const bundledPortrait = builtinLlmPortrait(provider.id, model.id)
         const portrait = storedPortrait ?? bundledPortrait
         const gaps = portraitGaps(portrait)
@@ -122,7 +124,7 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
       'Use seed facts as-is; do not rewrite registered input, output, capabilities, or lastProbe.',
       'Open researchPlan.suggestedSources and extract only facts the pages currently state.',
       'Call ingest_portrait_research with http(s) evidence URLs. Price rates must reference those evidence ids.',
-      'Do not write lastProbe from documentation; use the Settings speed test or an approved live probe.',
+      'Do not write lastProbe from documentation; only validate_model_portrait(liveProbe=true) may record an approved Agent live probe.',
       'Immediately call validate_model_portrait with liveProbe=false; only perform a paid/provider-traffic probe with explicit user approval.',
       'Use summarize_model_usage to incorporate native Harness LLM observations and task-model invocation observations; never copy request or response content into the portrait.',
     ],

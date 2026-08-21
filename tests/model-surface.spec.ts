@@ -176,6 +176,35 @@ describe('help surface', () => {
     })
   })
 
+  it('publishes Ark and Doubao as two ordinary Models providers without a top-level section', async () => {
+    const [client, host] = await Promise.all([
+      readFile(new URL('../src/client/index.jsx', import.meta.url), 'utf8'),
+      readFile(new URL('../src/index.ts', import.meta.url), 'utf8'),
+    ])
+    expect(client).not.toContain("id: 'volcengine-provider'")
+    expect(host).toContain("provider: 'volcengine'")
+    expect(host).toContain('provider: DOUBAO_SPEECH_PROVIDER')
+    expect(host).toContain("settingsNs: 'llm-pi-ai'")
+    expect(host).toContain("settingsNs: 'multi-model-provider'")
+    expect(host).toContain("ctx.on('llm/adapters-updated', ensureArkDirectory)")
+  })
+
+  it('publishes read-only portrait results and starts anonymous background jobs from Settings', async () => {
+    const client = await readFile(new URL('../src/client/index.jsx', import.meta.url), 'utf8')
+    expect(client).toContain("id: 'model-portraits'")
+    expect(client).toContain("label: () => t('tabPortraits')")
+    expect(client).toContain("id: 'model-portrait'")
+    expect(client).toContain("portraitJob.start('research')")
+    expect(client).toContain("portraitJob.start('probe', [target.id])")
+    expect(client).toContain("fetch('/dsh-multi-model-provider/portrait-jobs'")
+    expect(client).not.toContain('conversation.input.right')
+    expect(client).not.toContain('inputActions')
+    expect(client).toContain('snapshotPortraitTargets(config.multi, config.llm)')
+    expect(client).not.toContain('<textarea')
+    expect(client).not.toContain('api.settings.mutate')
+    expect(client).not.toContain('requestPortraitProbe')
+  })
+
   it('lists every tool the plugin registers', () => {
     for (const name of TOOL_NAMES) expect(HELP).toContain(name)
   })

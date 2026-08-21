@@ -71,12 +71,15 @@ function normalizeEvidence(item: ModelPortraitEvidence, index: number): ModelPor
 
 export function portraitChecks(portrait: ModelPortrait): ModelPortraitValidationCheck[] {
   const checks: ModelPortraitValidationCheck[] = []
-  const evidenceIds = new Set(portrait.evidence.map(item => item.id))
+  const evidence = portrait.evidence ?? []
+  const rates = portrait.pricing?.rates ?? []
+  const performance = portrait.performance ?? {}
+  const evidenceIds = new Set(evidence.map(item => item.id))
   const hasDescription = portrait.description !== undefined || portrait.summary !== undefined
   checks.push({ id: 'portrait.description', status: hasDescription ? 'pass' : 'warn', message: hasDescription ? 'Markdown description is present' : 'Markdown description is missing' })
-  checks.push({ id: 'portrait.pricing', status: portrait.pricing.rates.length === 0 ? 'warn' : 'pass', message: portrait.pricing.rates.length === 0 ? 'pricing is unknown' : 'pricing rates are present' })
-  checks.push({ id: 'portrait.performance.speed', status: portrait.performance.speedClass === undefined ? 'warn' : 'pass', message: portrait.performance.speedClass === undefined ? 'speed class is unknown' : 'speed class is present' })
-  for (const [index, rate] of portrait.pricing.rates.entries()) {
+  checks.push({ id: 'portrait.pricing', status: rates.length === 0 ? 'warn' : 'pass', message: rates.length === 0 ? 'pricing is unknown' : 'pricing rates are present' })
+  checks.push({ id: 'portrait.performance.speed', status: performance.speedClass === undefined ? 'warn' : 'pass', message: performance.speedClass === undefined ? 'speed class is unknown' : 'speed class is present' })
+  for (const [index, rate] of rates.entries()) {
     const supported = rate.evidenceId !== undefined && evidenceIds.has(rate.evidenceId)
     checks.push({
       id: `portrait.pricing.${index}`,
@@ -84,11 +87,11 @@ export function portraitChecks(portrait: ModelPortrait): ModelPortraitValidation
       message: supported ? `price rate '${rate.operation}' has evidence` : `price rate '${rate.operation}' has no matching evidence`,
     })
   }
-  if (portrait.performance.typicalLatencyMs !== undefined) {
+  if (performance.typicalLatencyMs !== undefined) {
     checks.push({
       id: 'portrait.performance.latency-evidence',
-      status: portrait.evidence.some(item => item.kind === 'benchmark' || item.kind === 'runtime-probe' || item.kind === 'usage') ? 'pass' : 'warn',
-      message: portrait.evidence.some(item => item.kind === 'benchmark' || item.kind === 'runtime-probe' || item.kind === 'usage') ? 'latency has measurable evidence' : 'latency estimate has no benchmark, probe, or usage evidence',
+      status: evidence.some(item => item.kind === 'benchmark' || item.kind === 'runtime-probe' || item.kind === 'usage') ? 'pass' : 'warn',
+      message: evidence.some(item => item.kind === 'benchmark' || item.kind === 'runtime-probe' || item.kind === 'usage') ? 'latency has measurable evidence' : 'latency estimate has no benchmark, probe, or usage evidence',
     })
   }
   return checks
@@ -159,6 +162,21 @@ export function normalizePortrait(input: ModelPortraitInput): ModelPortrait {
       state: checks.some(check => check.status === 'fail') ? 'invalid' : checks.some(check => check.status === 'warn') ? 'partial' : 'valid',
       checkedAt: new Date().toISOString(),
       checks,
+    },
+  }
+}
+
+/** Fill fields omitted by legacy stored portraits while preserving their last validation result. */
+export function normalizeStoredPortrait(input: ModelPortraitInput | ModelPortrait): ModelPortrait {
+  const normalized = normalizePortrait(input)
+  const stored = (input as { readonly validation?: ModelPortrait['validation'] }).validation
+  if (stored === undefined) return normalized
+  return {
+    ...normalized,
+    validation: {
+      state: stored.state ?? normalized.validation.state,
+      ...(stored.checkedAt === undefined ? {} : { checkedAt: stored.checkedAt }),
+      checks: Array.isArray(stored.checks) ? stored.checks : normalized.validation.checks,
     },
   }
 }

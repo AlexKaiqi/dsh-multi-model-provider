@@ -54,6 +54,7 @@ export function officialResearchSources(provider: string): readonly string[] {
     case 'doubao-speech':
       return [DOUBAO_SPEECH_DOCS]
     case 'openai':
+    case 'gpt-proxy':
       return [OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS]
     case 'anthropic':
       return [ANTHROPIC_MODELS_DOCS, ANTHROPIC_PRICING_DOCS]

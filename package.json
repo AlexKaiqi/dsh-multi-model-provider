@@ -39,6 +39,9 @@
     "multimodal"
   ],
   "license": "MIT",
+  "dependencies": {
+    "ws": "^8.21.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AlexKaiqi/dsh-multi-model-provider.git"
@@ -70,9 +73,11 @@
         "@deepseek-ai/dsh-llm-pi-ai",
         "@deepseek-ai/dsh-settings",
         "@deepseek-ai/dsh-credentials",
+        "@deepseek-ai/dsh-agent",
         "@deepseek-ai/dsh-agent-default-model",
         "@deepseek-ai/dsh-session",
-        "@deepseek-ai/dsh-tools"
+        "@deepseek-ai/dsh-tools",
+        "@deepseek-ai/dsh-client-locale"
       ]
     },
     "bundle": {
@@ -80,6 +85,7 @@
     },
     "client": {
       "inject": [
+        "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-api-remotes"
@@ -91,6 +97,7 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm-pi-ai": "^0.1.0-rc.6",
@@ -107,6 +114,7 @@
     "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-attachment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-brand": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-invariants": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
@@ -118,6 +126,7 @@
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
     "@types/node": "^22.20.0",
+    "@types/ws": "^8.18.1",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

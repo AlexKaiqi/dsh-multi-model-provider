@@ -3,7 +3,7 @@ import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { settingsNamespace, type SettingsDescriptor, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { ModelManagerError } from './operations.ts'
-import { initialPortrait, normalizePortrait } from './portrait-core.ts'
+import { initialPortrait, normalizePortrait, normalizeStoredPortrait } from './portrait-core.ts'
 import { builtinTaskPortrait } from './portraits/builtin-task.ts'
 import {
   DOUBAO_SPEECH_CATALOG,
@@ -969,7 +969,7 @@ export async function listTaskModels(
       credentials: statuses,
     } = availability
     const bundledPortrait = builtinTaskPortrait(connection.provider, model.model, model.task)
-    const portrait = model.portrait ?? bundledPortrait
+    const portrait = model.portrait === undefined ? bundledPortrait : normalizeStoredPortrait(model.portrait)
     models.push({
       id,
       enabled,

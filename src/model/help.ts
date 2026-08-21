@@ -71,5 +71,5 @@ provider discovery and selection:
 portrait workflow:
   “整理初始画像” is sufficient: the Agent calls prepare_model_portraits, opens the
   suggested official documentation, calls ingest_portrait_research with source URLs,
-  and validates with liveProbe=false. lastProbe is measured, never copied from docs.
+  and validates with liveProbe=false. lastProbe is measured by an explicitly approved Agent live probe, never copied from docs.
 `
