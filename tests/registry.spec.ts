@@ -181,6 +181,33 @@ describe('task-model registry', () => {
     ]))
   })
 
+  it('maps the standard Provider editor voice ids onto the owned Realtime routes', async () => {
+    const value = structuredClone(BUILTIN_TASK_MODEL_REGISTRY)
+    value.connections['doubao-speech'] = {
+      ...value.connections['doubao-speech']!,
+      models: [{ id: 'zh_male_xiaotian_jupiter_bigtts', name: '豆包 S2S-O · 小天' }],
+    }
+    const result = await listTaskModels(context(value, {
+      connections: {
+        'doubao-speech': {
+          models: [{ id: 'zh_male_xiaotian_jupiter_bigtts', name: '豆包 S2S-O · 小天' }],
+        },
+      },
+    }), { provider: 'doubao-speech', includeProfile: true })
+
+    expect(result.models).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'doubao/realtime/zh_male_xiaotian_jupiter_bigtts',
+        enabled: true,
+        profile: expect.objectContaining({ voice: 'zh_male_xiaotian_jupiter_bigtts' }),
+      }),
+      expect.objectContaining({
+        id: 'doubao/realtime/zh_female_vv_jupiter_bigtts',
+        enabled: false,
+      }),
+    ]))
+  })
+
   it('does not pretend the Ark language-model catalog is a Doubao speech catalog', async () => {
     await expect(discoverTaskModels(context(), { connection: 'doubao-speech' }))
       .rejects.toMatchObject({ code: 'TASK_MODEL_CATALOG_UNAVAILABLE' })
