@@ -55,8 +55,8 @@
   "dsh": {
     "inventory": {
       "summary": {
-        "zh": "三件事：登记模型、辅助构建画像、从目录里选 Agent 主模型。peer 插件 inject modelCatalog 后用 snapshot() 读取全部已登记模型；selectAgentModel() 只选 live 语言模型。Settings 负责登记、画像和测速；默认安装不可调用。",
-        "en": "Three capabilities: register models, assist with portraits, and select the Agent model from that catalog. Inject modelCatalog, call snapshot() to read every registered model, then selectAgentModel() for a live language model. Settings owns registration, portraits, and speed tests; a default install is not callable."
+        "zh": "登记模型、构建画像、选择 Agent 主模型，并提供统一 Realtime 会话运行时。模型目录、凭据解析和角色 profile 属于 multi-model；Provider 插件只注册 adapter。",
+        "en": "Registers models, builds portraits, selects the Agent model, and provides the unified Realtime session runtime. Multi-model owns routes, credentials, and role profiles; provider plugins register adapters."
       },
       "tags": [
         "model",
