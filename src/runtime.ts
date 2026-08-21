@@ -49,13 +49,13 @@ export class TaskModelRuntime extends Service {
     signal: AbortSignal,
   ): Promise<TaskModelInvocationResult> {
     const adapter = this.requiredAdapter(route)
-    const credentials = await this.resolveCredentials(route)
+    const credentials = await this.credentials(route)
     return adapter.invoke({ route, operation, request, credentials }, signal)
   }
 
   async probe(route: ResolvedTaskModelRoute, signal: AbortSignal): Promise<TaskModelAdapterProbeResult> {
     const adapter = this.requiredAdapter(route)
-    const credentials = await this.resolveCredentials(route)
+    const credentials = await this.credentials(route)
     if (adapter.probe === undefined) {
       return { ok: true, message: `adapter '${adapter.id}' is registered but exposes no live probe` }
     }
@@ -77,7 +77,7 @@ export class TaskModelRuntime extends Service {
     return adapter
   }
 
-  private async resolveCredentials(route: ResolvedTaskModelRoute): Promise<Record<string, string>> {
+  async credentials(route: ResolvedTaskModelRoute): Promise<Record<string, string>> {
     const allRefs = {
       ...(route.connection.credentialRef === undefined ? {} : { default: route.connection.credentialRef }),
       ...(route.connection.credentialRefs ?? {}),
