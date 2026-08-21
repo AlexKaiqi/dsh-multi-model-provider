@@ -8,14 +8,14 @@ export const MODEL_PROBE_PATH = '/dsh-multi-model-provider/probe'
 /** Header the Settings UI must send so casual GET/form traffic cannot bill. */
 export const MODEL_PROBE_HEADER = 'x-dsh-model-probe'
 
-interface ProbeScope {
+type ProbeScope = Context & {
   readonly llm: Context['llm']
   readonly webServer: {
     register(route: {
       kind: 'exact'
       path: string
       handler(req: IncomingMessage, res: ServerResponse): Promise<void>
-    }): unknown
+    }): () => void
   }
 }
 
@@ -155,11 +155,9 @@ export async function runPaidModelProbe(
 
 /** Mount the explicit, minimally billed per-model availability/latency probe. */
 export function registerModelProbeRoute(ctx: Context): void {
-  const host = ctx as unknown as {
-    inject(names: readonly string[], callback: (scope: ProbeScope) => void): void
-  }
-  host.inject(['webServer'], (scope) => {
-    scope.webServer.register({
+  ctx.inject(['webServer'], (scope) => {
+    const probeScope = scope as ProbeScope
+    probeScope.effect(() => probeScope.webServer.register({
       kind: 'exact',
       path: MODEL_PROBE_PATH,
       handler: async (req, res) => {
@@ -177,11 +175,11 @@ export function registerModelProbeRoute(ctx: Context): void {
           const body = await readJson(req)
           const provider = routeId(body.provider, 'provider')
           const model = routeId(body.model, 'model')
-          sendJson(res, 200, await runPaidModelProbe(scope.llm, provider, model))
+          sendJson(res, 200, await runPaidModelProbe(probeScope.llm, provider, model))
         } catch (error) {
           sendJson(res, 502, { ok: false, error: error instanceof Error ? error.message : String(error) })
         }
       },
-    })
+    }))
   })
 }

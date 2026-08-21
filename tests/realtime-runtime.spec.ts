@@ -28,7 +28,7 @@ const registry: TaskModelRegistryConfig = {
   portraits: {},
 }
 
-function context(): Context {
+function context(credentialConfigured = true): Context {
   const ctx = new Context()
   ctx.provide('settings', {
     describe: vi.fn(() => [{
@@ -40,11 +40,11 @@ function context(): Context {
     }]),
   } as never)
   ctx.provide('credentials', {
-    describe: vi.fn(async () => ({ configured: true, writable: true })),
+    describe: vi.fn(async () => ({ configured: credentialConfigured, writable: true })),
   } as never)
   ctx.provide('taskModelRuntime', {
     hasAdapter: vi.fn(() => true),
-    credentials: vi.fn(async () => ({ default: 'host-secret' })),
+    credentials: vi.fn(async () => credentialConfigured ? { default: 'host-secret' } : {}),
   } as never)
   return ctx
 }
@@ -68,6 +68,9 @@ describe('realtime model runtime', () => {
 
       const route = await runtime.model('', 'openai-webrtc')
       expect(route).toMatchObject({ id: 'openai/gpt-realtime', adapter: 'openai-webrtc', source: 'task-model' })
+      await expect(runtime.model('unknown-route', 'openai-webrtc'))
+        .rejects.toMatchObject({ code: 'UNKNOWN_REALTIME_MODEL' })
+      expect(await runtime.model(undefined, 'openai-webrtc')).toMatchObject({ id: 'openai/gpt-realtime' })
       expect(await runtime.credential(route!)).toEqual({ value: 'host-secret', credentialRef: 'OPENAI_API_KEY' })
       expect(await runtime.publicModels()).toEqual([
         expect.objectContaining({ id: 'openai/gpt-realtime', available: true, protocol: 'openai-webrtc' }),
@@ -95,6 +98,25 @@ describe('realtime model runtime', () => {
       expect(() => runtime.registerAdapter(adapter)).toThrow(/already registered/)
       runtime.registerProfile({ id: 'session-assistant', instructions: 'role' })
       expect(() => runtime.registerProfile({ id: 'session-assistant', instructions: 'role' })).toThrow(/already registered/)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('keeps credential-missing routes discoverable without marking them available', async () => {
+    const ctx = context(false)
+    try {
+      const runtime = new RealtimeModelRuntime(ctx)
+      runtime.registerAdapter({ id: 'openai-webrtc', protocol: 'openai-webrtc', session: () => ({}) })
+      const routes = await runtime.models()
+      expect(routes).toHaveLength(1)
+      expect(await runtime.publicModels()).toEqual([
+        expect.objectContaining({
+          id: 'openai/gpt-realtime',
+          available: false,
+          missingCredential: 'OPENAI_API_KEY',
+        }),
+      ])
     } finally {
       await ctx.fiber.dispose()
     }

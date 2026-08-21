@@ -114,6 +114,15 @@ describe('tool surfaces', () => {
     expect(REGISTER_TASK_MODEL_SURFACE.description).toMatch(/never describe .* as callable/i)
   })
 
+  it('never advertises generic invocation for realtime routes', () => {
+    expect(INVOKE_TASK_MODEL_SURFACE.description).toMatch(/do not use it for realtime-speech routes/i)
+    expect(INVOKE_TASK_MODEL_SURFACE.description).toContain('realtimeModelRuntime')
+    const activation = INVOKE_TASK_MODEL_SURFACE.description.match(/Use it for ([^.]+)\./)?.[1] ?? ''
+    expect(activation).not.toMatch(/realtime/i)
+    expect(MODEL_MANAGER_GUIDANCE).toMatch(/never invoke realtime-speech routes with invoke_task_model/i)
+    expect(HELP).toMatch(/explicitly excludes realtime-speech routes/i)
+  })
+
   it('keeps every parameter description non-empty', () => {
     for (const surface of MODEL_MANAGER_TOOL_SURFACES) {
       for (const [key, text] of Object.entries(surface.parameters)) {

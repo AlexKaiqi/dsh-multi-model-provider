@@ -25,7 +25,7 @@ export declare class RealtimeModelRuntime extends Service {
     registerProfile(profile: RealtimeModelProfile): () => void;
     profile(id: string): RealtimeModelProfile;
     models(): Promise<RealtimeModelRoute[]>;
-    model(routeId: string, protocol?: string): Promise<RealtimeModelRoute | undefined>;
+    model(routeId?: string, protocol?: string): Promise<RealtimeModelRoute | undefined>;
     credential(route: RealtimeModelRoute): Promise<{
         value: string;
         credentialRef: string;

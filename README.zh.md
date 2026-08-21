@@ -4,7 +4,7 @@
 
 这个插件做三件事：
 
-1. **登记模型** — 语言模型仍由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行；图片、语音、音频、视频、Embedding、Reranking 登记在本插件的 task-model catalog。内置 `realtimeModelRuntime` 统一管理 Realtime 路由、凭据解析和角色 profile，Provider 插件只注册 wire adapter。
+1. **登记模型** — 语言模型仍由 `@deepseek-ai/dsh-llm-pi-ai` 注册和执行；图片、语音、音频、视频、Embedding、Reranking 登记在本插件的 task-model catalog。内置 `realtimeModelRuntime` 统一管理 Realtime 有效路由选择、凭据引用、adapter/profile 注册和有界会话组装；Provider 插件注册 wire adapter，产品插件注册角色 profile。
 2. **辅助构建画像** — 证据化画像，加上最多 8 token 的显式测速。写入走 Settings。
 3. **选 Agent 主模型** — `selectAgentModel()` / `select_default_model` 从目录里的 live 语言模型中，为之后新建的 Agent 保存主模型。不会自动给 task-model 做路由。
 
@@ -60,7 +60,7 @@ await ctx.modelCatalog.selectAgentModel({
 - `get_model_portrait`：查看价格、擅长项、限制、速度、I/O、证据、验证状态与可选实测汇总。
 - `upsert_model_portrait`：让 Harness Agent 保存整理后的证据化初始画像，并立即做结构验证。
 - `validate_model_portrait`：核对画像、注册信息、凭据、adapter，并可选择实时探测。
-- `invoke_task_model`：由大语言模型通过统一工具入口调用真正可用的多模态 route。
+- `invoke_task_model`：调用真正可用的非 Realtime 请求/响应 route；Realtime 语音必须走 `realtimeModelRuntime` 和 Provider 会话传输。
 - `summarize_model_usage`：汇总当前持久会话中 LLM 与 task-model 的成功率、延迟、token、成本等调用观测。
 
 所有注册工具只接收凭据引用（例如 `OPENAI_API_KEY`），不接收 API Key 明文。豆包 Realtime 使用单个 `DOUBAO_API_KEY` 引用。用户只需要在 Settings 的安全凭据字段输入真实值；Provider、URL、模型列表和 profile 可以由 Agent 协助填写。
@@ -127,7 +127,7 @@ multi-model-provider:
 
 `volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
-安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 路由只有在 task runtime adapter 可用时才能通过 `invoke_task_model` 调用。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
+安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 的非 Realtime 路由在 task runtime adapter 可用时通过 `invoke_task_model` 调用，Realtime 语音走 `realtimeModelRuntime`。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 
 每条 task route 都有显式 `enabled` 状态。可用模型选择采用整体替换语义；空数组会原样保持“全部停用”，不会回退为全选。停用模型仍可查看画像，但不能被调用。
 
@@ -170,7 +170,7 @@ multi-model-provider:
 
 用户只需说“整理初始画像”。插件的 system prompt 会要求 Agent 立即调用 `prepare_model_portraits`，从刚注册、发现、选择或讨论的模型推断范围；没有更窄上下文时处理缺失、未验证、部分有效、无效或过期的启用画像。Agent 随后查询当前官方资料或可信 benchmark → `upsert_model_portrait` → `validate_model_portrait`；只有用户明确允许产生流量或成本时才启用 `liveProbe`。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
-多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择 route、解析安全凭据、裁剪上下文并保存角色 profile；GPT/豆包 adapter 只处理 wire protocol 和浏览器音频传输。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
+多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择有效 route、管理安全凭据引用，并对 Provider adapter 和产品角色 profile 做注册及有界会话组装；GPT/豆包 adapter 负责 wire protocol 和浏览器音频传输，产品插件负责上下文和工具策略。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 
 ## Agent 推荐流程
 
@@ -210,7 +210,7 @@ agent-default-model:
 
 ## 运行时边界
 
-- 本插件负责注册、画像、Settings UI schema、安全凭据引用、统一调用入口和隐私安全的调用观测。
+- 本插件负责注册、画像、Settings UI schema、安全凭据引用、请求/响应 task 调用、`realtimeModelRuntime` 和隐私安全的调用观测。
 - `llm-pi-ai` 负责语言模型协议适配与调用。
 - 图片/音频/视频等运行时 adapter 通过 `TaskModelRuntimeAdapter` 注册并消费本注册表；没有对应 adapter 的 route 仍保持 `registered-only`。
 - 其它插件应 `inject: ['modelCatalog']` 后调用 `ctx.modelCatalog.snapshot()`。不要去解析 `settings.yaml`，也不要让 Agent 为了读目录去调这些工具。

@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { listModelRoutes, ModelManagerError } from '../operations.ts'
+import { effectiveTaskModelAvailability } from '../registry.ts'
 import { portraitChecks } from '../portrait-core.ts'
 import type { ModelPortrait, ModelPortraitValidationCheck, ModelRouteView, ValidateModelPortraitInput } from '../types.ts'
 import { mutatePortraitSettings } from './storage.ts'
@@ -51,33 +51,35 @@ export async function validateModelPortrait(ctx: Context, input: ValidateModelPo
     status: (route.registration.capabilities?.length ?? 0) > 0 ? 'pass' : 'warn',
     message: (route.registration.capabilities?.length ?? 0) > 0 ? 'cross-provider capabilities are declared' : 'capabilities are missing',
   })
-  const allRefs = {
-    ...(route.connection.credentialRef === undefined ? {} : { default: route.connection.credentialRef }),
-    ...(route.connection.credentialRefs ?? {}),
-  }
-  const selected = route.registration.credentialNames === undefined ? undefined : new Set(route.registration.credentialNames)
-  const refs = Object.entries(allRefs).filter(([name]) => selected === undefined || selected.has(name)).map(([, ref]) => ref)
-  const statuses = await Promise.all(refs.map(ref => ctx.credentials.describe(credentialRef(ref))))
+  const availability = await effectiveTaskModelAvailability(ctx, route)
+  checks.push({
+    id: 'runtime.selection',
+    status: availability.enabled ? 'pass' : 'warn',
+    message: availability.enabled ? 'route is enabled by the current model selection' : 'route is disabled by the current model selection',
+  })
   checks.push({
     id: 'runtime.credentials',
-    status: statuses.every(status => status.configured) ? 'pass' : 'warn',
-    message: statuses.every(status => status.configured) ? 'all credential references are configured' : 'one or more credential references are not configured',
+    status: availability.credentialReady ? 'pass' : 'warn',
+    message: availability.credentialReady ? 'all credential references are configured' : 'one or more credential references are not configured',
   })
-  const adapterAvailable = ctx.taskModelRuntime.hasAdapter(route.registration.runtimeAdapter, route)
   checks.push({
     id: 'runtime.adapter',
-    status: adapterAvailable ? 'pass' : 'warn',
-    message: adapterAvailable ? `runtime adapter '${route.registration.runtimeAdapter}' is available` : `runtime adapter '${route.registration.runtimeAdapter ?? 'undeclared'}' is unavailable`,
+    status: availability.adapterAvailable ? 'pass' : 'warn',
+    message: availability.adapterAvailable ? `runtime adapter '${route.registration.runtimeAdapter}' is available` : `runtime adapter '${route.registration.runtimeAdapter ?? 'undeclared'}' is unavailable`,
   })
   if (input.liveProbe === true) {
-    try {
-      const probe = await ctx.taskModelRuntime.probe(route, signal)
-      checks.push({ id: 'runtime.live-probe', status: probe.ok ? 'pass' : 'fail', message: probe.message })
-    } catch (error) {
-      checks.push({ id: 'runtime.live-probe', status: 'fail', message: error instanceof Error ? error.message : 'live probe failed' })
+    if (route.registration.execution === 'realtime') {
+      checks.push({ id: 'runtime.live-probe', status: 'warn', message: 'realtime routes are probed through realtimeModelRuntime, not the generic task-model probe' })
+    } else {
+      try {
+        const probe = await ctx.taskModelRuntime.probe(route, signal)
+        checks.push({ id: 'runtime.live-probe', status: probe.ok ? 'pass' : 'fail', message: probe.message })
+      } catch (error) {
+        checks.push({ id: 'runtime.live-probe', status: 'fail', message: error instanceof Error ? error.message : 'live probe failed' })
+      }
     }
   }
   const validated: ModelPortrait = { ...portrait, validation: { state: validationState(checks), checkedAt: new Date().toISOString(), checks } }
   await mutatePortraitSettings(ctx, [{ op: 'set', path: [...target.storagePath], value: validated }])
-  return { id: target.id, kind: 'task', validation: validated.validation, callable: route.registration.enabled !== false && adapterAvailable && statuses.every(status => status.configured) }
+  return { id: target.id, kind: 'task', validation: validated.validation, callable: availability.callable }
 }

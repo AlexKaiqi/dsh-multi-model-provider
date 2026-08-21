@@ -45,8 +45,9 @@ owned by llm-pi-ai; non-language task models live in this plugin's catalog.
 3. Agent model:
   select_default_model     save the default Agent language model from the live catalog
 
-invoke_task_model executes one registered non-language operation through its
-adapter. It is not Agent-model selection.
+invoke_task_model executes one registered non-realtime request/response task operation
+through its adapter. It explicitly excludes realtime-speech routes; those require
+realtimeModelRuntime. It is not Agent-model selection.
 
 credentials:
   Registration tools accept only reference names such as OPENAI_API_KEY. A

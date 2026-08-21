@@ -543,9 +543,9 @@ function selectedByProviderEditor(
   return selected.has(routeId) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
 }
 
-export function resolveTaskModelRoute(ctx: Context, id: string): ResolvedTaskModelRoute {
+export function resolveTaskModelRoute(ctx: Context, id: string, descriptor = requiredDescriptor(ctx)): ResolvedTaskModelRoute {
   const routeId = nonBlank(id, 'id')
-  const config = resolvedConfig(requiredDescriptor(ctx))
+  const config = resolvedConfig(descriptor)
   const registration = config.models[routeId]
   if (registration === undefined) throw new ModelManagerError(`unknown task model '${routeId}'`, 'UNKNOWN_TASK_MODEL')
   const connection = config.connections[registration.connection]
@@ -556,6 +556,48 @@ export function resolveTaskModelRoute(ctx: Context, id: string): ResolvedTaskMod
     )
   }
   return { id: routeId, connection, registration }
+}
+
+export interface EffectiveTaskModelAvailability {
+  readonly route: ResolvedTaskModelRoute
+  readonly enabled: boolean
+  readonly adapterAvailable: boolean
+  readonly credentialReady: boolean
+  readonly callable: boolean
+  readonly credential?: CredentialStatus
+  readonly credentials?: Record<string, CredentialStatus>
+}
+
+/** Authoritative effective availability after selection, adapter, and credential policy. */
+export async function effectiveTaskModelAvailability(
+  ctx: Context,
+  routeOrId: ResolvedTaskModelRoute | string,
+  descriptor = requiredDescriptor(ctx),
+): Promise<EffectiveTaskModelAvailability> {
+  const route = typeof routeOrId === 'string' ? resolveTaskModelRoute(ctx, routeOrId, descriptor) : routeOrId
+  const selectedRefs = selectedCredentialRefs(route.connection, route.registration.credentialNames)
+  const credential = selectedRefs.credentialRef === undefined
+    ? undefined
+    : await credentialStatus(ctx, selectedRefs.credentialRef)
+  const credentials = await namedCredentialStatuses(ctx, selectedRefs.credentialRefs)
+  const credentialReady = credential?.configured !== false
+    && Object.values(credentials ?? {}).every(item => item.configured)
+  const providerSelection = providerModelSelection(descriptor, route.registration.connection)
+  const enabled = providerSelection === undefined
+    ? route.registration.enabled !== false
+    : selectedByProviderEditor(providerSelection, route.id, route.registration)
+  const adapterAvailable = route.registration.execution === 'realtime'
+    ? ctx.realtimeModelRuntime?.hasAdapter(route.registration.runtimeAdapter) ?? false
+    : ctx.taskModelRuntime?.hasAdapter(route.registration.runtimeAdapter, route) ?? false
+  return {
+    route,
+    enabled,
+    adapterAvailable,
+    credentialReady,
+    callable: enabled && adapterAvailable && credentialReady,
+    ...(credential === undefined ? {} : { credential }),
+    ...(credentials === undefined ? {} : { credentials }),
+  }
 }
 
 async function credentialStatus(ctx: Context, ref: string): Promise<CredentialStatus> {
@@ -911,7 +953,6 @@ export async function listTaskModels(
   const userModels = typeof descriptor.user === 'object' && descriptor.user !== null && !Array.isArray(descriptor.user)
     ? (descriptor.user as { models?: Record<string, unknown> }).models ?? {}
     : {}
-  const providerSelections = new Map<string, ReadonlySet<string> | undefined>()
   const models: Array<Record<string, unknown> & { readonly task: TaskModelTask }> = []
   for (const [id, model] of Object.entries(config.models)) {
     if (requestedId !== undefined && id !== requestedId) continue
@@ -919,27 +960,14 @@ export async function listTaskModels(
     const connection = config.connections[model.connection]
     if (connection === undefined) continue
     if (provider !== undefined && connection.provider !== provider) continue
-    const selectedRefs = selectedCredentialRefs(connection, model.credentialNames)
-    const status = selectedRefs.credentialRef === undefined
-      ? undefined
-      : await credentialStatus(ctx, selectedRefs.credentialRef)
-    const statuses = await namedCredentialStatuses(ctx, selectedRefs.credentialRefs)
-    const credentialReady = status?.configured !== false
-      && Object.values(statuses ?? {}).every(item => item.configured)
-    const runtime = (ctx as Context & { taskModelRuntime?: { hasAdapter(id: string | undefined, route?: ResolvedTaskModelRoute): boolean } }).taskModelRuntime
-    const realtimeRuntime = (ctx as Context & { realtimeModelRuntime?: { hasAdapter(id: string | undefined): boolean } }).realtimeModelRuntime
-    const route: ResolvedTaskModelRoute = { id, connection, registration: model }
-    const adapterAvailable = model.execution === 'realtime'
-      ? realtimeRuntime?.hasAdapter(model.runtimeAdapter) ?? false
-      : runtime?.hasAdapter(model.runtimeAdapter, route) ?? false
-    if (!providerSelections.has(model.connection)) {
-      providerSelections.set(model.connection, providerModelSelection(descriptor, model.connection))
-    }
-    const providerSelection = providerSelections.get(model.connection)
-    const enabled = providerSelection === undefined
-      ? model.enabled !== false
-      : selectedByProviderEditor(providerSelection, id, model)
-    const callable = enabled && adapterAvailable && credentialReady
+    const availability = await effectiveTaskModelAvailability(ctx, { id, connection, registration: model }, descriptor)
+    const {
+      enabled,
+      adapterAvailable,
+      callable,
+      credential: status,
+      credentials: statuses,
+    } = availability
     const bundledPortrait = builtinTaskPortrait(connection.provider, model.model, model.task)
     const portrait = model.portrait ?? bundledPortrait
     models.push({

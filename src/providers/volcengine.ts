@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { configureModelRoute, ModelManagerError, PI_AI_SETTINGS_NAMESPACE } from '../operations.ts'
-import { TASK_MODEL_SETTINGS_NAMESPACE } from '../registry.ts'
+import { listTaskModels } from '../registry.ts'
 import type { ModelProfileInput, SelectVolcengineLanguageModelsInput } from '../types.ts'
 
 export const VOLCENGINE_PROVIDER = 'volcengine'
@@ -63,21 +63,20 @@ async function discoverArkModels(ctx: Context, signal: AbortSignal): Promise<{ m
 export async function inspectVolcengineProvider(ctx: Context, signal: AbortSignal): Promise<Record<string, unknown>> {
   const credentials = await credentialStatuses(ctx)
   const discovery = await discoverArkModels(ctx, signal)
-  const taskRoot = object(descriptor(ctx, TASK_MODEL_SETTINGS_NAMESPACE)?.value)
-  const taskModels = object(taskRoot?.models) ?? {}
-  const taskRoutes = Object.entries(taskModels)
-    .filter(([, value]) => object(value)?.connection === 'doubao-speech')
-    .map(([id, value]) => {
-      const route = object(value)!
-      return {
-        id,
-        model: route.model,
-        task: route.task,
-        enabled: route.enabled !== false,
-        runtimeAdapter: route.runtimeAdapter,
-        callability: ctx.taskModelRuntime.hasAdapter(typeof route.runtimeAdapter === 'string' ? route.runtimeAdapter : undefined),
-      }
-    })
+  const listedTasks = await listTaskModels(ctx, { provider: 'doubao-speech' })
+  const taskRoutes = (Array.isArray(listedTasks.models) ? listedTasks.models : []).map(value => {
+    const route = object(value) ?? {}
+    const availability = object(route.availability) ?? {}
+    return {
+      id: route.id,
+      model: route.model,
+      task: route.task,
+      enabled: route.enabled,
+      runtimeAdapter: availability.requiredAdapter,
+      callability: availability.callable === true,
+      availability,
+    }
+  })
   const arkConfigured = (credentials.arkApiKey as { configured: boolean }).configured
   return {
     provider: VOLCENGINE_PROVIDER,
@@ -100,7 +99,7 @@ export async function inspectVolcengineProvider(ctx: Context, signal: AbortSigna
     },
     routingRules: {
       languageAndVlm: 'Select with select_volcengine_language_models; these become ordinary llm-pi-ai models and are used through the Agent model selector.',
-      imageVideoAudioSpeech: 'Register/select task routes, then invoke with invoke_task_model only when list_task_models reports callable.',
+      imageVideoAudioSpeech: 'Register/select task routes, then use invoke_task_model for callable non-realtime routes; realtime-speech routes use realtimeModelRuntime.',
       platformEndpoint: 'When the account uses a deployed Platform endpoint, its ep-* endpoint id is the model id; do not substitute a display name.',
     },
     next: !arkConfigured

@@ -19,7 +19,8 @@ function context(arkConfigured = true): Context {
           value: {
             connections: { 'doubao-speech': { provider: 'doubao-speech' } },
             models: {
-              'doubao/tts': { connection: 'doubao-speech', model: 'seed-tts-1.0', task: 'speech-synthesis', enabled: true, runtimeAdapter: 'doubao-speech' },
+              'doubao/tts': { connection: 'doubao-speech', model: 'seed-tts-1.0', task: 'speech-synthesis', enabled: true, runtimeAdapter: 'doubao-speech', input: ['text'], output: ['audio'], execution: 'streaming', capabilities: ['speech.synthesize.short'], operations: ['synthesize'], roles: ['text-to-speech'], profile: {} },
+              'doubao/realtime': { connection: 'doubao-speech', model: '1.2.6.1', task: 'realtime-speech', enabled: true, runtimeAdapter: 'doubao-realtime-duplex', input: ['text', 'audio'], output: ['text', 'audio'], execution: 'realtime', capabilities: ['speech.realtime_session'], operations: ['realtime-session'], roles: ['realtime-voice'], profile: {} },
             },
             defaults: {},
           },
@@ -38,6 +39,7 @@ function context(arkConfigured = true): Context {
       listProviders: vi.fn(() => []),
     },
     taskModelRuntime: { hasAdapter: vi.fn(() => false) },
+    realtimeModelRuntime: { hasAdapter: vi.fn((id: string | undefined) => id === 'doubao-realtime-duplex') },
   } as unknown as Context
 }
 
@@ -61,9 +63,15 @@ describe('Volcengine provider orientation', () => {
       relatedTaskProvider: {
         provider: 'doubao-speech',
         credentialRef: 'DOUBAO_API_KEY',
-        taskRoutes: [{ id: 'doubao/tts', callability: false }],
+        taskRoutes: [
+          { id: 'doubao/tts', callability: false },
+          { id: 'doubao/realtime', callability: true, availability: { callable: true } },
+        ],
       },
     })
+    expect(ctx.taskModelRuntime.hasAdapter).toHaveBeenCalledWith('doubao-speech', expect.anything())
+    expect(ctx.taskModelRuntime.hasAdapter).not.toHaveBeenCalledWith('doubao-realtime-duplex', expect.anything())
+    expect(ctx.realtimeModelRuntime.hasAdapter).toHaveBeenCalledWith('doubao-realtime-duplex')
     expect(JSON.stringify(result)).not.toContain('must-not-leak')
   })
 

@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 This plugin has three capabilities:
 
-1. **Register models** — language models stay in `@deepseek-ai/dsh-llm-pi-ai`; image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog. The built-in `realtimeModelRuntime` owns Realtime route selection, credential resolution, and role profiles while provider plugins register wire adapters.
+1. **Register models** — language models stay in `@deepseek-ai/dsh-llm-pi-ai`; image, speech, audio, video, embedding, and reranking models live in this plugin's task-model catalog. The built-in `realtimeModelRuntime` owns effective Realtime route selection, credential references, adapter/profile registries, and bounded session assembly. Provider plugins register wire adapters; product plugins register role profiles.
 2. **Assist with portraits** — evidence-backed profiles plus an explicit eight-token speed probe. Settings owns these writes.
 3. **Select the Agent model** — `selectAgentModel()` / `select_default_model` picks the primary language model for newly created Agents from the live language catalog. It does not auto-route task models.
 
@@ -54,7 +54,7 @@ Other plugins that only need the directory can stop at `snapshot()`. Do not scra
 - `prepare_model_portraits` expands a short “build initial portraits” request into seed facts, gaps, and official documentation URLs.
 - `ingest_portrait_research` merges Agent-researched facts that have http(s) source URLs.
 - `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` manage evidence-backed model profiles.
-- `invoke_task_model` invokes a callable multimodal route through its runtime adapter.
+- `invoke_task_model` invokes a callable non-Realtime request/response route through its runtime adapter. Realtime speech uses `realtimeModelRuntime` and a provider-owned session transport.
 - `summarize_model_usage` aggregates native LLM and task-model observations from the current durable session.
 
 Registration tools accept credential references such as `OPENAI_API_KEY`, never API-key values. Doubao Realtime uses the single `DOUBAO_API_KEY` reference. The user enters actual values only in secure Settings credential fields; the Agent can fill provider, URL, model catalog, and profile metadata.
@@ -127,7 +127,7 @@ Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex spee
 
 ## Runtime boundary
 
-- This plugin owns registration, portraits, Settings schemas, safe credential references, the unified invocation entry point, `realtimeModelRuntime`, and privacy-safe invocation observations.
+- This plugin owns registration, portraits, Settings schemas, safe credential references, request/response task invocation, `realtimeModelRuntime`, and privacy-safe invocation observations.
 - llm-pi-ai owns language-model protocol adaptation and execution.
 - Independent provider adapters execute image/audio/video routes and handle binary artifacts through `TaskModelRuntimeAdapter`; routes without one remain registered-only.
 - A peer plugin should inject `modelCatalog` and call `snapshot()`. It must not scrape `settings.yaml`, and it should not ask the Agent to call these tools just to read the catalog.

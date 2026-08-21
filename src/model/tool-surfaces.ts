@@ -175,7 +175,7 @@ export const VALIDATE_MODEL_PORTRAIT_SURFACE = {
 
 export const INVOKE_TASK_MODEL_SURFACE = {
   name: 'invoke_task_model',
-  description: 'Invoke a registered multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for image, speech, audio, video, realtime, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.',
+  description: 'Invoke a registered non-realtime multimodal task model through its installed runtime adapter and record privacy-safe timing, outcome, modality, and cost metrics. Use it for request/response image, speech, audio, video, embedding, or reranking operations after list_task_models reports the route callable. Do not use it for realtime-speech routes; those require realtimeModelRuntime. Also do not use it for primary language/chat turns, unregistered operations, credential values, or inline binary data.',
   parameters: {
     id: 'Exact registered task-model route id.',
     operation: 'One operation declared by the route, for example synthesize or transcribe-file.',

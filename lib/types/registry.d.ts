@@ -1,10 +1,22 @@
 import type { Context } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
-import { type DiscoverTaskModelsInput, type ListTaskModelsInput, type RegisterTaskModelInput, type ResolvedTaskModelRoute, type TaskModelRegistryConfig, type SelectTaskModelsInput } from './types.ts';
+import { type SettingsDescriptor } from '@deepseek-ai/dsh-settings';
+import { type CredentialStatus, type DiscoverTaskModelsInput, type ListTaskModelsInput, type RegisterTaskModelInput, type ResolvedTaskModelRoute, type TaskModelRegistryConfig, type SelectTaskModelsInput } from './types.ts';
 export declare const TASK_MODEL_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
 export declare const TASK_MODEL_REGISTRY_SCHEMA: z<TaskModelRegistryConfig>;
 export declare const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig;
-export declare function resolveTaskModelRoute(ctx: Context, id: string): ResolvedTaskModelRoute;
+export declare function resolveTaskModelRoute(ctx: Context, id: string, descriptor?: SettingsDescriptor): ResolvedTaskModelRoute;
+export interface EffectiveTaskModelAvailability {
+    readonly route: ResolvedTaskModelRoute;
+    readonly enabled: boolean;
+    readonly adapterAvailable: boolean;
+    readonly credentialReady: boolean;
+    readonly callable: boolean;
+    readonly credential?: CredentialStatus;
+    readonly credentials?: Record<string, CredentialStatus>;
+}
+/** Authoritative effective availability after selection, adapter, and credential policy. */
+export declare function effectiveTaskModelAvailability(ctx: Context, routeOrId: ResolvedTaskModelRoute | string, descriptor?: SettingsDescriptor): Promise<EffectiveTaskModelAvailability>;
 export declare function validateTaskModelRegistry(config: TaskModelRegistryConfig): void;
 export declare function registerTaskModelSettings(ctx: Context): void;
 export declare function registerTaskModel(ctx: Context, input: RegisterTaskModelInput): Promise<Record<string, unknown>>;

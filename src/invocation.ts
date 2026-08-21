@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { ModelManagerError } from './operations.ts'
 import { recordTaskModelObservation } from './observations/session-events.ts'
-import { resolveTaskModelRoute } from './registry.ts'
+import { effectiveTaskModelAvailability, resolveTaskModelRoute } from './registry.ts'
 import type { InvokeTaskModelInput, TaskModelInvocationRecord } from './types.ts'
 
 export async function invokeTaskModel(
@@ -11,10 +11,29 @@ export async function invokeTaskModel(
   exec: ToolRunContext,
 ): Promise<Record<string, unknown>> {
   const route = resolveTaskModelRoute(ctx, input.id)
-  if (route.registration.enabled === false) {
+  if (route.registration.execution === 'realtime') {
+    throw new ModelManagerError(
+      `task model '${route.id}' is a realtime route; use realtimeModelRuntime instead of invoke_task_model`,
+      'REALTIME_TASK_MODEL_REQUIRES_RUNTIME',
+    )
+  }
+  const availability = await effectiveTaskModelAvailability(ctx, route)
+  if (!availability.enabled) {
     throw new ModelManagerError(
       `task model '${route.id}' is registered but disabled by the current model selection`,
       'TASK_MODEL_DISABLED',
+    )
+  }
+  if (!availability.adapterAvailable) {
+    throw new ModelManagerError(
+      `task model '${route.id}' runtime adapter '${route.registration.runtimeAdapter ?? 'undeclared'}' is unavailable`,
+      'TASK_MODEL_ADAPTER_UNAVAILABLE',
+    )
+  }
+  if (!availability.credentialReady) {
+    throw new ModelManagerError(
+      `task model '${route.id}' requires configured credential references`,
+      'TASK_MODEL_CREDENTIAL_MISSING',
     )
   }
   const operation = input.operation.trim()
