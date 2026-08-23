@@ -22,7 +22,7 @@ export interface PortraitJobView {
   readonly action: PortraitJobAction
   readonly status: PortraitJobStatus
   readonly targetIds: readonly string[]
-  readonly workspaceLabel: 'temporary session'
+  readonly workspaceLabel: 'temporary workspace'
   /** Visible DSH Session created for this collection run once the Agent is mounted. */
   readonly sessionId?: string
   readonly phase: string
@@ -36,19 +36,9 @@ type MutablePortraitJob = {
   -readonly [Key in keyof PortraitJobView]: PortraitJobView[Key]
 }
 
-interface TemporarySessionReservation {
-  readonly reservationId: string
-  readonly path: string
-}
-
-interface TemporarySessionReservationResult {
-  readonly found: boolean
-}
-
 interface PortraitTemporarySessions {
-  reserve(): Promise<TemporarySessionReservation>
-  keep(request: { reservationId: string }): Promise<TemporarySessionReservationResult>
-  discard(request: { reservationId: string }): Promise<TemporarySessionReservationResult>
+  prepareWorkspace(): Promise<{ readonly path: string, readonly workspaceId: string }>
+  attachSession(request: { readonly sessionId: string }): Promise<{ readonly attached: true, readonly workspaceId: string }>
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -243,7 +233,7 @@ export class PortraitJobCoordinator {
       action,
       status: 'queued',
       targetIds: [...selectedIds],
-      workspaceLabel: 'temporary session',
+      workspaceLabel: 'temporary workspace',
       phase: selectedIds.length === 0 ? 'nothing to update' : 'creating temporary Session',
       startedAt: now,
       ...(selectedIds.length === 0 ? { status: 'completed', finishedAt: now, summary: 'No enabled portraits currently need research.' } : {}),
@@ -278,13 +268,11 @@ export class PortraitJobCoordinator {
     signal: AbortSignal,
   ): Promise<void> {
     const job = this.latest!
-    let reservation: TemporarySessionReservation | undefined
     let sessionCreated = false
-    let reservationAdopted = false
     let completionSummary: string | undefined
     let failure: string | undefined
     try {
-      reservation = await this.ctx.temporarySessions.reserve()
+      const workspace = await this.ctx.temporarySessions.prepareWorkspace()
       if (signal.aborted) throw new Error('portrait background job was cancelled')
       job.status = 'running'
       job.phase = 'temporary Session is starting'
@@ -293,7 +281,7 @@ export class PortraitJobCoordinator {
       const sessionId = SessionId(`session-${randomUUID()}`)
       const handle = await this.ctx.agents.create({
         sessionId,
-        meta: { cwd: reservation.path },
+        meta: { cwd: workspace.path },
         agentOptions: { provider: selection.provider, model: selection.model },
         setup: (agentCtx) => {
           installModelSelection(agentCtx, { current: selection, assembled: undefined })
@@ -315,9 +303,7 @@ export class PortraitJobCoordinator {
       sessionCreated = true
       job.sessionId = String(sessionId)
       if (signal.aborted) throw new Error('portrait background job was cancelled')
-      const adopted = await this.ctx.temporarySessions.keep({ reservationId: reservation.reservationId })
-      if (!adopted.found) throw new Error('temporary Session reservation expired before adoption')
-      reservationAdopted = true
+      await this.ctx.temporarySessions.attachSession({ sessionId: String(sessionId) })
       job.phase = 'temporary Session Agent is researching and validating'
       await waitUntilIdle(handle.agent, signal)
       const firstSeq = handle.agent.session.seq
@@ -335,9 +321,6 @@ export class PortraitJobCoordinator {
       const handle = this.activeHandle
       this.activeHandle = undefined
       await handle?.dispose().catch(() => undefined)
-      if (reservation !== undefined && !reservationAdopted) {
-        await this.ctx.temporarySessions.discard({ reservationId: reservation.reservationId }).catch(() => undefined)
-      }
       if (failure === undefined) {
         job.status = 'completed'
         job.phase = 'results validated and stored in the temporary Session'

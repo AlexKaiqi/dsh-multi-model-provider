@@ -11,7 +11,7 @@ export interface PortraitJobView {
     readonly action: PortraitJobAction;
     readonly status: PortraitJobStatus;
     readonly targetIds: readonly string[];
-    readonly workspaceLabel: 'temporary session';
+    readonly workspaceLabel: 'temporary workspace';
     /** Visible DSH Session created for this collection run once the Agent is mounted. */
     readonly sessionId?: string;
     readonly phase: string;
@@ -20,21 +20,17 @@ export interface PortraitJobView {
     readonly summary?: string;
     readonly error?: string;
 }
-interface TemporarySessionReservation {
-    readonly reservationId: string;
-    readonly path: string;
-}
-interface TemporarySessionReservationResult {
-    readonly found: boolean;
-}
 interface PortraitTemporarySessions {
-    reserve(): Promise<TemporarySessionReservation>;
-    keep(request: {
-        reservationId: string;
-    }): Promise<TemporarySessionReservationResult>;
-    discard(request: {
-        reservationId: string;
-    }): Promise<TemporarySessionReservationResult>;
+    prepareWorkspace(): Promise<{
+        readonly path: string;
+        readonly workspaceId: string;
+    }>;
+    attachSession(request: {
+        readonly sessionId: string;
+    }): Promise<{
+        readonly attached: true;
+        readonly workspaceId: string;
+    }>;
 }
 declare module '@deepseek-ai/cordis' {
     interface Context {

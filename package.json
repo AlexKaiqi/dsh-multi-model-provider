@@ -1,7 +1,7 @@
 {
   "name": "dsh-multi-model-provider",
   "description": "Register models, assist with portraits, and select the Agent model from a secret-free catalog for DeepSeek Harness.",
-  "version": "0.1.0-rc.9",
+  "version": "0.1.0-rc.10",
   "publishConfig": {
     "access": "public",
     "tag": "next"
@@ -111,6 +111,7 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
+    "dsh-temporary-session": "^0.1.0-rc.3",
     "react": "^18.2.0"
   },
   "devDependencies": {
@@ -130,6 +131,7 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
+    "dsh-temporary-session": "link:../dsh-temporary-session/packages/plugin",
     "@types/node": "^22.20.0",
     "@types/ws": "^8.18.1",
     "tsdown": "^0.22.2",

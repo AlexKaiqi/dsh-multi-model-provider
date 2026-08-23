@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "portrait-jobs-http",
   "summary": "Same-origin Settings API for starting one bounded portrait research Agent Session and reading its latest status.",
   "rationale": "This is a browser-to-Host product seam, not an Agent tool. Research creates a durable temporary Session, so POST requests require same-origin validation and an explicit marker. Paid live probes are deliberately excluded and require separate explicit Agent approval.",
@@ -32,9 +32,9 @@
   },
   "response": {
     "ok": "true when status was read or a job was queued; false on validation or runtime failure",
-    "job": "latest bounded job view with status, target ids, phase, timestamps, optional summary/error, and optional visible sessionId",
+    "job": "latest bounded job view labelled temporary workspace, with status, target ids, phase, timestamps, optional summary/error, and optional visible sessionId",
     "error": "present when ok is false; never includes credential values"
   },
-  "lifecycle": "At most one job is queued or running per plugin instance. The active Agent handle is disposed at completion or plugin stop. Unadopted reservations are discarded; adopted Sessions and their workspaces remain durable and user-recoverable.",
+  "lifecycle": "At most one job is queued or running per plugin instance. Each job creates a distinct visible Session whose cwd is the configurable Temporary Workspace root, then attaches it to that durable UI group. The active Agent handle is disposed at completion or plugin stop; the Session remains user-recoverable.",
   "cost": "Research wrappers force liveProbe=false. A paid probe is outside this protocol and requires separate explicit user approval before validate_model_portrait(liveProbe=true)."
 }

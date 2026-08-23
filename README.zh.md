@@ -67,7 +67,7 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab；采集创建可打开的临时会话，因此还要求同一 profile 单独安装并启用 `dsh-temporary-session` bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
+安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab；每次采集都会在 `dsh-temporary-session` 提供的可配置“临时工作区”中创建可打开的 Session，因此要求同一 profile 安装并启用该 bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
@@ -168,7 +168,7 @@ multi-model-provider:
 
 初始画像有意不追求全覆盖，但不设固定条数：覆盖广泛使用的 Provider，再取当前旗舰、主力工作模型、领域专用模型和实际装机量高的私有部署模型。调用量、开源权重下载与部署形态都是选型信号；具体能力与价格只引用一手资料。命中分两层：先按 `provider/model` 精确命中带路由价格的画像；没有时，再按明确列出的精确模型 ID 命中与 Provider 解耦的能力画像，不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
 
-“模型画像”页对当前选中的单个模型执行采集或刷新。每个任务都会在 `dsh-temporary-session` 的 scratch 目录中创建可见的后台 Agent Session；任务结束时会回收活动 Agent handle，但保留已采用的 Session 和工作目录，以便设置页之后打开并审阅研究记录。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
+“模型画像”页对当前选中的单个模型执行采集或刷新。每个任务都会创建独立的可见后台 Agent Session，以“临时工作区”设置的 root 作为 `cwd`，并持久归入同一个 UI 分组；该 root 默认是 `$DSH_HOME/temporary-sessions`，也可在设置中修改。任务结束时会回收活动 Agent handle，但保留 Session，以便设置页之后打开并审阅研究记录。采集 Agent 没有文件工具，因此共享 scratch root 不会污染项目目录或模型画像持久化。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
 多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择有效 route、管理安全凭据引用，并对 Provider adapter 和产品角色 profile 做注册及有界会话组装；GPT/豆包 adapter 负责 wire protocol 和浏览器音频传输，产品插件负责上下文和工具策略。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 
@@ -241,7 +241,7 @@ dsh plugin --profile web add "$PWD"
 发布到 npm 之后：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.9'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.10'
 ```
 
 被 dsh.pub 收录后：
