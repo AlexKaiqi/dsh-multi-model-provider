@@ -8,7 +8,7 @@ This plugin has three capabilities:
 2. **Assist with portraits** — evidence-backed profiles plus an explicit eight-token speed probe. Settings owns these writes.
 3. **Select the Agent model** — `selectAgentModel()` / `select_default_model` picks the primary language model for newly created Agents from the live language catalog. It does not auto-route task models.
 
-Peer plugins inject `modelCatalog` and call `snapshot()` to read every registered model, portrait, and last probe. Installing this package does **not** make image, speech, or realtime models callable; `dsh-voice-agent` supplies the GPT and Doubao full-duplex adapters.
+Peer plugins inject `modelCatalog` and call `snapshot()` to read every registered model, portrait, and last probe. Installing this package does **not** make image, speech, or realtime models callable; `dsh-realtime-voice` supplies the GPT and Doubao full-duplex adapters.
 
 ## Capabilities
 

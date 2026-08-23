@@ -8,7 +8,7 @@
 2. **辅助构建画像** — 证据化画像，加上最多 8 token 的显式测速。写入走 Settings。
 3. **选 Agent 主模型** — `selectAgentModel()` / `select_default_model` 从目录里的 live 语言模型中，为之后新建的 Agent 保存主模型。不会自动给 task-model 做路由。
 
-其它插件 `inject: ['modelCatalog']` 后调用 `snapshot()` 读取全部已登记模型、画像和测速。安装本包**不会**让图片、语音或 Realtime 变成可调用；GPT／豆包双工协议由 `dsh-voice-agent` adapter 提供。
+其它插件 `inject: ['modelCatalog']` 后调用 `snapshot()` 读取全部已登记模型、画像和测速。安装本包**不会**让图片、语音或 Realtime 变成可调用；GPT／豆包双工协议由 `dsh-realtime-voice` adapter 提供。
 
 ## 三件事
 
