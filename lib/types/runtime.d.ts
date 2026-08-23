@@ -17,4 +17,3 @@ export declare class TaskModelRuntime extends Service {
     credentials(route: ResolvedTaskModelRoute): Promise<Record<string, string>>;
 }
 export default TaskModelRuntime;
-//# sourceMappingURL=runtime.d.ts.map

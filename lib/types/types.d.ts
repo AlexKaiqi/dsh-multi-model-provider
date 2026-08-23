@@ -174,6 +174,8 @@ export interface TaskModelAdapterRequest {
     readonly credentials: Readonly<Record<string, string>>;
 }
 export interface TaskModelAdapterProbeResult {
+    /** False means the adapter did not perform provider I/O and no reachability evidence may be recorded. */
+    readonly supported?: boolean;
     readonly ok: boolean;
     readonly message: string;
     readonly latencyMs?: number;
@@ -352,7 +354,10 @@ export interface ModelProfileInput {
     readonly id: string;
     readonly name?: string;
     readonly contextWindow?: number;
+    /** Discovered provider capability. Not used as the per-request output limit. */
     readonly maxTokens?: number;
+    /** Explicit per-request output limit persisted as llm-pi-ai's model maxTokens. */
+    readonly requestMaxTokens?: number;
     readonly input?: readonly InputModality[];
 }
 export interface ConfigureModelRouteInput {
@@ -392,4 +397,3 @@ export interface ModelRouteView {
     readonly models?: readonly LlmModelInfo[];
     readonly modelError?: string;
 }
-//# sourceMappingURL=types.d.ts.map

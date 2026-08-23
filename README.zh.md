@@ -44,7 +44,7 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Agent 工具
 
-插件仍提供十五个 Agent 工具，覆盖登记、画像和选主模型：
+插件仍提供十六个 Agent 工具，覆盖登记、画像和选主模型：
 
 - `list_model_routes`：查看 `llm-pi-ai` 的活动/休眠语言模型 Provider、凭据状态和模型 catalog。
 - `configure_model_route`：创建或更新语言模型 Provider profile。
@@ -67,13 +67,13 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页，统一展示语言模型与 task-model，二者共用同一份由 Agent 维护的画像数据。不会增加单独的顶层“火山引擎”设置入口。画像包括：
+安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab；采集创建可打开的临时会话，因此还要求同一 profile 单独安装并启用 `dsh-temporary-session` bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
 - 由 Agent 在用户明确授权后通过轻量请求测得的可用性、延迟和观测时间。语言模型测试会产生一次最多 8 token 的少量模型费用；支持探针的 task adapter 运行自己的最小测试。尚无运行探针的 Realtime 路由不显示伪造指标。
 
-火山方舟使用官方 Base URL `https://ark.cn-beijing.volces.com/api/v3` 和 `ARK_API_KEY`。豆包语音把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开显示；“验证 API Key 并加载音色”会先使用当前草稿 `DOUBAO_API_KEY` 创建最小 Realtime 会话，只有收到 `session.created` 后才展示文档中的 O/SC 音色目录。两者都在各自 Provider 的编辑卡中完成配置，用户无需手工编辑 YAML。
+火山方舟使用官方 Base URL `https://ark.cn-beijing.volces.com/api/v3` 和 `ARK_API_KEY`。升级时若只存在旧版 `VOLCENGINE_API_KEY`，插件会把值安全复制到标准引用 `ARK_API_KEY`，保留旧引用且不在日志或设置中暴露密钥。豆包语音把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开显示；“验证 API Key 并加载音色”会先使用当前草稿 `DOUBAO_API_KEY` 创建最小 Realtime 会话，只有收到 `session.created` 后才展示文档中的 O/SC 音色目录。两者都在各自 Provider 的编辑卡中完成配置，用户无需手工编辑 YAML。
 
 界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
 
@@ -168,7 +168,7 @@ multi-model-provider:
 
 初始画像有意不追求全覆盖，但不设固定条数：覆盖广泛使用的 Provider，再取当前旗舰、主力工作模型、领域专用模型和实际装机量高的私有部署模型。调用量、开源权重下载与部署形态都是选型信号；具体能力与价格只引用一手资料。命中分两层：先按 `provider/model` 精确命中带路由价格的画像；没有时，再按明确列出的精确模型 ID 命中与 Provider 解耦的能力画像，不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
 
-“模型画像”页提供“生成 / 刷新待完善画像”和单模型刷新入口。每个任务都会创建匿名临时工作目录与独立后台 Agent 会话，任务结束后自动销毁。插件负责选择目标、提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。可能产生流量或费用的实测是单独的模型操作，必须再次明确确认；授权后由 Agent 调用 `validate_model_portrait(liveProbe=true)` 写回结果。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
+“模型画像”页对当前选中的单个模型执行采集或刷新。每个任务都会在 `dsh-temporary-session` 的 scratch 目录中创建可见的后台 Agent Session；任务结束时会回收活动 Agent handle，但保留已采用的 Session 和工作目录，以便设置页之后打开并审阅研究记录。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
 
 多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择有效 route、管理安全凭据引用，并对 Provider adapter 和产品角色 profile 做注册及有界会话组装；GPT/豆包 adapter 负责 wire protocol 和浏览器音频传输，产品插件负责上下文和工具策略。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 
@@ -208,6 +208,8 @@ agent-default-model:
 
 `openai` 是 pi-ai 内置 route，因此 endpoint、协议和模型 catalog 应默认省略并继承。自定义 OpenAI-compatible gateway 才需要声明 `api`、`baseURL` 和完整 `models` 列表。
 
+对于自定义语言 route，`contextWindow` 描述模型容量。除非部署明确要求每次请求都发送固定输出上限，否则应省略 `requestMaxTokens`。发现阶段的 `maxTokens` 只作为容量元数据校验，不会持久化为请求默认值，以免把很大的宣称容量错误下发成 `max_output_tokens` 并被兼容网关拒绝。
+
 ## 运行时边界
 
 - 本插件负责注册、画像、Settings UI schema、安全凭据引用、请求/响应 task 调用、`realtimeModelRuntime` 和隐私安全的调用观测。
@@ -220,11 +222,7 @@ agent-default-model:
 
 这是面向 DeepSeek Harness `0.1.0-rc.6` 的社区 composition bundle，不是 DeepSeek 官方包。Host 与 Web 运行时文件已提交进仓库，Git 安装不需要 `prepare` 或 `allowBuilds`。
 
-按 commit 固定安装（可复现）：
-
-```sh
-dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#857fdfded2961373d4f3b71cc7809f310711731c
-```
+需要可复现的 Git 安装时，请在 GitHub spec 后追加经过审核的发布 commit SHA（`#<release-commit-sha>`）；不要仅因旧 commit 也声明相同 prerelease 版本就继续固定旧构建。
 
 跟随 `main`（会随分支更新）：
 

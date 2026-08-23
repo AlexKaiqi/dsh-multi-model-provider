@@ -4,16 +4,17 @@ import { parseLlmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
 import { normalizeStoredPortrait } from '../portrait-core.ts'
 import { resolveTaskModelRoute } from '../registry.ts'
-import type { ModelPortrait } from '../types.ts'
+import type { ModelPortrait, TaskModelRegistryConfig } from '../types.ts'
 import { builtinLlmPortrait } from './builtin.ts'
 import { builtinTaskPortrait } from './builtin-task.ts'
-import { portraitRegistry } from './storage.ts'
+import { portraitSettings } from './storage.ts'
 
 export interface TaskPortraitTarget {
   readonly kind: 'task'
   readonly id: string
   readonly portrait: ModelPortrait | undefined
   readonly portraitSource: 'stored' | 'bundled' | undefined
+  readonly settingsRevision: number
   readonly storagePath: readonly string[]
   readonly declared: Record<string, unknown>
   readonly route: ReturnType<typeof resolveTaskModelRoute>
@@ -26,6 +27,7 @@ export interface LlmPortraitTarget {
   readonly model: string
   readonly portrait: ModelPortrait | undefined
   readonly portraitSource: 'stored' | 'bundled' | undefined
+  readonly settingsRevision: number
   readonly storagePath: readonly string[]
   readonly declared: Record<string, unknown>
   readonly info: LlmResolvedModelInfo
@@ -36,7 +38,8 @@ export type PortraitTarget = TaskPortraitTarget | LlmPortraitTarget
 export async function resolvePortraitTarget(ctx: Context, id: string, signal?: AbortSignal): Promise<PortraitTarget> {
   const targetId = id.trim()
   if (targetId === '') throw new ModelManagerError('id must not be blank', 'INVALID_MODEL_PORTRAIT_ID')
-  const config = portraitRegistry(ctx)
+  const settings = portraitSettings(ctx)
+  const config = settings.value as TaskModelRegistryConfig
   if (config.models[targetId] !== undefined) {
     const route = resolveTaskModelRoute(ctx, targetId)
     const bundled = builtinTaskPortrait(
@@ -49,6 +52,7 @@ export async function resolvePortraitTarget(ctx: Context, id: string, signal?: A
       id: route.id,
       portrait: route.registration.portrait === undefined ? bundled : normalizeStoredPortrait(route.registration.portrait),
       portraitSource: route.registration.portrait !== undefined ? 'stored' : bundled !== undefined ? 'bundled' : undefined,
+      settingsRevision: settings.revision,
       storagePath: ['models', route.id, 'portrait'],
       declared: {
         task: route.registration.task,
@@ -80,6 +84,7 @@ export async function resolvePortraitTarget(ctx: Context, id: string, signal?: A
     model: parsed.model,
     portrait: binding?.portrait === undefined ? bundled : normalizeStoredPortrait(binding.portrait),
     portraitSource: binding !== undefined ? 'stored' : bundled !== undefined ? 'bundled' : undefined,
+    settingsRevision: settings.revision,
     storagePath: ['portraits', targetId],
     declared: {
       kind: 'llm',

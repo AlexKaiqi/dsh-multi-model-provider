@@ -62,6 +62,31 @@ export function portraitResearchSources(value: unknown): readonly string[] {
   return [...found]
 }
 
+async function boundedSourceBytes(response: Response): Promise<Uint8Array> {
+  const reader = response.body?.getReader()
+  if (reader === undefined) return new Uint8Array()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > MAX_SOURCE_BYTES) throw new Error(`portrait source exceeds ${MAX_SOURCE_BYTES} bytes`)
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const joined = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    joined.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return joined
+}
+
 async function fetchPortraitSource(url: string, allowedSources: ReadonlySet<string>, signal?: AbortSignal): Promise<JsonValue> {
   let normalized: string
   try {
@@ -82,16 +107,18 @@ async function fetchPortraitSource(url: string, allowedSources: ReadonlySet<stri
       accept: 'text/html, text/plain, application/json;q=0.9',
       'user-agent': 'dsh-model-portrait/1.0',
     },
-    redirect: 'follow',
+    redirect: 'manual',
     signal: combinedSignal,
   })
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error('portrait source redirects are not followed; add the final reviewed URL to the research plan')
+  }
   if (!response.ok) throw new Error(`portrait source returned HTTP ${response.status}`)
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? 'application/octet-stream'
   if (!/(?:text\/|application\/(?:json|ld\+json|xhtml\+xml))/.test(contentType)) {
     throw new Error(`portrait source returned unsupported content type: ${contentType}`)
   }
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.byteLength > MAX_SOURCE_BYTES) throw new Error(`portrait source exceeds ${MAX_SOURCE_BYTES} bytes`)
+  const bytes = await boundedSourceBytes(response)
   const raw = new TextDecoder().decode(bytes)
   const content = portraitSourceText(raw, contentType)
   return {

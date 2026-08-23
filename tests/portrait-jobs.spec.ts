@@ -1,8 +1,7 @@
-import { existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { PortraitJobCoordinator } from '../src/portrait-jobs.ts'
+import { boundPortraitResearchTools, PORTRAIT_JOB_HEADER, PORTRAIT_JOBS_PATH, PortraitJobCoordinator } from '../src/portrait-jobs.ts'
 import { buildPortraitProbePrompt, buildPortraitResearchPrompt, PORTRAIT_JOB_CONTRACT } from '../src/portraits/job-contract.ts'
 import { TASK_MODEL_SETTINGS_NAMESPACE } from '../src/registry.ts'
 
@@ -16,6 +15,39 @@ async function waitForJob(coordinator: PortraitJobCoordinator) {
 }
 
 describe('portrait background jobs', () => {
+  it('keeps the browser-to-Host job protocol versioned and aligned with the route', async () => {
+    const contract = JSON.parse(await readFile(new URL('../spec/portrait-jobs.http.json', import.meta.url), 'utf8')) as {
+      version: string
+      transport: { path: string }
+      authorization: { postRequiredHeaders: Record<string, string> }
+    }
+    expect(contract.version).toBe('1.0.0')
+    expect(contract.transport.path).toBe(PORTRAIT_JOBS_PATH)
+    expect(contract.authorization.postRequiredHeaders[PORTRAIT_JOB_HEADER]).toBe('1')
+  })
+
+  it('binds research mutation tools to exact targets and forces liveProbe=false', async () => {
+    const calls: Array<{ name: string, args: Record<string, unknown> }> = []
+    const sourceNames = ['ingest_portrait_research', 'upsert_model_portrait', 'validate_model_portrait', 'get_model_portrait']
+    const tools = sourceNames.map(name => ({
+      name,
+      description: name,
+      execute: vi.fn(async (args: Record<string, unknown>) => {
+        calls.push({ name, args })
+        return {}
+      }),
+    }))
+    const bounded = boundPortraitResearchTools(tools as never, ['demo/image'])
+    const validate = bounded.find(tool => tool.name === 'portrait_job_validate_portrait')!
+    const exec = { signal: new AbortController().signal } as never
+    await validate.execute({ id: 'demo/image', liveProbe: true }, exec)
+    expect(calls).toContainEqual({ name: 'validate_model_portrait', args: { id: 'demo/image', liveProbe: false } })
+
+    const upsert = bounded.find(tool => tool.name === 'portrait_job_upsert_portrait')!
+    await expect(upsert.execute({ id: 'other/image', portrait: {} }, exec))
+      .rejects.toThrow("portrait target 'other/image' is outside this research job")
+  })
+
   it('keeps the plugin-owned research contract separate from Agent execution', () => {
     expect(PORTRAIT_JOB_CONTRACT.ownership.plugin).toContain('portrait schema and persistence tools')
     expect(PORTRAIT_JOB_CONTRACT.acceptance).toContain('research never writes performance.lastProbe')
@@ -23,8 +55,9 @@ describe('portrait background jobs', () => {
     expect(buildPortraitProbePrompt(['demo/image'], '2026-08-21T00:00:00.000Z')).toContain('exactly these portrait targets')
   })
 
-  it('runs research in an anonymous temporary cwd and disposes it after the Agent finishes', async () => {
+  it('runs research in a visible temporary Session and preserves its adopted cwd', async () => {
     let workspace = ''
+    let createdSessionId = ''
     let prompt = ''
     let disposed = false
     const events: Array<Record<string, unknown>> = []
@@ -60,9 +93,15 @@ describe('portrait background jobs', () => {
       },
       llm: { listProviders: vi.fn(() => []) },
       agentDefaultModel: { currentSelection: vi.fn(() => ({ provider: 'test', model: 'agent-model' })) },
+      temporarySessions: {
+        reserve: vi.fn(async () => ({ reservationId: 'reservation-1', path: '/tmp/dsh-temporary-sessions/portrait-1' })),
+        keep: vi.fn(async () => ({ found: true })),
+        discard: vi.fn(async () => ({ found: true })),
+      },
       agents: {
-        create: vi.fn(async (options: { meta?: { cwd?: string } }) => {
+        create: vi.fn(async (options: { sessionId?: string, meta?: { cwd?: string } }) => {
           workspace = options.meta?.cwd ?? ''
+          createdSessionId = options.sessionId ?? ''
           return { agent, dispose: async () => { disposed = true } }
         }),
       },
@@ -70,15 +109,40 @@ describe('portrait background jobs', () => {
     const coordinator = new PortraitJobCoordinator(ctx as never)
 
     const started = await coordinator.start('research', ['demo/image'], false)
-    expect(started.workspaceLabel).toBe('anonymous temporary workspace')
+    expect(started.workspaceLabel).toBe('temporary session')
     const finished = await waitForJob(coordinator)
 
-    expect(finished).toMatchObject({ status: 'completed', targetIds: ['demo/image'] })
-    expect(workspace.startsWith(`${tmpdir()}/dsh-model-portrait-`)).toBe(true)
-    expect(workspace).not.toContain(process.cwd())
+    expect(finished).toMatchObject({ status: 'completed', targetIds: ['demo/image'], sessionId: createdSessionId })
+    expect(workspace).toBe('/tmp/dsh-temporary-sessions/portrait-1')
     expect(prompt).toContain('The plugin owns the following contract')
-    expect(prompt).toContain('validate_model_portrait with liveProbe=false')
+    expect(prompt).toContain('portrait_job_validate_portrait')
+    expect(prompt).toContain('validation always forces liveProbe=false')
+    expect(ctx.temporarySessions.keep).toHaveBeenCalledWith({ reservationId: 'reservation-1' })
+    expect(ctx.temporarySessions.discard).not.toHaveBeenCalled()
     expect(disposed).toBe(true)
-    expect(existsSync(workspace)).toBe(false)
+  })
+
+  it('discards an unadopted reservation when startup fails before Session creation', async () => {
+    const temporarySessions = {
+      reserve: vi.fn(async () => ({ reservationId: 'reservation-failed', path: '/tmp/dsh-temporary-sessions/failed' })),
+      keep: vi.fn(async () => ({ found: true })),
+      discard: vi.fn(async () => ({ found: true })),
+    }
+    const ctx = {
+      agentDefaultModel: { currentSelection: vi.fn(() => ({})) },
+      temporarySessions,
+      agents: { create: vi.fn() },
+    } as unknown as Context
+    const coordinator = new PortraitJobCoordinator(ctx as never)
+
+    await coordinator.start('probe', ['demo/image'], true)
+    await expect(waitForJob(coordinator)).resolves.toMatchObject({
+      status: 'failed',
+      phase: 'temporary Session could not start',
+      error: 'no default Agent language model is selected',
+    })
+    expect(temporarySessions.discard).toHaveBeenCalledWith({ reservationId: 'reservation-failed' })
+    expect(temporarySessions.keep).not.toHaveBeenCalled()
+    expect(ctx.agents.create).not.toHaveBeenCalled()
   })
 })

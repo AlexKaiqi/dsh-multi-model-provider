@@ -8,4 +8,3 @@ export declare const CURATED_TASK_MODEL_PORTRAIT_SELECTION: {
 export declare const CURATED_TASK_MODEL_PORTRAIT_IDS: string[];
 /** Return a cloned task portrait only for an exact provider/model/task identity. */
 export declare function builtinTaskPortrait(provider: string, model: string, task: TaskModelTask): ModelPortrait | undefined;
-//# sourceMappingURL=builtin-task.d.ts.map

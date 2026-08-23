@@ -11,8 +11,7 @@ export declare const PORTRAIT_JOB_CONTRACT: {
         readonly performance: readonly ["source-labelled benchmark claims only; live reachability and latency are never copied from documentation"];
         readonly provenance: readonly ["http(s) source", "provider-doc or benchmark kind", "observedAt", "supported claims", "source limitations"];
     };
-    readonly acceptance: readonly ["registered identity, modalities, capabilities, operations, and execution mode are never rewritten from research", "every price rate references an evidence record from the same portrait", "unknown facts remain unknown instead of being inferred", "provider claims and independent benchmarks are labelled separately", "research never writes performance.lastProbe", "every saved portrait is passed through validate_model_portrait(liveProbe=false)"];
+    readonly acceptance: readonly ["registered identity, modalities, capabilities, operations, and execution mode are never rewritten from research", "every price rate references an evidence record from the same portrait", "unknown facts remain unknown instead of being inferred", "provider claims and independent benchmarks are labelled separately", "research never writes performance.lastProbe", "every saved portrait is passed through portrait_job_validate_portrait, which forces liveProbe=false"];
 };
 export declare function buildPortraitResearchPrompt(manifest: Record<string, unknown>): string;
 export declare function buildPortraitProbePrompt(ids: readonly string[], approvedAt: string): string;
-//# sourceMappingURL=job-contract.d.ts.map

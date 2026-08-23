@@ -45,4 +45,3 @@ export declare const MISTRAL_PRICING_DOCS = "https://docs.mistral.ai/models/mode
  *   HTTPS documentation entry points. Empty when the provider has no bundled sources.
  */
 export declare function officialResearchSources(provider: string): readonly string[];
-//# sourceMappingURL=research-sources.d.ts.map

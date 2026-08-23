@@ -1,3 +1,6 @@
+import { lookup } from 'node:dns/promises'
+import type { LookupAddress } from 'node:dns'
+import { isIP } from 'node:net'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
@@ -6,6 +9,7 @@ import { ModelManagerError } from './operations.ts'
 import { initialPortrait, normalizePortrait, normalizeStoredPortrait } from './portrait-core.ts'
 import { builtinTaskPortrait } from './portraits/builtin-task.ts'
 import {
+  DOUBAO_REALTIME_BASE_URL,
   DOUBAO_SPEECH_CATALOG,
   DOUBAO_SPEECH_LEGACY_CATALOG,
   DOUBAO_SPEECH_PROVIDER,
@@ -34,6 +38,33 @@ const modalitySchema = z.union(MODEL_MODALITIES)
 const taskSchema = z.union(TASK_MODEL_TASKS)
 const executionSchema = z.union(MODEL_EXECUTION_MODES)
 const capabilitySchema = z.union(TASK_MODEL_CAPABILITIES)
+
+const SECRET_METADATA_KEY = /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|secret|password|credential)/i
+const SECRET_METADATA_VALUE = /^(?:bearer\s+|sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]{10,}\.)/i
+
+function assertSecretFreeMetadata(value: unknown, name: string, depth = 0): void {
+  if (depth > 8) throw new ModelManagerError(`${name} is nested too deeply`, 'INVALID_TASK_MODEL_CONFIGURATION')
+  if (typeof value === 'string') {
+    if (SECRET_METADATA_VALUE.test(value.trim())) {
+      throw new ModelManagerError(`${name} appears to contain a credential value; store only credential references`, 'SECRET_VALUE_NOT_ALLOWED')
+    }
+    return
+  }
+  if (value === null || typeof value !== 'object') return
+  if (Array.isArray(value)) {
+    if (value.length > 1_000) throw new ModelManagerError(`${name} is too large`, 'INVALID_TASK_MODEL_CONFIGURATION')
+    value.forEach((item, index) => assertSecretFreeMetadata(item, `${name}[${index}]`, depth + 1))
+    return
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length > 200) throw new ModelManagerError(`${name} is too large`, 'INVALID_TASK_MODEL_CONFIGURATION')
+  for (const [key, item] of entries) {
+    if (SECRET_METADATA_KEY.test(key)) {
+      throw new ModelManagerError(`${name}.${key} is secret-shaped; profiles must contain non-secret metadata only`, 'SECRET_VALUE_NOT_ALLOWED')
+    }
+    assertSecretFreeMetadata(item, `${name}.${key}`, depth + 1)
+  }
+}
 
 const connectionSchema = z.object({
   provider: z.string().required().description('Provider family, for example openai.'),
@@ -130,7 +161,7 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
         product: 'doubao-speech',
         speechResources: 'documented-resource-ids',
       },
-      baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+      baseURL: DOUBAO_REALTIME_BASE_URL,
       models: [],
     },
   },
@@ -625,9 +656,16 @@ function validateConnection(id: string, connection: TaskModelRegistryConfig['con
   nonBlank(connection.provider, `connections.${id}.provider`)
   absoluteConnectionUrl(connection.baseURL, `connections.${id}.baseURL`)
   absoluteHttpUrl(connection.catalogEndpoint, `connections.${id}.catalogEndpoint`)
+  assertSecretFreeMetadata(connection.profile, `connections.${id}.profile`)
   if (connection.credentialRef !== undefined) credentialRef(nonBlank(connection.credentialRef, `connections.${id}.credentialRef`))
   const refs = namedCredentialRefs(connection.credentialRefs, `connections.${id}.credentialRefs`)
   const catalogCredentialName = optionalText(connection.catalogCredentialName)
+  if (catalogCredentialName === 'default' && optionalText(connection.credentialRef) === undefined) {
+    throw new ModelManagerError(
+      `connections.${id}.catalogCredentialName references missing default credentialRef`,
+      'INVALID_TASK_MODEL_CONFIGURATION',
+    )
+  }
   if (catalogCredentialName !== undefined
     && catalogCredentialName !== 'default'
     && refs?.[catalogCredentialName] === undefined) {
@@ -657,7 +695,10 @@ export function validateTaskModelRegistry(config: TaskModelRegistryConfig): void
     const credentialNames = stringList(model.credentialNames, `models.${id}.credentialNames`)
     const connection = config.connections[model.connection]!
     for (const name of credentialNames ?? []) {
-      if (name !== 'default' && connection.credentialRefs?.[name] === undefined) {
+      const missing = name === 'default'
+        ? connection.credentialRef === undefined
+        : connection.credentialRefs?.[name] === undefined
+      if (missing) {
         throw new ModelManagerError(
           `models.${id}.credentialNames references unknown connection credential slot '${name}'`,
           'INVALID_TASK_MODEL_CONFIGURATION',
@@ -666,6 +707,7 @@ export function validateTaskModelRegistry(config: TaskModelRegistryConfig): void
     }
     stringList(model.operations, `models.${id}.operations`)
     stringList(model.roles, `models.${id}.roles`)
+    assertSecretFreeMetadata(model.profile, `models.${id}.profile`)
     if (model.portrait !== undefined) normalizePortrait(model.portrait)
   }
 
@@ -700,6 +742,40 @@ export function registerTaskModelSettings(ctx: Context): void {
   })
 }
 
+function catalogCredentialRef(connection: TaskModelRegistryConfig['connections'][string]): string | undefined {
+  const name = optionalText(connection.catalogCredentialName)
+  if (name === undefined) return undefined
+  return name === 'default' ? connection.credentialRef : connection.credentialRefs?.[name]
+}
+
+function catalogOrigin(connection: TaskModelRegistryConfig['connections'][string]): string | undefined {
+  try {
+    return new URL(catalogURL(connection)).origin
+  } catch {
+    return undefined
+  }
+}
+
+async function assertCatalogCredentialBinding(
+  ctx: Context,
+  existing: TaskModelRegistryConfig['connections'][string] | undefined,
+  next: TaskModelRegistryConfig['connections'][string],
+): Promise<void> {
+  const nextRef = catalogCredentialRef(next)
+  if (nextRef === undefined) return
+  const status = await credentialStatus(ctx, nextRef)
+  if (!status.configured) return
+  const unchanged = existing !== undefined
+    && catalogCredentialRef(existing) === nextRef
+    && catalogOrigin(existing) === catalogOrigin(next)
+  if (!unchanged) {
+    throw new ModelManagerError(
+      `configured credential '${nextRef}' cannot be rebound to a new task-catalog origin by an Agent tool; create the endpoint with an unconfigured reference, then configure it in secure Settings`,
+      'TASK_MODEL_CATALOG_CREDENTIAL_REBIND_FORBIDDEN',
+    )
+  }
+}
+
 export async function registerTaskModel(
   ctx: Context,
   input: RegisterTaskModelInput,
@@ -725,6 +801,8 @@ export async function registerTaskModel(
   const baseURL = absoluteConnectionUrl(input.baseURL, 'baseURL')
   const catalogEndpoint = absoluteHttpUrl(input.catalogEndpoint, 'catalogEndpoint')
   const catalogCredentialName = optionalText(input.catalogCredentialName)
+  assertSecretFreeMetadata(input.connectionProfile, 'connectionProfile')
+  assertSecretFreeMetadata(input.profile, 'profile')
   const defaults = TASK_DEFAULTS[input.task]
   const existingModel = config.models[id]
 
@@ -738,6 +816,12 @@ export async function registerTaskModel(
     ...(catalogCredentialName === undefined ? {} : { catalogCredentialName }),
     ...(input.connectionProfile === undefined ? {} : { profile: input.connectionProfile }),
   }
+  const nextConnection = {
+    ...(existingConnection ?? {}),
+    ...connectionFields,
+  } as TaskModelRegistryConfig['connections'][string]
+  await assertCatalogCredentialBinding(ctx, existingConnection, nextConnection)
+
   const modelFields: Record<string, unknown> = {
     enabled: input.enabled ?? existingModel?.enabled ?? true,
     connection: connectionId,
@@ -819,6 +903,76 @@ function catalogURL(connection: TaskModelRegistryConfig['connections'][string]):
   return `${connection.baseURL.replace(/\/+$/, '')}/models`
 }
 
+function privateIpv4(address: string): boolean {
+  const parts = address.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return false
+  const [a, b] = parts as [number, number, number, number]
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+    || (a === 100 && b >= 64 && b <= 127) || a >= 224
+}
+
+function privateIp(address: string): boolean {
+  if (isIP(address) === 4) return privateIpv4(address)
+  if (isIP(address) !== 6) return false
+  const normalized = address.toLowerCase()
+  if (normalized === '::' || normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd')) return true
+  if (/^fe[89ab]/.test(normalized)) return true
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(normalized)?.[1]
+  return mapped !== undefined && privateIpv4(mapped)
+}
+
+export async function assertSafeCatalogEndpoint(endpoint: string): Promise<void> {
+  const url = new URL(endpoint)
+  if (url.username !== '' || url.password !== '') {
+    throw new ModelManagerError('task catalog URLs must not contain inline credentials', 'TASK_MODEL_CATALOG_ENDPOINT_FORBIDDEN')
+  }
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '')
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')
+    || hostname === 'metadata.google.internal' || hostname === 'metadata') {
+    throw new ModelManagerError('task catalog endpoints must not target local or metadata hosts', 'TASK_MODEL_CATALOG_ENDPOINT_FORBIDDEN')
+  }
+  if (isIP(hostname) !== 0 && privateIp(hostname)) {
+    throw new ModelManagerError('task catalog endpoints must not target private, loopback, link-local, or multicast addresses', 'TASK_MODEL_CATALOG_ENDPOINT_FORBIDDEN')
+  }
+  if (!hostname.endsWith('.test') && !hostname.endsWith('.example') && isIP(hostname) === 0) {
+    let addresses: LookupAddress[]
+    try {
+      addresses = await lookup(hostname, { all: true, verbatim: true })
+    } catch (cause) {
+      throw new ModelManagerError('task catalog hostname could not be resolved safely', 'TASK_MODEL_CATALOG_ENDPOINT_UNRESOLVED', { cause })
+    }
+    if (addresses.length === 0 || addresses.some(item => privateIp(item.address))) {
+      throw new ModelManagerError('task catalog hostname resolves to a private, loopback, link-local, or multicast address', 'TASK_MODEL_CATALOG_ENDPOINT_FORBIDDEN')
+    }
+  }
+}
+
+async function boundedResponseText(response: Response, maxBytes: number): Promise<string> {
+  const reader = response.body?.getReader()
+  if (reader === undefined) return ''
+  const chunks: Uint8Array[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > maxBytes) throw new ModelManagerError('task catalog response exceeded the size limit', 'TASK_MODEL_CATALOG_RESPONSE_TOO_LARGE')
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const joined = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    joined.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(joined)
+}
+
 export async function discoverTaskModels(
   ctx: Context,
   input: DiscoverTaskModelsInput,
@@ -830,6 +984,7 @@ export async function discoverTaskModels(
   const connection = config.connections[connectionId]
   if (connection === undefined) throw new ModelManagerError(`unknown connection '${connectionId}'`, 'UNKNOWN_TASK_MODEL_CONNECTION')
   const endpoint = catalogURL(connection)
+  await assertSafeCatalogEndpoint(endpoint)
   const credentialName = optionalText(connection.catalogCredentialName)
   let authorization: string | undefined
   if (credentialName !== undefined) {
@@ -855,15 +1010,19 @@ export async function discoverTaskModels(
   const response = await fetch(endpoint, {
     method: 'GET',
     headers: authorization === undefined ? {} : { Authorization: authorization },
+    redirect: 'manual',
     signal,
   })
+  if (response.status >= 300 && response.status < 400) {
+    throw new ModelManagerError('model catalog redirects are not followed; configure the final trusted endpoint explicitly', 'TASK_MODEL_CATALOG_REDIRECT_FORBIDDEN')
+  }
   if (!response.ok) {
     throw new ModelManagerError(
-      `model catalog request failed with HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`,
+      `model catalog request failed with HTTP ${response.status}`,
       'TASK_MODEL_CATALOG_REQUEST_FAILED',
     )
   }
-  const body = await response.json() as {
+  const body = JSON.parse(await boundedResponseText(response, 2 * 1024 * 1024)) as {
     data?: Array<{ id?: unknown; owned_by?: unknown }>
     models?: Array<string | { id?: unknown; name?: unknown; owned_by?: unknown }>
   }
@@ -926,6 +1085,14 @@ export async function selectTaskModels(
     path: ['models', id, 'enabled'],
     value: selected.has(id),
   }))
+  if (providerModelSelection(descriptor, connectionId) !== undefined) {
+    const providerModels = routes.flatMap(([id, model]) => {
+      if (!selected.has(id)) return []
+      const voice = typeof model.profile?.voice === 'string' ? model.profile.voice : undefined
+      return [{ id: voice ?? model.model, ...(model.displayName === undefined ? {} : { name: model.displayName }) }]
+    })
+    ops.push({ op: 'set', path: ['connections', connectionId, 'models'], value: providerModels })
+  }
   if (ops.length > 0) await ctx.settings.mutate(TASK_MODEL_SETTINGS_NAMESPACE, ops, descriptor.revision)
   return {
     connection: connectionId,

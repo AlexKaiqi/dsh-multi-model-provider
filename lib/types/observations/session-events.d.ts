@@ -6,4 +6,3 @@ declare module '@deepseek-ai/dsh-session' {
     }
 }
 export declare function recordTaskModelObservation(exec: ToolRunContext, value: TaskModelInvocationRecord): void;
-//# sourceMappingURL=session-events.d.ts.map

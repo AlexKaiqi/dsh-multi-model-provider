@@ -6,6 +6,21 @@ function modelRecord(value) {
   return typeof value === 'string' ? { id: value } : object(value)
 }
 
+function providerSelection(descriptor, connectionId) {
+  const connection = object(object(descriptor?.user).connections)[connectionId]
+  const models = object(connection).models
+  if (!Array.isArray(models)) return undefined
+  return new Set(models.flatMap((row) => {
+    const id = typeof row === 'string' ? row : object(row).id
+    return typeof id === 'string' && id.trim() ? [id] : []
+  }))
+}
+
+function selectedByProvider(selected, id, model) {
+  const voice = typeof object(model.profile).voice === 'string' ? object(model.profile).voice : undefined
+  return selected.has(id) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
+}
+
 /** Build the shared portrait target list from the two Settings namespaces. */
 export function snapshotPortraitTargets(multi, llm) {
   const root = object(multi?.value)
@@ -13,16 +28,18 @@ export function snapshotPortraitTargets(multi, llm) {
   const task = Object.entries(object(root.models)).map(([id, raw]) => {
     const model = object(raw)
     const connection = object(connections[model.connection])
+    const selected = providerSelection(multi, model.connection)
     return {
       id,
       kind: 'task',
       provider: connection.provider ?? model.connection ?? '',
+      providerName: connection.displayName ?? connection.provider ?? model.connection ?? '',
       model: model.model ?? '',
       name: model.displayName ?? model.model ?? id,
       input: Array.isArray(model.input) ? model.input : [],
       output: Array.isArray(model.output) ? model.output : [],
       task: model.task,
-      enabled: model.enabled !== false,
+      enabled: selected === undefined ? model.enabled !== false : selectedByProvider(selected, id, model),
       portrait: object(model.portrait),
     }
   })
@@ -40,6 +57,7 @@ export function snapshotPortraitTargets(multi, llm) {
         id,
         kind: 'llm',
         provider,
+        providerName: profile.displayName ?? provider,
         model: model.id,
         name: model.name ?? model.id,
         input: Array.isArray(model.input) && model.input.length ? model.input : ['text'],

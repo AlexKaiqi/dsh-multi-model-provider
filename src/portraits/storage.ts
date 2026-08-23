@@ -15,7 +15,11 @@ export function portraitRegistry(ctx: Context): TaskModelRegistryConfig {
   return portraitSettings(ctx).value as TaskModelRegistryConfig
 }
 
-export async function mutatePortraitSettings(ctx: Context, operations: readonly SettingsPathOp[]): Promise<void> {
-  const current = portraitSettings(ctx)
-  await ctx.settings.mutate(TASK_MODEL_SETTINGS_NAMESPACE, operations, current.revision)
+export async function mutatePortraitSettings(
+  ctx: Context,
+  operations: readonly SettingsPathOp[],
+  expectedRevision?: number,
+): Promise<void> {
+  const revision = expectedRevision ?? portraitSettings(ctx).revision
+  await ctx.settings.mutate(TASK_MODEL_SETTINGS_NAMESPACE, operations, revision)
 }

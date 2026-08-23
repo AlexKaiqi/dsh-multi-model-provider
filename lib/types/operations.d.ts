@@ -7,4 +7,3 @@ export declare class ModelManagerError extends HarnessError {
 }
 export declare function configureModelRoute(ctx: Context, input: ConfigureModelRouteInput): Promise<Record<string, unknown>>;
 export declare function listModelRoutes(ctx: Context, input?: ListModelRoutesInput): Promise<Record<string, unknown>>;
-//# sourceMappingURL=operations.d.ts.map

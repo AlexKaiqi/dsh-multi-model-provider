@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DICTIONARIES, installTranslator, NS, t } from './i18n.js'
-import { filterPortraitTargets, snapshotPortraitTargets } from './portrait-targets.js'
+import { snapshotPortraitTargets } from './portrait-targets.js'
 
 const MULTI_NS = 'multi-model-provider'
 const LLM_NS = 'llm-pi-ai'
@@ -18,14 +18,12 @@ const CSS = `
 .mmp-list{display:flex;max-height:360px;flex-direction:column;gap:2px;overflow:auto}.mmp-row{display:flex;gap:10px;align-items:flex-start;padding:9px 2px;border-bottom:1px solid var(--dsw-alias-border-l2)}
 .mmp-row-main{flex:1;min-width:0}.mmp-id{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.mmp-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.mmp-tag{font-size:11px;padding:2px 6px;border-radius:5px;background:var(--dsw-alias-bg-module-platform)}
 .mmp-provider-extension{display:flex;flex-direction:column;gap:14px;margin-top:12px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l2)}
-.mmp-portrait-page{max-width:1080px}.mmp-portrait-layout{display:flex;flex-direction:column;gap:14px}.mmp-selector{display:flex;min-width:0;flex-direction:column;gap:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:12px}.mmp-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.mmp-selector-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:320px;gap:4px;overflow:auto}.mmp-selector-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.mmp-target{width:100%;border:1px solid transparent;border-radius:9px;padding:10px;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer}.mmp-target:hover{background:var(--dsw-alias-bg-module-platform)}.mmp-target[data-active=true]{border-color:var(--dsw-alias-border-l1,var(--dsw-alias-label-secondary));background:var(--dsw-alias-bg-module-platform)}
+.mmp-portrait-page{max-width:720px}.mmp-portrait-panel{display:flex;min-width:0;flex-direction:column;gap:16px}.mmp-portrait-tabs{display:flex;gap:20px;border-bottom:1px solid var(--dsw-alias-border-l2)}.mmp-portrait-tab{border:0;border-bottom:2px solid transparent;padding:9px 2px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}.mmp-portrait-tab[data-active=true]{border-bottom-color:var(--dsw-alias-label-primary);color:var(--dsw-alias-label-primary);font-weight:600}.mmp-model-picker{font-size:14px;padding:11px 12px}
 .mmp-portrait-view{display:flex;flex-direction:column;gap:14px}.mmp-checks{display:flex;flex-direction:column;gap:5px}.mmp-check{font-size:12px}.mmp-check[data-status=warn]{color:var(--dsw-alias-state-warning-primary,#9a6700)}.mmp-check[data-status=fail]{color:var(--dsw-alias-state-error-primary,#c33)}
 .mmp-markdown{max-height:360px;overflow:auto;margin:0;border-radius:9px;padding:12px;background:var(--dsw-alias-bg-module-platform);font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
 .mmp-rate{display:grid;grid-template-columns:minmax(90px,1.2fr) minmax(90px,1fr) auto auto;gap:8px;padding:8px 0;border-bottom:1px solid var(--dsw-alias-border-l2);font-size:12px}.mmp-rate:last-child{border-bottom:0}
-.mmp-agent-note{border-radius:9px;padding:10px 12px;background:var(--dsw-alias-bg-module-platform);font-size:12px;line-height:18px}
 .mmp-action-block{display:flex;flex-direction:column;gap:10px;border-radius:10px;padding:12px;background:var(--dsw-alias-bg-module-platform)}.mmp-selected-model{display:flex;flex-direction:column;gap:3px;min-width:0}.mmp-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.mmp-job{display:flex;flex-direction:column;gap:6px;border-radius:9px;padding:10px 12px;background:var(--dsw-alias-bg-module-platform)}
-@media(max-width:760px){.mmp-grid,.mmp-grid3,.mmp-filter-grid,.mmp-selector-list{grid-template-columns:1fr}.mmp-rate{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.mmp-grid,.mmp-grid3{grid-template-columns:1fr}.mmp-rate{grid-template-columns:1fr 1fr}}
 `
 
 function object(value) {
@@ -63,13 +61,25 @@ function stateOf(portrait) {
   return object(portrait.validation).state ?? (Object.keys(portrait).length ? 'unvalidated' : 'missing')
 }
 
+/** Localized user-facing Provider name; route ids remain stable technical identifiers only. */
+function providerNameOf(target) {
+  if (target.provider === 'volcengine') return t('providerVolcengine')
+  if (target.provider === 'doubao-speech') return t('providerDoubaoSpeech')
+  return target.providerName || target.provider || t('unknown')
+}
+
 function usePortraitJob(onCompleted) {
   const [job, setJob] = useState(undefined)
   const [error, setError] = useState(undefined)
+  const [available, setAvailable] = useState(true)
   const completed = useRef('')
   const load = async () => {
     const response = await fetch('/dsh-multi-model-provider/portrait-jobs', { credentials: 'same-origin' })
-    if (!response.ok) throw new Error(`portrait job status HTTP ${response.status}`)
+    if (!response.ok) {
+      if (response.status === 404) setAvailable(false)
+      throw new Error(response.status === 404 ? t('portraitJobsUnavailable') : `portrait job status HTTP ${response.status}`)
+    }
+    setAvailable(true)
     const value = await response.json()
     setJob(value.job)
     if (value.job?.finishedAt && value.job.id !== completed.current) {
@@ -78,7 +88,7 @@ function usePortraitJob(onCompleted) {
     }
     return value.job
   }
-  useEffect(() => { void load().catch(() => undefined) }, [])
+  useEffect(() => { void load().catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }, [])
   useEffect(() => {
     if (!job || !['queued', 'running'].includes(job.status)) return undefined
     const timer = setInterval(() => { void load().catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }, 1_500)
@@ -96,7 +106,7 @@ function usePortraitJob(onCompleted) {
     if (!response.ok) throw new Error(value.error ?? `portrait job HTTP ${response.status}`)
     setJob(value.job)
   }
-  return { job, error, start: (action, ids) => start(action, ids).catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }
+  return { job, error, available, start: (action, ids) => start(action, ids).catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }
 }
 
 function MetricSummary({ portrait }) {
@@ -135,38 +145,21 @@ function EvidenceAndValidation({ portrait }) {
   </div>
 }
 
-/** Read-only results for portraits created and maintained by the Agent. */
-function PortraitViewer({ config, reload }) {
+/** Two flat tasks: collect a portrait or view the latest result. */
+function PortraitViewer({ config, reload, sessions }) {
   const targets = useMemo(
     () => snapshotPortraitTargets(config.multi, config.llm),
     [config.multi?.revision, config.llm?.revision],
   )
   const [targetId, setTargetId] = useState(targets[0]?.id ?? '')
-  const [query, setQuery] = useState('')
-  const [kindFilter, setKindFilter] = useState('all')
-  const [providerFilter, setProviderFilter] = useState('all')
-  const [stateFilter, setStateFilter] = useState('all')
-  const [availabilityFilter, setAvailabilityFilter] = useState('all')
+  const [portraitTab, setPortraitTab] = useState('collect')
   const portraitJob = usePortraitJob(() => { void reload() })
 
-  const providers = useMemo(() => [...new Set(targets.map(item => item.provider).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [targets])
-  const filteredTargets = useMemo(() => filterPortraitTargets(targets, {
-    query,
-    kind: kindFilter,
-    provider: providerFilter,
-    state: stateFilter,
-    availability: availabilityFilter,
-  }), [targets, query, kindFilter, providerFilter, stateFilter, availabilityFilter])
-  const target = filteredTargets.find(item => item.id === targetId) ?? filteredTargets[0]
-  const filtersActive = Boolean(query.trim()) || kindFilter !== 'all' || providerFilter !== 'all' || stateFilter !== 'all' || availabilityFilter !== 'all'
+  const target = targets.find(item => item.id === targetId) ?? targets[0]
 
   useEffect(() => {
     if (targets.length && !targets.some(item => item.id === targetId)) setTargetId(targets[0].id)
   }, [targets, targetId])
-
-  useEffect(() => {
-    if (filteredTargets.length && !filteredTargets.some(item => item.id === targetId)) setTargetId(filteredTargets[0].id)
-  }, [filteredTargets, targetId])
 
   if (!targets.length) return <section className="mmp-card"><div className="mmp-muted">{t('portraitsEmpty')}</div></section>
 
@@ -174,59 +167,35 @@ function PortraitViewer({ config, reload }) {
   const state = stateOf(portrait)
   const description = descriptionOf(portrait)
   const jobBusy = ['queued', 'running'].includes(portraitJob.job?.status)
-  const runProbe = () => {
-    if (!target) return
-    if (window.confirm(t('portraitProbeConfirm', { id: target.id }))) void portraitJob.start('probe', [target.id])
-  }
-  const clearFilters = () => {
-    setQuery('')
-    setKindFilter('all')
-    setProviderFilter('all')
-    setStateFilter('all')
-    setAvailabilityFilter('all')
-  }
 
-  return <section className="mmp-card">
-    <div className="mmp-muted">{t('portraitsHint')}</div>
-    <div className="mmp-selector">
-      <div><div className="mmp-subtitle">{t('portraitSelectTitle')}</div><div className="mmp-muted">{t('portraitSelectHint')}</div></div>
-      <div className="mmp-filter-grid">
-        <div className="mmp-field"><label htmlFor="mmp-portrait-search">{t('searchModels')}</label><input id="mmp-portrait-search" className="mmp-input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('searchModelsPlaceholder')} /></div>
-        <div className="mmp-field"><label htmlFor="mmp-portrait-kind">{t('portraitKindFilter')}</label><select id="mmp-portrait-kind" className="mmp-input" value={kindFilter} onChange={event => setKindFilter(event.target.value)}><option value="all">{t('filterAll')}</option><option value="llm">{t('filterLlm')}</option><option value="task">{t('filterTask')}</option></select></div>
-        <div className="mmp-field"><label htmlFor="mmp-portrait-provider">{t('portraitProviderFilter')}</label><select id="mmp-portrait-provider" className="mmp-input" value={providerFilter} onChange={event => setProviderFilter(event.target.value)}><option value="all">{t('filterAll')}</option>{providers.map(provider => <option value={provider} key={provider}>{provider}</option>)}</select></div>
-        <div className="mmp-field"><label htmlFor="mmp-portrait-state">{t('portraitStateFilter')}</label><select id="mmp-portrait-state" className="mmp-input" value={stateFilter} onChange={event => setStateFilter(event.target.value)}><option value="all">{t('filterAll')}</option>{['valid', 'partial', 'invalid', 'unvalidated', 'missing'].map(value => <option value={value} key={value}>{t(`portraitState.${value}`)}</option>)}</select></div>
-        <div className="mmp-field"><label htmlFor="mmp-portrait-availability">{t('portraitAvailabilityFilter')}</label><select id="mmp-portrait-availability" className="mmp-input" value={availabilityFilter} onChange={event => setAvailabilityFilter(event.target.value)}><option value="all">{t('filterAll')}</option><option value="enabled">{t('filterEnabled')}</option><option value="disabled">{t('filterDisabled')}</option></select></div>
-      </div>
-      <div className="mmp-selector-meta"><span className="mmp-muted">{t('showingModels', { shown: filteredTargets.length, total: targets.length })}</span>{filtersActive && <button type="button" className="mmp-button" onClick={clearFilters}>{t('clearFilters')}</button>}</div>
-      <div className="mmp-selector-list">
-        {filteredTargets.map(item => <button type="button" className="mmp-target" aria-pressed={item.id === target?.id} data-active={item.id === target?.id} key={item.id} onClick={() => setTargetId(item.id)}><div>{item.name}</div><div className="mmp-id">{item.id}</div><div className="mmp-tags"><span className="mmp-tag">{item.kind}</span>{item.task && <span className="mmp-tag">{item.task}</span>}<span className="mmp-status" data-state={stateOf(object(item.portrait))}>{t(`portraitState.${stateOf(object(item.portrait))}`)}</span>{item.enabled === false && <span className="mmp-tag">disabled</span>}</div></button>)}
-        {filteredTargets.length === 0 && <div className="mmp-muted">{t('noMatchingModels')}</div>}
-      </div>
+  const jobDetail = portraitJob.job?.summary || portraitJob.job?.error || portraitJob.job?.phase
+
+  return <section className="mmp-portrait-panel">
+    <div className="mmp-portrait-tabs" role="tablist">
+      <button type="button" className="mmp-portrait-tab" role="tab" aria-selected={portraitTab === 'collect'} data-active={portraitTab === 'collect'} onClick={() => setPortraitTab('collect')}>{t('portraitTabCollect')}</button>
+      <button type="button" className="mmp-portrait-tab" role="tab" aria-selected={portraitTab === 'view'} data-active={portraitTab === 'view'} onClick={() => setPortraitTab('view')}>{t('portraitTabView')}</button>
     </div>
-    <div className="mmp-action-block">
-      <div className="mmp-selected-model"><span className="mmp-muted">{t('portraitSelectedModel')}</span>{target ? <><span className="mmp-subtitle">{target.name}</span><span className="mmp-id">{target.id}</span></> : <span>{t('portraitSelectRequired')}</span>}</div>
-      <div className="mmp-actions"><button type="button" className="mmp-button" disabled={jobBusy || !target} onClick={() => target && void portraitJob.start('research', [target.id])}>{t('portraitResearchCurrent')}</button><button type="button" className="mmp-button" disabled={jobBusy || !target} onClick={runProbe}>{t('portraitProbeCurrent')}</button><button type="button" className="mmp-button" disabled={jobBusy} onClick={() => void portraitJob.start('research')}>{t('portraitResearchAll')}</button></div>
-    </div>
-    {portraitJob.job && <div className="mmp-job"><div>{t(`portraitJob.${portraitJob.job.status}`)} · {portraitJob.job.action === 'probe' ? t('portraitJobProbe') : t('portraitJobResearch')}</div><div className="mmp-muted">{portraitJob.job.summary || portraitJob.job.error || portraitJob.job.phase || portraitJob.job.workspaceLabel}</div></div>}
-    {portraitJob.error && <div className="mmp-error">{portraitJob.error}</div>}
-    <div className="mmp-agent-note">{t('portraitsAgentOwned')}</div>
-    <div className="mmp-portrait-layout">
-      {target && <div className="mmp-card mmp-portrait-view">
-        <div><div className="mmp-subtitle">{target.name} <span className="mmp-status" data-state={state}>{t(`portraitState.${state}`)}</span></div><div className="mmp-id">{target.id}</div><div className="mmp-tags"><span className="mmp-tag">{t('inputLabel', { value: target.input.join(' + ') || t('unknown') })}</span><span className="mmp-tag">{t('outputLabel', { value: target.output.join(' + ') || t('unknown') })}</span></div></div>
+    <select aria-label={t('portraitSelectTitle')} className="mmp-input mmp-model-picker" value={target?.id ?? ''} onChange={event => setTargetId(event.target.value)}>{targets.map(item => <option value={item.id} key={item.id}>{item.name} · {providerNameOf(item)} · {t(`portraitState.${stateOf(object(item.portrait))}`)}</option>)}</select>
+    {portraitTab === 'collect' && <>
+      <div><button type="button" className="mmp-button" disabled={!portraitJob.available || jobBusy || !target} onClick={() => target && void portraitJob.start('research', [target.id])}>{t('portraitStartCollection')}</button></div>
+      {portraitJob.job && <div className="mmp-job"><div>{t(`portraitJob.${portraitJob.job.status}`)}</div>{jobDetail && <div className="mmp-muted">{jobDetail}</div>}{portraitJob.job.sessionId && <div><button type="button" className="mmp-button" onClick={() => sessions.open(portraitJob.job.sessionId)}>{t('portraitOpenSession')}</button></div>}</div>}
+      {portraitJob.error && <div className="mmp-error">{portraitJob.error}</div>}
+    </>}
+    {portraitTab === 'view' && target && <div className="mmp-portrait-view">
+        <div><span className="mmp-status" data-state={state}>{t(`portraitState.${state}`)}</span><div className="mmp-tags"><span className="mmp-tag">{t('inputLabel', { value: target.input.join(' + ') || t('unknown') })}</span><span className="mmp-tag">{t('outputLabel', { value: target.output.join(' + ') || t('unknown') })}</span></div></div>
         {description ? <pre className="mmp-markdown">{description}</pre> : <div className="mmp-muted">{t('portraitDescriptionMissing')}</div>}
         <MetricSummary portrait={portrait} />
         <PriceSummary portrait={portrait} />
         <EvidenceAndValidation portrait={portrait} />
       </div>}
-    </div>
   </section>
 }
 
-function PortraitSettings({ api }) {
+function PortraitSettings({ api, sessions }) {
   const [config, reload] = useConfig(api)
   if (config.status === 'loading' && !config.multi) return <div className="mmp-page mmp-portrait-page"><div className="mmp-muted">{t('loadingPortraits')}</div></div>
   if (config.status === 'error') return <div className="mmp-page mmp-portrait-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>{t('retry')}</button></div>
-  return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} /></div>
+  return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} sessions={sessions} /></div>
 }
 
 /** Compact read-only portrait summary below an LLM model row. */
@@ -246,7 +215,7 @@ function ModelPortraitDetails({ api, provider, model, displayName }) {
   </section>
 }
 
-export const inject = ['slots', 'connection', 'locale']
+export const inject = ['slots', 'connection', 'locale', 'sessions']
 
 export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, DICTIONARIES), 'multi-model-provider: locale dictionaries')
@@ -259,11 +228,12 @@ export function apply(ctx) {
     return () => tag.remove()
   }, 'multi-model-provider: settings styles')
   const connection = ctx.get('connection')
+  const sessions = ctx.get('sessions')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'model-portraits', order: 11,
     label: () => t('tabPortraits'),
     locale: NS,
-    inject: () => ({ api: connection.api }),
+    inject: () => ({ api: connection.api, sessions }),
   }, PortraitSettings))
   ctx.slots.inject('settings.models.model.details', () => ctx.slots.register({
     name: 'settings.models.model.details', id: 'model-portrait', order: 10,

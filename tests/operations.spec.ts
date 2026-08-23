@@ -75,6 +75,63 @@ describe('configureModelRoute', () => {
     expect(JSON.stringify(result)).not.toContain('sk-secret')
   })
 
+  it.each([
+    { provider: 'openai' },
+    { provider: 'openai', models: [] },
+  ])('keeps an existing provider unchanged for an empty effective update: $provider', async (input) => {
+    const mutate = vi.fn(async () => undefined)
+    const ctx = context({
+      settings: {
+        describe: vi.fn(() => [{
+          ns: PI_AI_SETTINGS_NAMESPACE,
+          schema: {},
+          value: {
+            providers: {
+              openai: {
+                apiKeyEnv: 'OPENAI_API_KEY',
+                baseURL: 'https://api.openai.example/v1',
+                models: [{ id: 'gpt-existing' }],
+              },
+            },
+          },
+          revision: 7,
+          applies: 'live',
+        }]),
+        mutate,
+      },
+    })
+
+    await expect(configureModelRoute(ctx, input)).resolves.toMatchObject({
+      provider: 'openai',
+      saved: true,
+      changed: false,
+    })
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('creates a missing provider for a provider-only request', async () => {
+    const mutate = vi.fn(async () => undefined)
+    const ctx = context({
+      settings: {
+        describe: vi.fn(() => [{
+          ns: PI_AI_SETTINGS_NAMESPACE,
+          schema: {},
+          value: { providers: {} },
+          revision: 7,
+          applies: 'live',
+        }]),
+        mutate,
+      },
+    })
+
+    await expect(configureModelRoute(ctx, { provider: 'gateway' })).resolves.toMatchObject({ changed: true })
+    expect(mutate).toHaveBeenCalledWith(
+      PI_AI_SETTINGS_NAMESPACE,
+      [{ op: 'set', path: ['providers', 'gateway'], value: {} }],
+      7,
+    )
+  })
+
   it('rejects a non-URL endpoint before settings are changed', async () => {
     const ctx = context()
     await expect(configureModelRoute(ctx, {
@@ -82,6 +139,74 @@ describe('configureModelRoute', () => {
       baseURL: 'not a URL',
     })).rejects.toMatchObject({ code: 'INVALID_MODEL_CONFIGURATION' })
     expect(ctx.settings.mutate).not.toHaveBeenCalled()
+  })
+
+  it('does not turn discovered output capacity into a per-request limit', async () => {
+    const mutate = vi.fn(async () => undefined)
+    const ctx = context({
+      settings: {
+        describe: vi.fn(() => [{
+          ns: PI_AI_SETTINGS_NAMESPACE,
+          schema: {},
+          value: { providers: {} },
+          revision: 7,
+          applies: 'live',
+        }]),
+        mutate,
+      },
+    })
+
+    const result = await configureModelRoute(ctx, {
+      provider: 'gateway',
+      models: [{ id: 'large-model', contextWindow: 272_000, maxTokens: 128_000 }],
+    })
+
+    expect(mutate).toHaveBeenCalledWith(
+      PI_AI_SETTINGS_NAMESPACE,
+      [{
+        op: 'set',
+        path: ['providers', 'gateway', 'models'],
+        value: [{ id: 'large-model', contextWindow: 272_000 }],
+      }],
+      7,
+    )
+    expect(result).toMatchObject({
+      warnings: [{
+        code: 'MODEL_OUTPUT_CAPACITY_NOT_PERSISTED',
+        models: ['large-model'],
+      }],
+    })
+  })
+
+  it('persists an explicitly selected per-request output limit', async () => {
+    const mutate = vi.fn(async () => undefined)
+    const ctx = context({
+      settings: {
+        describe: vi.fn(() => [{
+          ns: PI_AI_SETTINGS_NAMESPACE,
+          schema: {},
+          value: { providers: {} },
+          revision: 7,
+          applies: 'live',
+        }]),
+        mutate,
+      },
+    })
+
+    await configureModelRoute(ctx, {
+      provider: 'gateway',
+      models: [{ id: 'large-model', requestMaxTokens: 4096 }],
+    })
+
+    expect(mutate).toHaveBeenCalledWith(
+      PI_AI_SETTINGS_NAMESPACE,
+      [{
+        op: 'set',
+        path: ['providers', 'gateway', 'models'],
+        value: [{ id: 'large-model', maxTokens: 4096 }],
+      }],
+      7,
+    )
   })
 
   it('fails clearly when llm-pi-ai is not mounted', async () => {
@@ -165,5 +290,18 @@ describe('model-facing surface', () => {
     expect(MODEL_MANAGER_GUIDANCE).toContain('Never ask the user to paste an API key into chat')
     expect(configure?.parameters.properties).toHaveProperty('apiKeyEnv')
     expect(configure?.parameters.properties).not.toHaveProperty('apiKey')
+    const modelProperties = (configure?.parameters.properties.models as {
+      items: { properties: Record<string, unknown> }
+    }).items.properties
+    expect(modelProperties).toHaveProperty('requestMaxTokens')
+    expect(modelProperties).not.toHaveProperty('maxTokens')
+
+    for (const name of ['register_task_model', 'upsert_model_portrait']) {
+      const tool = tools.find(entry => entry.name === name)
+      const portrait = (tool?.parameters.properties.portrait as {
+        properties: Record<string, unknown>
+      }).properties
+      expect(portrait, `${name} must accept the canonical Markdown description`).toHaveProperty('description')
+    }
   })
 })

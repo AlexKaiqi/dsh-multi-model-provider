@@ -7,6 +7,7 @@ export interface TaskPortraitTarget {
     readonly id: string;
     readonly portrait: ModelPortrait | undefined;
     readonly portraitSource: 'stored' | 'bundled' | undefined;
+    readonly settingsRevision: number;
     readonly storagePath: readonly string[];
     readonly declared: Record<string, unknown>;
     readonly route: ReturnType<typeof resolveTaskModelRoute>;
@@ -18,10 +19,10 @@ export interface LlmPortraitTarget {
     readonly model: string;
     readonly portrait: ModelPortrait | undefined;
     readonly portraitSource: 'stored' | 'bundled' | undefined;
+    readonly settingsRevision: number;
     readonly storagePath: readonly string[];
     readonly declared: Record<string, unknown>;
     readonly info: LlmResolvedModelInfo;
 }
 export type PortraitTarget = TaskPortraitTarget | LlmPortraitTarget;
 export declare function resolvePortraitTarget(ctx: Context, id: string, signal?: AbortSignal): Promise<PortraitTarget>;
-//# sourceMappingURL=targets.d.ts.map

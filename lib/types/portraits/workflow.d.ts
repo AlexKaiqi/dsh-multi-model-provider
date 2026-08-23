@@ -15,4 +15,3 @@ import type { PrepareModelPortraitsInput } from '../types.ts';
  *   Candidates with seed, gaps, and a research plan. Never includes secrets.
  */
 export declare function prepareModelPortraits(ctx: Context, input: PrepareModelPortraitsInput, signal?: AbortSignal): Promise<Record<string, unknown>>;
-//# sourceMappingURL=workflow.d.ts.map

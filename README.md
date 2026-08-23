@@ -16,6 +16,8 @@ Peer plugins inject `modelCatalog` and call `snapshot()` to read every registere
 
 Language routes use `configure_model_route` / `list_model_routes`. Task routes use `register_task_model` / `list_task_models`. A task-model registration describes a route; a separate runtime adapter is still required to invoke it. `select_task_models` with `ids: []` disables every route on that connection without fallback.
 
+For a declared language route, `contextWindow` describes model capacity. Leave `requestMaxTokens` unset unless the deployment intentionally wants that exact output limit sent on every request. Discovery-only `maxTokens` metadata is validated but is not persisted as a request default; this prevents large advertised capacities from becoming invalid `max_output_tokens` values at compatible gateways.
+
 ### 2. Portraits
 
 `prepare_model_portraits` returns seed facts, gaps, and official documentation URLs. The Agent opens those pages and calls `ingest_portrait_research` with http(s) source URLs; price rates must cite that evidence. `lastProbe` is recorded only by an explicitly approved Agent call to `validate_model_portrait(liveProbe=true)`, never copied from documentation. `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` manage the stored profile.
@@ -61,9 +63,9 @@ Registration tools accept credential references such as `OPENAI_API_KEY`, never 
 
 ## Settings UI and data model
 
-Installation adds **Volcengine Ark** and **Doubao Speech** as two independent providers in the built-in **Models** Settings section and retains inline portrait results on language-model rows. It also adds a dedicated, read-only **Model portraits** Settings page for language and task models; both surfaces display the same Agent-maintained records. It does not add a separate top-level Volcengine settings page. The page starts a background Agent in an anonymous temporary workspace; the plugin supplies the target manifest, portrait contract, evidence rules, and acceptance checks. After explicit approval, a language-model probe sends one minimal request capped at eight output tokens; a supported task adapter may run its own minimal probe.
+Installation adds **Volcengine Ark** and **Doubao Speech** as two independent providers in the built-in **Models** Settings section and retains inline portrait results on language-model rows. It also adds a flat, read-only **Model portraits** Settings page with two tabs: collect and view. Each collection creates a visible temporary Session backed by `dsh-temporary-session` that Settings can open. The collection tab therefore requires the separately installed `dsh-temporary-session` profile bundle; catalog and Agent-tool features remain available without it. It does not add a separate top-level Volcengine settings page.
 
-Ark uses `ARK_API_KEY` and the official `https://ark.cn-beijing.volces.com/api/v3` base URL. Doubao shows the fixed Realtime protocol model `1.2.6.1` and voice as separate fields. “Validate API key and load voices” first creates a minimal live Realtime session with the draft `DOUBAO_API_KEY`; the documented O/SC voice catalog is exposed only after `session.created` succeeds. Each provider is configured and saved from its own Models editor card; users never need to edit YAML.
+Ark uses `ARK_API_KEY` and the official `https://ark.cn-beijing.volces.com/api/v3` base URL. On upgrade, a legacy `VOLCENGINE_API_KEY` value is safely copied to the standard `ARK_API_KEY` reference when the latter is missing; the legacy reference is retained and the secret is never logged or written to ordinary settings. Doubao shows the fixed Realtime protocol model `1.2.6.1` and voice as separate fields. “Validate API key and load voices” first creates a minimal live Realtime session with the draft `DOUBAO_API_KEY`; the documented O/SC voice catalog is exposed only after `session.created` succeeds. Each provider is configured and saved from its own Models editor card; users never need to edit YAML.
 
 The UI creates no parallel source of truth. Ark language models are written to `llm-pi-ai.providers.volcengine`; Doubao Speech task models and all portrait bindings are written to `multi-model-provider`; credential values only cross the write-only Credentials API and never enter ordinary `settings.yaml`. ChatVoice only selects registered Realtime routes and does not own provider credentials.
 
@@ -121,7 +123,7 @@ A portrait keeps one sectioned qualitative Markdown description, structured pric
 
 The starter set is intentionally selective but has no fixed size: cover widely adopted providers, then include current flagships, workhorses, specialized models, and commonly self-hosted models with distinct hardware footprints. Usage, open-weight adoption, and deployment form are selection signals; every model claim and price cites first-party documentation. Matching has two exact layers: `provider/model` route profiles may carry route pricing, while an explicitly enumerated exact model id may receive a provider-independent capability profile. There is no fuzzy alias guessing and no price transfer across providers. Runtime reachability, time to first token, and latency remain separate probe/usage observations.
 
-The **Model portraits** page provides **Generate / refresh needed portraits** and a per-model refresh action. Each job creates a temporary anonymous workspace and a private background Agent session that is removed when the job finishes. The plugin selects targets, supplies immutable registration seeds and the full research/acceptance contract, and requires the Agent to gather current official documentation or benchmark evidence, save findings through `ingest_portrait_research` / `upsert_model_portrait`, and run `validate_model_portrait(liveProbe=false)`. Settings displays job status and the resulting portrait, evidence, validation, and latest probe. A paid or traffic-producing live probe is a separate per-model action with explicit confirmation; after approval the Agent records its result through `validate_model_portrait(liveProbe=true)`.
+The **Model portraits** page collects or refreshes the currently selected model. Each job creates a visible background Agent Session in a `dsh-temporary-session` scratch directory. The active Agent handle is disposed when the job finishes, while the adopted Session and workspace remain recoverable so Settings can open the research record later. The plugin supplies immutable registration seeds and the full research/acceptance contract, and requires the Agent to gather current official documentation or benchmark evidence, save findings through `ingest_portrait_research` / `upsert_model_portrait`, and run `validate_model_portrait(liveProbe=false)`. Settings displays job status and the resulting portrait, evidence, validation, and latest probe. Paid or traffic-producing live probes are not started by collection; they require a separate explicit user approval before the Agent may call `validate_model_portrait(liveProbe=true)`.
 
 Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex speech providers implement `RealtimeModelSessionAdapter` against `realtimeModelRuntime`. `invoke_task_model` records privacy-safe task metrics. LLM observations reuse native durable Harness `request/header`, `step/start`, and `assistant/message.usage` events, so no wrapper or duplicate content log is added. `summarize_model_usage` aggregates counts, success, latency, tokens, and cost without copying prompts, responses, media, or credentials.
 
@@ -137,11 +139,7 @@ Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex spee
 
 This is a community composition bundle for DeepSeek Harness `0.1.0-rc.6`. It is not an official DeepSeek package. Host and Web runtime files are committed, so a Git install does not need `prepare` or `allowBuilds`.
 
-Pin a commit for a reproducible install:
-
-```sh
-dsh plugin --profile web add github:AlexKaiqi/dsh-multi-model-provider#857fdfded2961373d4f3b71cc7809f310711731c
-```
+For a reproducible Git install, append the reviewed release commit SHA to the GitHub spec (`#<release-commit-sha>`). Do not pin an earlier commit merely because it reports the same prerelease version.
 
 Follow `main` (moves when the branch moves):
 

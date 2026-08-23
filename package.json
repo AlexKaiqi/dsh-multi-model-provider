@@ -3,7 +3,8 @@
   "description": "Register models, assist with portraits, and select the Agent model from a secret-free catalog for DeepSeek Harness.",
   "version": "0.1.0-rc.9",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "next"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -25,6 +26,8 @@
     "cordis.patch.yml",
     "plugin-spec.json",
     "spec",
+    "src",
+    "tests",
     "README.md",
     "README.zh.md",
     "LICENSE"
@@ -55,7 +58,8 @@
     "clean": "tsc -b --clean && rm -rf lib",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run build && npm run test"
+    "check": "npm run typecheck && npm run build && npm run test",
+    "prepublishOnly": "pnpm check"
   },
   "dsh": {
     "inventory": {
@@ -77,7 +81,8 @@
         "@deepseek-ai/dsh-agent-default-model",
         "@deepseek-ai/dsh-session",
         "@deepseek-ai/dsh-tools",
-        "@deepseek-ai/dsh-client-locale"
+        "@deepseek-ai/dsh-client-locale",
+        "dsh-temporary-session"
       ]
     },
     "bundle": {

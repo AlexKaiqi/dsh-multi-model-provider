@@ -57,7 +57,7 @@ export class TaskModelRuntime extends Service {
     const adapter = this.requiredAdapter(route)
     const credentials = await this.credentials(route)
     if (adapter.probe === undefined) {
-      return { ok: true, message: `adapter '${adapter.id}' is registered but exposes no live probe` }
+      return { supported: false, ok: false, message: `adapter '${adapter.id}' exposes no live probe; provider reachability was not measured` }
     }
     return adapter.probe(route, credentials, signal)
   }

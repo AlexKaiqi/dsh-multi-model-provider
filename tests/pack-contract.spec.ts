@@ -26,6 +26,9 @@ describe('Git-installable pack contract', () => {
       'lib/client.js',
       'lib/client.js.map',
       'cordis.patch.yml',
+      'plugin-spec.json',
+      'src',
+      'tests',
       'README.md',
       'LICENSE',
     ]) {

@@ -6,15 +6,19 @@ import type { GetModelPortraitInput, UpsertModelPortraitInput } from '../types.t
 import { mutatePortraitSettings } from './storage.ts'
 import { resolvePortraitTarget } from './targets.ts'
 
-export async function upsertModelPortrait(ctx: Context, input: UpsertModelPortraitInput): Promise<Record<string, unknown>> {
+export async function upsertModelPortrait(
+  ctx: Context,
+  input: UpsertModelPortraitInput,
+  expectedRevision?: number,
+): Promise<Record<string, unknown>> {
   const target = await resolvePortraitTarget(ctx, input.id)
   const portrait = normalizePortrait(input.portrait)
   await mutatePortraitSettings(ctx, [{
     op: 'set',
     path: [...target.storagePath],
     value: target.kind === 'task' ? portrait : { kind: 'llm', provider: target.provider, model: target.model, portrait },
-  }])
-  return { id: target.id, kind: target.kind, portrait, structurallyValidated: true, automaticallyValidated: true, next: `Call validate_model_portrait for '${target.id}'.` }
+  }], expectedRevision ?? target.settingsRevision)
+  return { id: target.id, kind: target.kind, portrait, structurallyValidated: true, automaticallyValidated: false, next: `Call validate_model_portrait for '${target.id}'.` }
 }
 
 export async function getModelPortrait(ctx: Context, input: GetModelPortraitInput, events?: readonly SessionEvent[]): Promise<Record<string, unknown>> {

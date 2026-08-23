@@ -110,4 +110,3 @@ export declare class ModelCatalog extends Service {
     selectAgentModel(input: SelectDefaultModelInput, signal?: AbortSignal): Promise<Record<string, unknown>>;
 }
 export default ModelCatalog;
-//# sourceMappingURL=catalog.d.ts.map

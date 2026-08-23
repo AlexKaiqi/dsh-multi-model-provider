@@ -27,5 +27,20 @@ export * from './types.ts';
 export { modelManagerTools } from './tools.ts';
 export declare const name = "multi-model-provider";
 export declare const inject: string[];
+interface ConfigurableProviderView {
+    readonly provider: string;
+    readonly displayName: string;
+    readonly settingsNs: string;
+    readonly settingsPath: readonly string[];
+    readonly active: boolean;
+    readonly declared?: boolean;
+    readonly editor?: Readonly<Record<string, unknown>>;
+}
+declare module '@deepseek-ai/cordis' {
+    interface Events {
+        'llm/configurable-provider-view': (view: ConfigurableProviderView) => ConfigurableProviderView | undefined;
+    }
+}
+/** Present the plugin-owned Ark product identity without taking route ownership from llm-pi-ai. */
+export declare function decorateConfigurableProviderView(view: ConfigurableProviderView): ConfigurableProviderView | undefined;
 export declare function apply(ctx: Context): void;
-//# sourceMappingURL=index.d.ts.map

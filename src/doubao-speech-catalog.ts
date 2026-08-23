@@ -2,6 +2,7 @@ import type { RegisteredTaskModel } from './types.ts'
 
 /** Stable provider id for the Doubao speech product and its task routes. */
 export const DOUBAO_SPEECH_PROVIDER = 'doubao-speech'
+export const DOUBAO_REALTIME_BASE_URL = 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue'
 
 export type DoubaoRealtimeVoice = {
   readonly voice: string

@@ -19,4 +19,3 @@ export declare function probeDoubaoRealtimeKey(options: ProbeOptions): Promise<v
 /** Validate the draft key live, then return the documented voice directory. */
 export declare function discoverDoubaoRealtimeVoices(request: LlmModelDiscoveryRequest): Promise<LlmDiscoveredModel[]>;
 export {};
-//# sourceMappingURL=doubao-discovery.d.ts.map

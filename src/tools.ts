@@ -45,7 +45,7 @@ const jsonOutput = {
   }],
 }
 
-const modelProfileSchema = {
+const discoveredModelProfileSchema = {
   type: 'object' as const,
   additionalProperties: false,
   properties: {
@@ -56,7 +56,30 @@ const modelProfileSchema = {
     },
     name: { type: 'string' as const, description: 'Human-readable model name.' },
     contextWindow: { type: 'integer' as const, description: 'Maximum combined context in tokens.' },
-    maxTokens: { type: 'integer' as const, description: 'Maximum output tokens.' },
+    maxTokens: { type: 'integer' as const, description: 'Discovered maximum output capacity; it is not a per-request output limit.' },
+    input: {
+      type: 'array' as const,
+      items: { type: 'string' as const, enum: ['text', 'image'] as const },
+      description: 'Accepted request modalities.',
+    },
+  },
+}
+
+const routeModelProfileSchema = {
+  type: 'object' as const,
+  additionalProperties: false,
+  properties: {
+    id: {
+      type: 'string' as const,
+      required: true as const,
+      description: 'Exact model id accepted by the provider endpoint.',
+    },
+    name: { type: 'string' as const, description: 'Human-readable model name.' },
+    contextWindow: { type: 'integer' as const, description: 'Maximum combined context in tokens.' },
+    requestMaxTokens: {
+      type: 'integer' as const,
+      description: 'Optional output limit sent on every request. Omit to let the runtime and endpoint choose a safe value.',
+    },
     input: {
       type: 'array' as const,
       items: { type: 'string' as const, enum: ['text', 'image'] as const },
@@ -97,6 +120,7 @@ const portraitSchema = {
   type: 'object' as const,
   additionalProperties: false,
   properties: {
+    description: { type: 'string' as const, description: 'Sectioned Markdown description for qualitative routing knowledge.' },
     summary: { type: 'string' as const, description: 'Concise model summary.' },
     specialties: { type: 'array' as const, items: { type: 'string' as const }, description: 'Tasks or domains where the model is strong.' },
     limitations: { type: 'array' as const, items: { type: 'string' as const }, description: 'Known limitations.' },
@@ -161,7 +185,7 @@ export function modelManagerTools(ctx: Context) {
         baseURL: { type: 'string', description: CONFIGURE_MODEL_ROUTE_SURFACE.parameters.baseURL },
         models: {
           type: 'array',
-          items: modelProfileSchema,
+          items: routeModelProfileSchema,
           description: CONFIGURE_MODEL_ROUTE_SURFACE.parameters.models,
         },
         defaultContextWindow: { type: 'integer', description: CONFIGURE_MODEL_ROUTE_SURFACE.parameters.defaultContextWindow },
@@ -184,7 +208,7 @@ export function modelManagerTools(ctx: Context) {
         models: {
           type: 'array',
           required: true,
-          items: modelProfileSchema,
+          items: discoveredModelProfileSchema,
           description: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.parameters.models,
         },
       },

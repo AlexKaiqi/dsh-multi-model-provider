@@ -20,7 +20,7 @@ export declare function effectiveTaskModelAvailability(ctx: Context, routeOrId: 
 export declare function validateTaskModelRegistry(config: TaskModelRegistryConfig): void;
 export declare function registerTaskModelSettings(ctx: Context): void;
 export declare function registerTaskModel(ctx: Context, input: RegisterTaskModelInput): Promise<Record<string, unknown>>;
+export declare function assertSafeCatalogEndpoint(endpoint: string): Promise<void>;
 export declare function discoverTaskModels(ctx: Context, input: DiscoverTaskModelsInput, signal?: AbortSignal): Promise<Record<string, unknown>>;
 export declare function selectTaskModels(ctx: Context, input: SelectTaskModelsInput): Promise<Record<string, unknown>>;
 export declare function listTaskModels(ctx: Context, input?: ListTaskModelsInput): Promise<Record<string, unknown>>;
-//# sourceMappingURL=registry.d.ts.map

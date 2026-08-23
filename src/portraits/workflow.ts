@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { llmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
 import { normalizeStoredPortrait } from '../portrait-core.ts'
+import { effectiveTaskModelAvailability } from '../registry.ts'
 import type { ModelPortrait, PrepareModelPortraitsInput } from '../types.ts'
 import { builtinLlmPortrait } from './builtin.ts'
 import { builtinTaskPortrait } from './builtin-task.ts'
@@ -28,7 +29,10 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
   const candidates: Record<string, unknown>[] = []
   for (const [id, registration] of Object.entries(config.models)) {
     if (requested !== undefined && !requested.has(id)) continue
-    if (requested === undefined && input.includeDisabled !== true && registration.enabled === false) continue
+    if (requested === undefined && input.includeDisabled !== true) {
+      const availability = await effectiveTaskModelAvailability(ctx, id)
+      if (!availability.enabled) continue
+    }
     const provider = config.connections[registration.connection]?.provider ?? registration.connection
     const storedPortrait = registration.portrait === undefined ? undefined : normalizeStoredPortrait(registration.portrait)
     const bundledPortrait = builtinTaskPortrait(provider, registration.model, registration.task)

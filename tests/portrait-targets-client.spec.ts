@@ -6,7 +6,7 @@ describe('model portrait settings targets', () => {
     revision: 4,
     value: {
       connections: {
-        'image-provider': { provider: 'openai' },
+        'image-provider': { provider: 'openai', displayName: 'OpenAI Images' },
       },
       models: {
         'openai/gpt-image-2': {
@@ -35,6 +35,7 @@ describe('model portrait settings targets', () => {
     value: {
       providers: {
         volcengine: {
+          displayName: 'Volcengine account',
           models: [{ id: 'doubao-seed-2-0-lite-260215', name: 'Doubao Seed 2.0 Lite' }],
         },
       },
@@ -46,15 +47,31 @@ describe('model portrait settings targets', () => {
       expect.objectContaining({
         id: 'llm:volcengine/doubao-seed-2-0-lite-260215',
         kind: 'llm',
+        providerName: 'Volcengine account',
         portrait: { validation: { state: 'partial' } },
       }),
       expect.objectContaining({
         id: 'openai/gpt-image-2',
         kind: 'task',
+        providerName: 'OpenAI Images',
         enabled: false,
         portrait: { validation: { state: 'valid' } },
       }),
     ])
+  })
+
+  it('uses provider-editor selection as the effective task enabled state', () => {
+    const selected = {
+      ...multi,
+      user: {
+        connections: {
+          'image-provider': { models: [{ id: 'gpt-image-2' }] },
+        },
+      },
+    }
+    expect(snapshotPortraitTargets(selected, llm)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'openai/gpt-image-2', enabled: true }),
+    ]))
   })
 
   it('combines text, type, provider, portrait-state, and enabled filters', () => {

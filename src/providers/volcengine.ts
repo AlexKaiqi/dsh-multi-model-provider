@@ -8,11 +8,36 @@ import type { ModelProfileInput, SelectVolcengineLanguageModelsInput } from '../
 export const VOLCENGINE_PROVIDER = 'volcengine'
 export const VOLCENGINE_ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
 export const VOLCENGINE_ARK_API = 'openai-responses'
+export const VOLCENGINE_ARK_API_KEY = 'ARK_API_KEY'
 
 const CREDENTIALS = {
-  arkApiKey: 'ARK_API_KEY',
+  arkApiKey: VOLCENGINE_ARK_API_KEY,
   doubaoApiKey: 'DOUBAO_API_KEY',
 } as const
+
+export const LEGACY_VOLCENGINE_ARK_API_KEY = 'VOLCENGINE_API_KEY'
+
+/** Copy the pre-ARK credential reference forward without exposing or deleting its value. */
+export async function migrateLegacyVolcengineCredential(ctx: Context): Promise<boolean> {
+  const target = credentialRef(CREDENTIALS.arkApiKey)
+  const current = await ctx.credentials.describe(target)
+  if (current.configured) return false
+
+  const legacy = credentialRef(LEGACY_VOLCENGINE_ARK_API_KEY)
+  const legacyStatus = await ctx.credentials.describe(legacy)
+  if (!legacyStatus.configured) return false
+  if (!current.writable) {
+    throw new ModelManagerError(
+      `${CREDENTIALS.arkApiKey} is read-only; cannot migrate ${LEGACY_VOLCENGINE_ARK_API_KEY}`,
+      'VOLCENGINE_CREDENTIAL_MIGRATION_UNAVAILABLE',
+    )
+  }
+
+  const resolved = await ctx.credentials.resolve(legacy)
+  if (resolved === undefined) return false
+  await ctx.credentials.set(target, resolved.value)
+  return true
+}
 
 function object(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

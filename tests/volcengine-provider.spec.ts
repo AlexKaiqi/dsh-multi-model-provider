@@ -1,7 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { PI_AI_SETTINGS_NAMESPACE } from '../src/operations.ts'
-import { inspectVolcengineProvider, selectVolcengineLanguageModels, VOLCENGINE_ARK_BASE_URL } from '../src/providers/volcengine.ts'
+import {
+  inspectVolcengineProvider,
+  migrateLegacyVolcengineCredential,
+  selectVolcengineLanguageModels,
+  VOLCENGINE_ARK_BASE_URL,
+} from '../src/providers/volcengine.ts'
 import { TASK_MODEL_SETTINGS_NAMESPACE } from '../src/registry.ts'
 
 function context(arkConfigured = true): Context {
@@ -44,6 +49,23 @@ function context(arkConfigured = true): Context {
 }
 
 describe('Volcengine provider orientation', () => {
+  it('copies the legacy credential reference to ARK_API_KEY without deleting the legacy value', async () => {
+    const values = new Map([['VOLCENGINE_API_KEY', 'legacy-secret']])
+    const ctx = {
+      credentials: {
+        describe: vi.fn(async (ref: string) => ({ configured: values.has(String(ref)), writable: true, source: 'file' })),
+        resolve: vi.fn(async (ref: string) => values.has(String(ref)) ? { value: values.get(String(ref)), source: 'file' } : undefined),
+        set: vi.fn(async (ref: string, value: string) => { values.set(String(ref), value) }),
+      },
+    } as unknown as Context
+
+    await expect(migrateLegacyVolcengineCredential(ctx)).resolves.toBe(true)
+    expect(values.get('ARK_API_KEY')).toBe('legacy-secret')
+    expect(values.get('VOLCENGINE_API_KEY')).toBe('legacy-secret')
+    await expect(migrateLegacyVolcengineCredential(ctx)).resolves.toBe(false)
+    expect(ctx.credentials.set).toHaveBeenCalledTimes(1)
+  })
+
   it('teaches the Agent credentials, live availability, selections, and invocation paths', async () => {
     const ctx = context()
     const result = await inspectVolcengineProvider(ctx, new AbortController().signal)

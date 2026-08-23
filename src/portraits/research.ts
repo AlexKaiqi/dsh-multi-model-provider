@@ -148,7 +148,7 @@ export async function ingestPortraitResearch(
     qualityScores: findings.qualityScores ?? existing.qualityScores,
     evidence,
   }
-  const saved = await upsertModelPortrait(ctx, { id: target.id, portrait })
+  const saved = await upsertModelPortrait(ctx, { id: target.id, portrait }, target.settingsRevision)
   return {
     ...saved,
     mergedFrom: 'research',

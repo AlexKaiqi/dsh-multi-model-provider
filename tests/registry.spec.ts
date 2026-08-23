@@ -235,6 +235,22 @@ describe('task-model registry', () => {
     )
   })
 
+  it('updates provider-editor selection together with route flags', async () => {
+    const ctx = context(structuredClone(BUILTIN_TASK_MODEL_REGISTRY), {
+      connections: {
+        'doubao-speech': { models: [{ id: 'zh_male_xiaotian_jupiter_bigtts' }] },
+      },
+    })
+    await selectTaskModels(ctx, { connection: 'doubao-speech', ids: [] })
+    expect(ctx.settings.mutate).toHaveBeenCalledWith(
+      TASK_MODEL_SETTINGS_NAMESPACE,
+      expect.arrayContaining([
+        { op: 'set', path: ['connections', 'doubao-speech', 'models'], value: [] },
+      ]),
+      3,
+    )
+  })
+
   it('reports a route callable only when its adapter and every credential are ready', async () => {
     const ctx = context()
     vi.mocked(ctx.credentials.describe).mockResolvedValue({ configured: true, writable: true, source: 'file' })

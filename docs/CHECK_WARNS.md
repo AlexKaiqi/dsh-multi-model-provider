@@ -1,6 +1,6 @@
 # Plugin check warns
 
-`plugin check --root .` reports zero errors. The two remaining warns are
+`plugin check --root .` reports zero errors. The three remaining warns are
 accepted, with reasons. Per the workbench's D-004, a heuristic warn needs review
 and an explanation — not a code change that games the scan.
 
@@ -22,6 +22,26 @@ a checker greener. Not done.
 Coverage: `tests/operations.spec.ts` and `tests/registry.spec.ts` assert real
 `code` values (`MODEL_SETTINGS_UNAVAILABLE`, `INVALID_MODEL_CONFIGURATION`) on
 thrown errors, and assert that validation refuses to mutate settings first.
+
+## REL-001 — runtime 测试未覆盖幂等/崩溃恢复
+
+**Accepted heuristic, covered at the owning layers.** This plugin persists
+configuration only through the Host Settings and Credentials services. Every
+Settings write supplies the descriptor revision, so compare-and-swap,
+serialization, and crash-safe storage remain owned by `dsh-settings`; credential
+storage remains owned by `dsh-credentials`. The plugin does not maintain a second
+journal or writable file store that it could replay after a crash.
+
+Plugin-owned temporary resources do have lifecycle coverage:
+`tests/realtime-runtime.spec.ts` verifies adapter/session cleanup,
+`tests/probe-route.spec.ts` verifies exact route re-ownership after service
+reactivation, and `tests/portrait-jobs.spec.ts` verifies Agent disposal plus
+reservation adoption and failed-start discard behavior. Configuration tests
+assert that validation happens before mutation and that the Settings revision is
+forwarded.
+
+Revisit this acceptance if the plugin starts writing files directly, adds its own
+persistent store, or performs a multi-namespace write that needs compensation.
 
 ## CAND-001 — 未声明可脚本化 CLI 入口
 

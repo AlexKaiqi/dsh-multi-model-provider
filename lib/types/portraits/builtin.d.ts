@@ -10,4 +10,3 @@ export declare const CURATED_LLM_PORTRAIT_IDS: string[];
 export declare const CURATED_PORTABLE_LLM_MODEL_IDS: string[];
 /** Return a cloned route portrait, or an exact-id portable capability portrait. */
 export declare function builtinLlmPortrait(provider: string, model: string): ModelPortrait | undefined;
-//# sourceMappingURL=builtin.d.ts.map

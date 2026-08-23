@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "name": "portrait-jobs-http",
+  "summary": "Same-origin Settings API for starting one bounded portrait research Agent Session and reading its latest status.",
+  "rationale": "This is a browser-to-Host product seam, not an Agent tool. Research creates a durable temporary Session, so POST requests require same-origin validation and an explicit marker. Paid live probes are deliberately excluded and require separate explicit Agent approval.",
+  "transport": {
+    "kind": "http",
+    "path": "/dsh-multi-model-provider/portrait-jobs",
+    "methods": {
+      "GET": "Return the latest in-memory job view, if any.",
+      "POST": "Validate and queue one research job; returns HTTP 202 after queueing."
+    },
+    "contentType": "application/json"
+  },
+  "authorization": {
+    "postRequiredHeaders": {
+      "x-dsh-portrait-job": "1",
+      "origin": "http(s) origin whose host equals the Host header"
+    },
+    "optionalHeaders": {
+      "sec-fetch-site": "when present, must be same-origin"
+    },
+    "rejected": [
+      "missing portrait-job marker",
+      "missing or cross-site Origin",
+      "Sec-Fetch-Site other than same-origin"
+    ]
+  },
+  "request": {
+    "action": "must be research; probe is rejected",
+    "ids": "optional non-empty array of at most 100 exact target ids"
+  },
+  "response": {
+    "ok": "true when status was read or a job was queued; false on validation or runtime failure",
+    "job": "latest bounded job view with status, target ids, phase, timestamps, optional summary/error, and optional visible sessionId",
+    "error": "present when ok is false; never includes credential values"
+  },
+  "lifecycle": "At most one job is queued or running per plugin instance. The active Agent handle is disposed at completion or plugin stop. Unadopted reservations are discarded; adopted Sessions and their workspaces remain durable and user-recoverable.",
+  "cost": "Research wrappers force liveProbe=false. A paid probe is outside this protocol and requires separate explicit user approval before validate_model_portrait(liveProbe=true)."
+}

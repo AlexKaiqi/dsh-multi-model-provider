@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Context } from '@deepseek-ai/cordis';
+import type { ToolRunContext } from '@deepseek-ai/dsh-tools';
+import { modelManagerTools } from './tools.ts';
 export declare const PORTRAIT_JOBS_PATH = "/dsh-multi-model-provider/portrait-jobs";
 export declare const PORTRAIT_JOB_HEADER = "x-dsh-portrait-job";
 type PortraitJobAction = 'research' | 'probe';
@@ -9,16 +11,41 @@ export interface PortraitJobView {
     readonly action: PortraitJobAction;
     readonly status: PortraitJobStatus;
     readonly targetIds: readonly string[];
-    readonly workspaceLabel: 'anonymous temporary workspace';
+    readonly workspaceLabel: 'temporary session';
+    /** Visible DSH Session created for this collection run once the Agent is mounted. */
+    readonly sessionId?: string;
     readonly phase: string;
     readonly startedAt: string;
     readonly finishedAt?: string;
     readonly summary?: string;
     readonly error?: string;
 }
+interface TemporarySessionReservation {
+    readonly reservationId: string;
+    readonly path: string;
+}
+interface TemporarySessionReservationResult {
+    readonly found: boolean;
+}
+interface PortraitTemporarySessions {
+    reserve(): Promise<TemporarySessionReservation>;
+    keep(request: {
+        reservationId: string;
+    }): Promise<TemporarySessionReservationResult>;
+    discard(request: {
+        reservationId: string;
+    }): Promise<TemporarySessionReservationResult>;
+}
+declare module '@deepseek-ai/cordis' {
+    interface Context {
+        /** Scratch directories adopted by visible portrait collection Sessions. */
+        temporarySessions: PortraitTemporarySessions;
+    }
+}
 type PortraitJobScope = Context & {
     readonly agents: Context['agents'];
     readonly agentDefaultModel: Context['agentDefaultModel'];
+    readonly temporarySessions: PortraitTemporarySessions;
     readonly webServer: {
         register(route: {
             kind: 'exact';
@@ -27,10 +54,24 @@ type PortraitJobScope = Context & {
         }): () => void;
     };
 };
+export declare function boundPortraitResearchTools(tools: ReturnType<typeof modelManagerTools>, targetIds: readonly string[]): {
+    name: "portrait_job_ingest_research" | "portrait_job_upsert_portrait" | "portrait_job_validate_portrait" | "portrait_job_get_portrait";
+    description: string;
+    execute: (args: Record<string, unknown>, exec: ToolRunContext) => Promise<unknown>;
+    output: import("@deepseek-ai/dsh-tools").ToolOutputDefinition;
+    finalizeContent?(exec: Readonly<import("@deepseek-ai/dsh-tools").ToolExecution>, result: Readonly<import("@deepseek-ai/dsh-tools").ToolExecutionResult>): import("@deepseek-ai/dsh-llm").ContentBlock[] | undefined;
+    timeoutMs?: number;
+    isConcurrencySafe?(args: unknown): boolean;
+    presentCall?(args: unknown): import("@deepseek-ai/dsh-tools").ToolCallView | undefined;
+    presentResult?(args: unknown, result: import("@deepseek-ai/dsh-tools").ToolResult): import("@deepseek-ai/dsh-tools").ToolResultView | undefined;
+    parameters: Record<string, unknown>;
+}[];
 export declare class PortraitJobCoordinator {
     private readonly ctx;
     private latest;
     private activeHandle;
+    private activeRun;
+    private activeAbort;
     private starting;
     private disposed;
     constructor(ctx: PortraitJobScope);
@@ -41,4 +82,3 @@ export declare class PortraitJobCoordinator {
 }
 export declare function registerPortraitJobRoutes(ctx: Context): void;
 export {};
-//# sourceMappingURL=portrait-jobs.d.ts.map

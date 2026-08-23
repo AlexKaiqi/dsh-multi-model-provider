@@ -12,7 +12,7 @@
     "filesystem": "none",
     "persistentState": true,
     "subprocess": false,
-    "subagents": false,
+    "subagents": true,
     "temporaryResources": true,
     "customProtocol": true
   },
@@ -20,6 +20,11 @@
     {
       "name": "model-probe-http",
       "file": "spec/model-probe.http.json",
+      "versionField": "version"
+    },
+    {
+      "name": "portrait-jobs-http",
+      "file": "spec/portrait-jobs.http.json",
       "versionField": "version"
     }
   ],
@@ -204,10 +209,6 @@
     ],
     "runtimeTests": [
       {
-        "file": "tests/model-surface.spec.ts",
-        "layer": "L1"
-      },
-      {
         "file": "tests/registry.spec.ts",
         "layer": "L1"
       },
@@ -224,6 +225,18 @@
         "layer": "L1"
       },
       {
+        "file": "tests/builtin-portraits.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/builtin-task-portraits.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/doubao-discovery.spec.ts",
+        "layer": "L2"
+      },
+      {
         "file": "tests/volcengine-provider.spec.ts",
         "layer": "L1"
       },
@@ -236,7 +249,23 @@
         "layer": "L1"
       },
       {
+        "file": "tests/portrait-jobs.spec.ts",
+        "layer": "L2"
+      },
+      {
+        "file": "tests/portrait-source-fetch.spec.ts",
+        "layer": "L2"
+      },
+      {
+        "file": "tests/portrait-targets-client.spec.ts",
+        "layer": "L1"
+      },
+      {
         "file": "tests/probe-route.spec.ts",
+        "layer": "L1"
+      },
+      {
+        "file": "tests/provider-directory.spec.ts",
         "layer": "L1"
       },
       {
@@ -246,6 +275,14 @@
       {
         "file": "tests/realtime-runtime.spec.ts",
         "layer": "L2"
+      },
+      {
+        "file": "tests/realtime-runtime.eval.spec.ts",
+        "layer": "L2"
+      },
+      {
+        "file": "tests/realtime-client.eval.spec.ts",
+        "layer": "L1"
       },
       {
         "file": "tests/pack-contract.spec.ts",

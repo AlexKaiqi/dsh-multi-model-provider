@@ -76,12 +76,16 @@ function modelProfile(input: ModelProfileInput, index: number): Record<string, u
   const id = nonBlank(input.id, `models[${index}].id`)
   const name = optionalText(input.name)
   const contextWindow = positiveInteger(input.contextWindow, `models[${index}].contextWindow`)
-  const maxTokens = positiveInteger(input.maxTokens, `models[${index}].maxTokens`)
+  // llm-pi-ai interprets a stored model maxTokens value as the default sent on
+  // every request. Discovery metadata only describes capacity, so validate it
+  // but persist an output limit only when the caller explicitly requests one.
+  positiveInteger(input.maxTokens, `models[${index}].maxTokens`)
+  const requestMaxTokens = positiveInteger(input.requestMaxTokens, `models[${index}].requestMaxTokens`)
   return {
     id,
     ...(name === undefined ? {} : { name }),
     ...(contextWindow === undefined ? {} : { contextWindow }),
-    ...(maxTokens === undefined ? {} : { maxTokens }),
+    ...(requestMaxTokens === undefined ? {} : { maxTokens: requestMaxTokens }),
     ...(input.input === undefined || input.input.length === 0 ? {} : { input: [...input.input] }),
   }
 }
@@ -123,25 +127,37 @@ export async function configureModelRoute(ctx: Context, input: ConfigureModelRou
   const descriptor = requiredPiAiDescriptor(ctx)
   const profile = providerProfile(input)
   const fields = Object.entries(profile)
+  const providerExists = nestedValue(descriptor.value, ['providers', provider]) !== undefined
   const ops: SettingsPathOp[] = fields.length === 0
-    ? [{ op: 'set', path: ['providers', provider], value: {} }]
+    ? providerExists ? [] : [{ op: 'set', path: ['providers', provider], value: {} }]
     : fields.map(([field, value]) => ({
       op: 'set',
       path: ['providers', provider, field],
       value,
     }))
-  await ctx.settings.mutate(PI_AI_SETTINGS_NAMESPACE, ops, descriptor.revision)
+  if (ops.length > 0) await ctx.settings.mutate(PI_AI_SETTINGS_NAMESPACE, ops, descriptor.revision)
 
   const ref = typeof profile.apiKeyEnv === 'string' ? profile.apiKeyEnv : undefined
   const credential = ref === undefined ? undefined : await credentialStatus(ctx, ref)
   const live = ctx.llm.listProviders().some(entry => entry.id === provider)
+  const capabilityOnlyModels = input.models
+    ?.filter(model => model.maxTokens !== undefined && model.requestMaxTokens === undefined)
+    .map(model => model.id.trim()) ?? []
   return {
     provider,
     saved: true,
+    changed: ops.length > 0,
     live,
     settingsNs: PI_AI_SETTINGS_NAMESPACE,
     settingsPath: ['providers', provider],
     ...(credential === undefined ? {} : { credential }),
+    ...(capabilityOnlyModels.length === 0 ? {} : {
+      warnings: [{
+        code: 'MODEL_OUTPUT_CAPACITY_NOT_PERSISTED',
+        models: capabilityOnlyModels,
+        message: 'maxTokens describes model capacity and was not persisted as a per-request output limit; use requestMaxTokens only when every request should send an explicit maximum.',
+      }],
+    }),
     requiresCredential: credential?.configured === false,
     next: credential?.configured === false
       ? `Store ${credential.ref} in the secure Models settings field; do not paste the key into chat.`

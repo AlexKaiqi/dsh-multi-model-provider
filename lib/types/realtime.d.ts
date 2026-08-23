@@ -39,4 +39,3 @@ export declare class RealtimeModelRuntime extends Service {
     }): unknown;
 }
 export default RealtimeModelRuntime;
-//# sourceMappingURL=realtime.d.ts.map

@@ -29,7 +29,7 @@ export const PORTRAIT_JOB_CONTRACT = {
     'unknown facts remain unknown instead of being inferred',
     'provider claims and independent benchmarks are labelled separately',
     'research never writes performance.lastProbe',
-    'every saved portrait is passed through validate_model_portrait(liveProbe=false)',
+    'every saved portrait is passed through portrait_job_validate_portrait, which forces liveProbe=false',
   ],
 } as const
 
@@ -42,7 +42,7 @@ ${JSON.stringify(PORTRAIT_JOB_CONTRACT, null, 2)}
 The plugin selected these targets and supplied immutable seed facts, gaps, and suggested sources:
 ${JSON.stringify(manifest, null, 2)}
 
-For every target, call fetch_portrait_source for the exact URLs in researchPlan.suggestedSources. When web_search or web_fetch is also available, use it only to locate or open additional credible benchmark sources. Extract only claims actually present in the returned content and use its final URL and observedAt in evidence. Then call ingest_portrait_research with current http(s) evidence, or upsert_model_portrait only when a complete replacement is required. Immediately call validate_model_portrait with liveProbe=false after every save, then inspect the stored result with get_model_portrait. Do not call liveProbe=true in this job. Do not write files, modify the anonymous workspace, register models, change model selection, or perform unrelated work. Finish with a concise target-by-target account of saved facts, remaining unknowns, evidence URLs, and validation states.`
+For every target, call fetch_portrait_source for the exact URLs in researchPlan.suggestedSources. When web_search or web_fetch is also available, use it only to locate or open additional credible benchmark sources. Extract only claims actually present in the returned content and use its final URL and observedAt in evidence. Then call portrait_job_ingest_research with current http(s) evidence, or portrait_job_upsert_portrait only when a complete replacement is required. Immediately call portrait_job_validate_portrait after every save, then inspect the stored result with portrait_job_get_portrait. These wrappers reject targets outside this job, and validation always forces liveProbe=false. Do not call global portrait mutation or validation tools. Do not write files, modify the anonymous workspace, register models, change model selection, or perform unrelated work. Finish with a concise target-by-target account of saved facts, remaining unknowns, evidence URLs, and validation states.`
 }
 
 export function buildPortraitProbePrompt(ids: readonly string[], approvedAt: string): string {

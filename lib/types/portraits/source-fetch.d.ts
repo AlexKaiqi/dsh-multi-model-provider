@@ -5,4 +5,3 @@ export declare function portraitSourceText(body: string, contentType: string): s
 export declare function portraitResearchSources(value: unknown): readonly string[];
 /** Build the private, per-job source reader exposed only inside the anonymous Agent. */
 export declare function portraitSourceTool(allowedSources: readonly string[]): import("@deepseek-ai/dsh-tools").ToolDefinition;
-//# sourceMappingURL=source-fetch.d.ts.map

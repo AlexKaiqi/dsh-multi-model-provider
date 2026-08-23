@@ -109,7 +109,7 @@ export async function validateModelPortrait(ctx: Context, input: ValidateModelPo
     })
     if (liveCheck !== undefined) checks.push(liveCheck)
     const validated: ModelPortrait = { ...workingPortrait, validation: { state: validationState(checks), checkedAt: new Date().toISOString(), checks } }
-    await mutatePortraitSettings(ctx, [{ op: 'set', path: [...target.storagePath], value: { kind: 'llm', provider: target.provider, model: target.model, portrait: validated } }])
+    await mutatePortraitSettings(ctx, [{ op: 'set', path: [...target.storagePath], value: { kind: 'llm', provider: target.provider, model: target.model, portrait: validated } }], target.settingsRevision)
     return {
       id: target.id,
       kind: 'llm',
@@ -130,14 +130,18 @@ export async function validateModelPortrait(ctx: Context, input: ValidateModelPo
       const started = performance.now()
       try {
         const probe = await ctx.taskModelRuntime.probe(route, signal)
-        const latencyMs = probe.latencyMs ?? elapsedMs(started)
-        workingPortrait = portraitWithProbe(workingPortrait, {
-          observedAt: new Date().toISOString(),
-          reachable: probe.ok,
-          latencyMs,
-          message: probe.message,
-        })
-        liveCheck = { id: 'runtime.live-probe', status: probe.ok ? 'pass' : 'fail', message: probe.message }
+        if (probe.supported === false) {
+          liveCheck = { id: 'runtime.live-probe', status: 'warn', message: probe.message }
+        } else {
+          const latencyMs = probe.latencyMs ?? elapsedMs(started)
+          workingPortrait = portraitWithProbe(workingPortrait, {
+            observedAt: new Date().toISOString(),
+            reachable: probe.ok,
+            latencyMs,
+            message: probe.message,
+          })
+          liveCheck = { id: 'runtime.live-probe', status: probe.ok ? 'pass' : 'fail', message: probe.message }
+        }
       } catch (error) {
         if (signal.aborted) throw error
         const message = error instanceof Error ? error.message : 'live probe failed'
@@ -180,7 +184,7 @@ export async function validateModelPortrait(ctx: Context, input: ValidateModelPo
   })
   if (liveCheck !== undefined) checks.push(liveCheck)
   const validated: ModelPortrait = { ...workingPortrait, validation: { state: validationState(checks), checkedAt: new Date().toISOString(), checks } }
-  await mutatePortraitSettings(ctx, [{ op: 'set', path: [...target.storagePath], value: validated }])
+  await mutatePortraitSettings(ctx, [{ op: 'set', path: [...target.storagePath], value: validated }], target.settingsRevision)
   return {
     id: target.id,
     kind: 'task',

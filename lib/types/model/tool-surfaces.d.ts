@@ -29,9 +29,9 @@ export declare const CONFIGURE_MODEL_ROUTE_SURFACE: {
         readonly displayName: "Human-readable provider name.";
         readonly api: "Wire protocol. Omit on a built-in catalog route.";
         readonly baseURL: "Absolute provider endpoint. Omit on a built-in catalog route.";
-        readonly models: "Complete served catalog for a declared route. On a built-in route, a non-empty list replaces its catalog.";
+        readonly models: "Complete served catalog for a declared route. On a built-in route, a non-empty list replaces its catalog. Omit requestMaxTokens unless every request must send that explicit output limit.";
         readonly defaultContextWindow: "Fallback context capacity for unsized declared models.";
-        readonly defaultMaxTokens: "Fallback output capacity for unsized declared models.";
+        readonly defaultMaxTokens: "Fallback per-request output limit for unsized declared models. Omit to let the runtime and endpoint choose a safe value.";
     };
     readonly helpPointer: "list_model_routes";
 };
@@ -204,9 +204,9 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
         readonly displayName: "Human-readable provider name.";
         readonly api: "Wire protocol. Omit on a built-in catalog route.";
         readonly baseURL: "Absolute provider endpoint. Omit on a built-in catalog route.";
-        readonly models: "Complete served catalog for a declared route. On a built-in route, a non-empty list replaces its catalog.";
+        readonly models: "Complete served catalog for a declared route. On a built-in route, a non-empty list replaces its catalog. Omit requestMaxTokens unless every request must send that explicit output limit.";
         readonly defaultContextWindow: "Fallback context capacity for unsized declared models.";
-        readonly defaultMaxTokens: "Fallback output capacity for unsized declared models.";
+        readonly defaultMaxTokens: "Fallback per-request output limit for unsized declared models. Omit to let the runtime and endpoint choose a safe value.";
     };
     readonly helpPointer: "list_model_routes";
 }, {
@@ -343,4 +343,3 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     };
     readonly helpPointer: "list_model_routes";
 }];
-//# sourceMappingURL=tool-surfaces.d.ts.map

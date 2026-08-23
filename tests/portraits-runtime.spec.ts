@@ -128,7 +128,7 @@ describe('model portraits', () => {
       id: 'doubao/tts',
       portrait: { summary: 'Doubao speech synthesis.', specialties: ['Mandarin TTS'] },
     })
-    expect(result).toMatchObject({ automaticallyValidated: true, portrait: { validation: { state: 'partial' } } })
+    expect(result).toMatchObject({ automaticallyValidated: false, portrait: { validation: { state: 'partial' } } })
     expect(ctx.settings.mutate).toHaveBeenCalledWith(
       TASK_MODEL_SETTINGS_NAMESPACE,
       [expect.objectContaining({ path: ['models', 'doubao/tts', 'portrait'] })],

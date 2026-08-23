@@ -5,4 +5,3 @@ import type { LlmInvocationObservation } from './types.ts';
  * Prompt and response content are deliberately ignored.
  */
 export declare function llmObservations(events: readonly SessionEvent[] | undefined): LlmInvocationObservation[];
-//# sourceMappingURL=llm-session-reader.d.ts.map
