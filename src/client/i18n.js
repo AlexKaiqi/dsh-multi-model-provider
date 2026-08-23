@@ -1,7 +1,7 @@
 export const NS = 'multiModelProvider'
 
 export const EN = {
-  honestyBanner: 'This plugin registers models and portraits. Image, speech, and realtime invoke need a separate runtime adapter. Doubao Realtime tests need dsh-realtime-voice.',
+  honestyBanner: 'This plugin registers models and portraits. Image, speech, and realtime invoke need a separate runtime adapter. Doubao Realtime tests need dsh-voice-agent.',
   configured: 'Configured · {source}',
   secureStore: 'secure store',
   notConfigured: 'Not configured',
@@ -70,9 +70,9 @@ export const EN = {
   saveSpeechWithCount: 'Save and register ({count})',
   saveSpeechNone: 'Save: disable all',
   testRealtime: 'Test Realtime connection',
-  realtimeSaveHint: 'Saving an enabled Realtime Duplex route probes the connection. Registration still succeeds if dsh-realtime-voice is not installed.',
-  talkToTextMissing: 'dsh-realtime-voice is not installed. This plugin only registers the Doubao Realtime route; install that plugin to run a live connection test.',
-  talkToTextUnreachable: 'Could not reach the Doubao Realtime probe. Install dsh-realtime-voice, or check that Web is serving that plugin.',
+  realtimeSaveHint: 'Saving an enabled Realtime Duplex route probes the connection. Registration still succeeds if dsh-voice-agent is not installed.',
+  talkToTextMissing: 'dsh-voice-agent is not installed. This plugin only registers the Doubao Realtime route; install that plugin to run a live connection test.',
+  talkToTextUnreachable: 'Could not reach the Doubao Realtime probe. Install dsh-voice-agent, or check that Web is serving that plugin.',
   realtimeProbeFailed: 'Doubao Realtime probe failed (HTTP {status})',
   taskModelTag: 'Task models',
   doubaoReady: 'Doubao Speech credentials configured',
@@ -182,7 +182,7 @@ export const EN = {
 }
 
 export const ZH = {
-  honestyBanner: '本插件负责登记模型和画像。图片 / 语音 / Realtime 的真正调用需要另装 runtime adapter。豆包 Realtime 连接测试需要 dsh-realtime-voice。',
+  honestyBanner: '本插件负责登记模型和画像。图片 / 语音 / Realtime 的真正调用需要另装 runtime adapter。豆包 Realtime 连接测试需要 dsh-voice-agent。',
   configured: '已配置 · {source}',
   secureStore: '安全存储',
   notConfigured: '未配置',
@@ -251,9 +251,9 @@ export const ZH = {
   saveSpeechWithCount: '保存并注册（{count}）',
   saveSpeechNone: '保存：全部停用',
   testRealtime: '测试 Realtime 连接',
-  realtimeSaveHint: '保存已启用的 Realtime Duplex 时会尝试连接测试。未安装 dsh-realtime-voice 时登记仍然成功。',
-  talkToTextMissing: '未安装 dsh-realtime-voice。本插件只登记豆包 Realtime 路由；要做实况连接测试请安装该插件。',
-  talkToTextUnreachable: '无法访问豆包 Realtime 探测接口。请安装 dsh-realtime-voice，或确认 Web 已加载该插件。',
+  realtimeSaveHint: '保存已启用的 Realtime Duplex 时会尝试连接测试。未安装 dsh-voice-agent 时登记仍然成功。',
+  talkToTextMissing: '未安装 dsh-voice-agent。本插件只登记豆包 Realtime 路由；要做实况连接测试请安装该插件。',
+  talkToTextUnreachable: '无法访问豆包 Realtime 探测接口。请安装 dsh-voice-agent，或确认 Web 已加载该插件。',
   realtimeProbeFailed: '豆包 Realtime 测试失败（HTTP {status}）',
   taskModelTag: '任务模型',
   doubaoReady: '豆包语音凭据已配置',
