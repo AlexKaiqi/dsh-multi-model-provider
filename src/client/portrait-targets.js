@@ -7,7 +7,9 @@ function modelRecord(value) {
 }
 
 function providerSelection(descriptor, connectionId) {
-  const connection = object(object(descriptor?.user).connections)[connectionId]
+  const user = object(descriptor?.user)
+  const profiles = object(user.providerProfiles)
+  const connection = profiles[connectionId] ?? object(user.connections)[connectionId]
   const models = object(connection).models
   if (!Array.isArray(models)) return undefined
   return new Set(models.flatMap((row) => {
@@ -21,15 +23,32 @@ function selectedByProvider(selected, id, model) {
   return selected.has(id) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
 }
 
+function userRegisteredTaskModel(value) {
+  const model = object(value)
+  return typeof model.connection === 'string'
+    && typeof model.model === 'string'
+    && typeof model.task === 'string'
+}
+
+function userSelectedTaskModel(value) {
+  return object(value).enabled === true
+}
+
 /** Build the shared portrait target list from the two Settings namespaces. */
 export function snapshotPortraitTargets(multi, llm) {
   const root = object(multi?.value)
+  const userModels = object(object(multi?.user).models)
   const connections = object(root.connections)
-  const task = Object.entries(object(root.models)).map(([id, raw]) => {
+  const task = Object.entries(object(root.models)).flatMap(([id, raw]) => {
     const model = object(raw)
     const connection = object(connections[model.connection])
     const selected = providerSelection(multi, model.connection)
-    return {
+    const userModel = userModels[id]
+    const configured = userRegisteredTaskModel(userModel)
+      || userSelectedTaskModel(userModel)
+      || (selected !== undefined && selectedByProvider(selected, id, model))
+    if (!configured) return []
+    return [{
       id,
       kind: 'task',
       provider: connection.provider ?? model.connection ?? '',
@@ -41,7 +60,7 @@ export function snapshotPortraitTargets(multi, llm) {
       task: model.task,
       enabled: selected === undefined ? model.enabled !== false : selectedByProvider(selected, id, model),
       portrait: object(model.portrait),
-    }
+    }]
   })
 
   const llmRoot = object(llm?.value)

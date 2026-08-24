@@ -177,19 +177,21 @@ describe('help surface', () => {
   })
 
   it('publishes Ark and Doubao as two ordinary Models providers without a top-level section', async () => {
-    const [client, host] = await Promise.all([
+    const [client, host, directory] = await Promise.all([
       readFile(new URL('../src/client/index.jsx', import.meta.url), 'utf8'),
       readFile(new URL('../src/index.ts', import.meta.url), 'utf8'),
+      readFile(new URL('../src/provider-directory.ts', import.meta.url), 'utf8'),
     ])
     expect(client).not.toContain("id: 'volcengine-provider'")
-    expect(host).toContain("provider: 'volcengine'")
-    expect(host).toContain('provider: DOUBAO_SPEECH_PROVIDER')
-    expect(host).toContain("settingsNs: 'llm-pi-ai'")
-    expect(host).toContain("settingsNs: 'multi-model-provider'")
-    expect(host).toContain('editor: VOLCENGINE_EDITOR')
-    expect(host).toContain('editor: DOUBAO_EDITOR')
-    expect(host).toContain('modelsRequired: true')
-    expect(host).toContain("ctx.on('llm/configurable-provider-view', decorateConfigurableProviderView)")
+    expect(directory).toContain("provider: 'volcengine'")
+    expect(directory).toContain('provider: DOUBAO_SPEECH_PROVIDER')
+    expect(directory).toContain("settingsNs: 'llm-pi-ai'")
+    expect(directory).toContain("settingsNs: 'multi-model-provider'")
+    expect(directory).toContain('editor: VOLCENGINE_EDITOR')
+    expect(directory).toContain('editor: DOUBAO_EDITOR')
+    expect(directory).toContain('modelsRequired: true')
+    expect(directory).toContain("settingsPath: ['providerProfiles', DOUBAO_SPEECH_PROVIDER]")
+    expect(host).not.toContain('llm/configurable-provider-view')
     expect(host).toContain("ctx.on('llm/adapters-updated', ensureArkDirectory)")
   })
 

@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { llmTargetId } from '../model-target-id.ts'
 import { ModelManagerError } from '../operations.ts'
 import { normalizeStoredPortrait } from '../portrait-core.ts'
-import { effectiveTaskModelAvailability } from '../registry.ts'
+import { configuredTaskModelIds, effectiveTaskModelAvailability } from '../registry.ts'
 import type { ModelPortrait, PrepareModelPortraitsInput } from '../types.ts'
 import { builtinLlmPortrait } from './builtin.ts'
 import { builtinTaskPortrait } from './builtin-task.ts'
@@ -17,7 +17,7 @@ import { portraitRegistry } from './storage.ts'
  *
  * Args:
  *   ctx: Host context with settings, credentials, and llm.
- *   input: Optional exact ids. Omit to find enabled models whose portraits are not valid.
+ *   input: Optional exact configured ids. Omit to find configured models whose portraits are not valid.
  *   signal: Optional abort signal used while listing language-model catalogs.
  *
  * Returns:
@@ -26,9 +26,11 @@ import { portraitRegistry } from './storage.ts'
 export async function prepareModelPortraits(ctx: Context, input: PrepareModelPortraitsInput, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const config = portraitRegistry(ctx)
   const requested = input.ids === undefined ? undefined : new Set(input.ids.map(id => id.trim()).filter(Boolean))
+  const configuredTaskIds = configuredTaskModelIds(ctx)
   const candidates: Record<string, unknown>[] = []
   for (const [id, registration] of Object.entries(config.models)) {
     if (requested !== undefined && !requested.has(id)) continue
+    if (!configuredTaskIds.has(id)) continue
     if (requested === undefined && input.includeDisabled !== true) {
       const availability = await effectiveTaskModelAvailability(ctx, id)
       if (!availability.enabled) continue
@@ -109,10 +111,15 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
   if (requested !== undefined) {
     const found = new Set(candidates.map(candidate => candidate.id))
     const unknown = [...requested].filter(id => !found.has(id))
-    if (unknown.length > 0) throw new ModelManagerError(`unknown portrait targets: ${unknown.join(', ')}`, 'UNKNOWN_MODEL_PORTRAIT_TARGET')
+    if (unknown.length > 0) {
+      throw new ModelManagerError(
+        `portrait targets are unknown or not configured in this profile: ${unknown.join(', ')}`,
+        'UNKNOWN_MODEL_PORTRAIT_TARGET',
+      )
+    }
   }
   return {
-    activation: 'When the user says “整理初始画像”, “建立模型画像”, or equivalent, infer the intended models from the immediately preceding registration/discovery context and execute this workflow without asking the user to enumerate portrait fields or tool names.',
+    activation: 'When the user asks to organize, create, or improve portraits for configured models, infer the intended models from the immediately preceding registration or selection context and execute this workflow without asking the user to enumerate portrait fields or tool names. Never pre-research unconfigured catalog entries.',
     candidates: requested === undefined ? candidates.filter(candidate => candidate.needsInitialPortrait === true) : candidates,
     ontology: {
       identity: ['canonical target id', 'provider', 'provider model id', 'display name'],

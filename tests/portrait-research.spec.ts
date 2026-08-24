@@ -88,13 +88,25 @@ const registry: TaskModelRegistryConfig = {
   defaults: {},
 }
 
-function context(value: TaskModelRegistryConfig = registry): Context {
+function context(
+  value: TaskModelRegistryConfig = registry,
+  user: unknown = {
+    models: {
+      'doubao/tts': {
+        connection: 'doubao',
+        model: 'seed-tts-1.0',
+        task: 'speech-synthesis',
+      },
+    },
+  },
+): Context {
   return {
     settings: {
       describe: vi.fn(() => [{
         ns: TASK_MODEL_SETTINGS_NAMESPACE,
         schema: TASK_MODEL_REGISTRY_SCHEMA.toJSON(),
         value,
+        user,
         revision: 7,
         applies: 'live',
       }]),
@@ -149,6 +161,22 @@ describe('portrait research testsuite', () => {
         }),
       }),
     ])
+  })
+
+  it('rejects a built-in task route that was never configured or selected', async () => {
+    await expect(prepareModelPortraits(context(registry, {}), { ids: ['doubao/tts'] }))
+      .rejects.toThrow('not configured in this profile')
+  })
+
+  it('accepts a built-in route selected through the Provider editor but ignores a disabled-only override', async () => {
+    const selected = await prepareModelPortraits(context(registry, {
+      providerProfiles: { doubao: { models: [{ id: 'seed-tts-1.0' }] } },
+    }), { ids: ['doubao/tts'] })
+    expect(selected.candidates).toEqual([expect.objectContaining({ id: 'doubao/tts' })])
+
+    await expect(prepareModelPortraits(context(registry, {
+      models: { 'doubao/tts': { enabled: false } },
+    }), { ids: ['doubao/tts'] })).rejects.toThrow('not configured in this profile')
   })
 
   it('lists researchable gaps and a lastProbe note without turning probe into a research question', async () => {

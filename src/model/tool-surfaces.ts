@@ -124,10 +124,10 @@ export const REGISTER_TASK_MODEL_SURFACE = {
 
 export const PREPARE_MODEL_PORTRAITS_SURFACE = {
   name: 'prepare_model_portraits',
-  description: 'Start the portrait-research workflow for registered LLM and task models. Use it immediately when the user says “整理初始画像”, “建立模型画像”, or equivalent—even if they do not list fields or tool steps—and infer model ids from the immediately preceding registration or discovery context. It returns seed facts, gaps, official documentation URLs, and the ingest/validate sequence. Do not use it to invent undocumented facts, write lastProbe from documentation, perform paid probes without approval, or ask the user to restate the portrait schema.',
+  description: 'Start the on-demand portrait-research workflow for models already configured in the current profile. Use it immediately when the user asks to organize, create, or improve portraits for configured models—even if they do not list fields or tool steps—and infer model ids only from the immediately preceding registration or selection context. It returns seed facts, gaps, official documentation URLs, and the ingest/validate sequence. Do not use it for discovered, discussed, or built-in catalog models that the user has not configured; do not invent undocumented facts, write lastProbe from documentation, perform paid probes without approval, or ask the user to restate the portrait schema.',
   parameters: {
-    ids: 'Optional exact task route ids or LLM ids in llm:<provider>/<model> form. Infer these from recent context when possible; omit to find enabled models with missing or non-valid portraits.',
-    includeDisabled: 'Include disabled task routes when ids are omitted; defaults to false.',
+    ids: 'Optional exact configured task route ids or live LLM ids in llm:<provider>/<model> form. Infer these from recent registration or selection context when possible; omit to find configured models with missing or non-valid portraits.',
+    includeDisabled: 'Include explicitly user-registered disabled task routes when ids are omitted; defaults to false. It never exposes unconfigured built-in catalog entries.',
   },
   helpPointer: 'prepare_model_portraits',
 } as const

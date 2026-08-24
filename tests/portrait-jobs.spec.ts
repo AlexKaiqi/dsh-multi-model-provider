@@ -21,7 +21,7 @@ describe('portrait background jobs', () => {
       transport: { path: string }
       authorization: { postRequiredHeaders: Record<string, string> }
     }
-    expect(contract.version).toBe('1.1.0')
+    expect(contract.version).toBe('1.2.0')
     expect(contract.transport.path).toBe(PORTRAIT_JOBS_PATH)
     expect(contract.authorization.postRequiredHeaders[PORTRAIT_JOB_HEADER]).toBe('1')
   })
@@ -79,6 +79,13 @@ describe('portrait background jobs', () => {
         describe: vi.fn(() => [{
           ns: TASK_MODEL_SETTINGS_NAMESPACE,
           revision: 1,
+          user: {
+            models: {
+              'demo/image': {
+                connection: 'demo', model: 'image-1', task: 'image-generation',
+              },
+            },
+          },
           value: {
             connections: { demo: { provider: 'demo' } },
             models: {

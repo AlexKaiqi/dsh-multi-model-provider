@@ -11,7 +11,6 @@ import { MODEL_MANAGER_GUIDANCE } from './model/guidance.ts'
 import { HELP } from './model/help.ts'
 import { ModelCatalog } from './catalog.ts'
 import {
-  DOUBAO_REALTIME_BASE_URL,
   DOUBAO_SPEECH_PROVIDER,
 } from './doubao-speech-catalog.ts'
 import { discoverDoubaoRealtimeVoices } from './doubao-discovery.ts'
@@ -23,10 +22,8 @@ import { registerModelProbeRoute } from './probe-route.ts'
 import { registerPortraitJobRoutes } from './portrait-jobs.ts'
 import {
   migrateLegacyVolcengineCredential,
-  VOLCENGINE_ARK_API,
-  VOLCENGINE_ARK_API_KEY,
-  VOLCENGINE_ARK_BASE_URL,
 } from './providers/volcengine.ts'
+import { doubaoProviderDirectoryEntry, volcengineProviderDirectoryEntry } from './provider-directory.ts'
 
 export * from './model/guidance.ts'
 export * from './model/tool-surfaces.ts'
@@ -50,52 +47,7 @@ export { modelManagerTools } from './tools.ts'
 export const name = 'multi-model-provider'
 export const inject = ['llm', 'settings', 'credentials', 'agentDefaultModel', 'tools', 'systemPrompt']
 
-interface ConfigurableProviderView {
-  readonly provider: string
-  readonly displayName: string
-  readonly settingsNs: string
-  readonly settingsPath: readonly string[]
-  readonly active: boolean
-  readonly declared?: boolean
-  readonly editor?: Readonly<Record<string, unknown>>
-}
-
-declare module '@deepseek-ai/cordis' {
-  interface Events {
-    'llm/configurable-provider-view': (
-      view: ConfigurableProviderView,
-    ) => ConfigurableProviderView | undefined
-  }
-}
-
-const VOLCENGINE_EDITOR = {
-  kind: 'provider',
-  apiKeyRef: VOLCENGINE_ARK_API_KEY,
-  baseURL: VOLCENGINE_ARK_BASE_URL,
-  api: VOLCENGINE_ARK_API,
-  modelsRequired: true,
-} as const
-
-const DOUBAO_EDITOR = {
-  kind: 'provider',
-  apiKeyRef: 'DOUBAO_API_KEY',
-  baseURL: DOUBAO_REALTIME_BASE_URL,
-  modelsRequired: true,
-} as const
-
-/** Present the plugin-owned Ark product identity without taking route ownership from llm-pi-ai. */
-export function decorateConfigurableProviderView(view: ConfigurableProviderView): ConfigurableProviderView | undefined {
-  if (view.provider !== 'volcengine') return undefined
-  return {
-    ...view,
-    displayName: '火山方舟',
-    declared: false,
-    editor: VOLCENGINE_EDITOR,
-  }
-}
-
 export function apply(ctx: Context): void {
-  ctx.on('llm/configurable-provider-view', decorateConfigurableProviderView)
   ctx.effect(async () => {
     try {
       if (await migrateLegacyVolcengineCredential(ctx)) {
@@ -117,40 +69,19 @@ export function apply(ctx: Context): void {
       try {
         if (arkDirectory !== undefined) return
         if (ctx.llm.listConfigurableProviders().some(entry => entry.provider === 'volcengine')) return
-        arkDirectory = ctx.llm.registerConfigurableProviders([{
-          provider: 'volcengine',
-          displayName: '火山方舟',
-          settingsNs: 'llm-pi-ai',
-          settingsPath: ['providers', 'volcengine'],
-          ...{ editor: VOLCENGINE_EDITOR },
-          declared: false,
-        }])
+        arkDirectory = ctx.llm.registerConfigurableProviders([volcengineProviderDirectoryEntry()])
       } finally {
         arkRegistrationPending = false
       }
     })
   }
   if (!existingProviders.has('volcengine')) {
-    arkDirectory = ctx.llm.registerConfigurableProviders([{
-      provider: 'volcengine',
-      displayName: '火山方舟',
-      settingsNs: 'llm-pi-ai',
-      settingsPath: ['providers', 'volcengine'],
-      ...{ editor: VOLCENGINE_EDITOR },
-      declared: false,
-    }])
+    arkDirectory = ctx.llm.registerConfigurableProviders([volcengineProviderDirectoryEntry()])
   }
   ctx.on('llm/adapters-updated', ensureArkDirectory)
   ensureArkDirectory()
   if (!existingProviders.has(DOUBAO_SPEECH_PROVIDER)) {
-    ctx.llm.registerConfigurableProviders([{
-      provider: DOUBAO_SPEECH_PROVIDER,
-      displayName: '豆包语音',
-      settingsNs: 'multi-model-provider',
-      settingsPath: ['connections', DOUBAO_SPEECH_PROVIDER],
-      ...{ editor: DOUBAO_EDITOR },
-      declared: false,
-    }])
+    ctx.llm.registerConfigurableProviders([doubaoProviderDirectoryEntry()])
   }
   ctx.llm.registerModelDiscovery('multi-model-provider', async (request) => {
     if (request.provider !== DOUBAO_SPEECH_PROVIDER) return []

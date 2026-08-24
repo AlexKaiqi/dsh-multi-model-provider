@@ -8,7 +8,7 @@ import type { PrepareModelPortraitsInput } from '../types.ts';
  *
  * Args:
  *   ctx: Host context with settings, credentials, and llm.
- *   input: Optional exact ids. Omit to find enabled models whose portraits are not valid.
+ *   input: Optional exact configured ids. Omit to find configured models whose portraits are not valid.
  *   signal: Optional abort signal used while listing language-model catalogs.
  *
  * Returns:

@@ -42,7 +42,7 @@ describe('model portrait settings targets', () => {
     },
   }
 
-  it('lists language and task models for the read-only portrait dashboard', () => {
+  it('does not turn built-in task catalog entries into portrait targets', () => {
     expect(snapshotPortraitTargets(multi, llm)).toEqual([
       expect.objectContaining({
         id: 'llm:volcengine/doubao-seed-2-0-lite-260215',
@@ -50,14 +50,26 @@ describe('model portrait settings targets', () => {
         providerName: 'Volcengine account',
         portrait: { validation: { state: 'partial' } },
       }),
-      expect.objectContaining({
-        id: 'openai/gpt-image-2',
-        kind: 'task',
-        providerName: 'OpenAI Images',
-        enabled: false,
-        portrait: { validation: { state: 'valid' } },
-      }),
     ])
+  })
+
+  it('includes a task route that the user registered explicitly', () => {
+    const registered = {
+      ...multi,
+      user: {
+        models: {
+          'openai/gpt-image-2': {
+            connection: 'image-provider',
+            model: 'gpt-image-2',
+            task: 'image-generation',
+            enabled: false,
+          },
+        },
+      },
+    }
+    expect(snapshotPortraitTargets(registered, llm)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'openai/gpt-image-2', kind: 'task', enabled: false }),
+    ]))
   })
 
   it('uses provider-editor selection as the effective task enabled state', () => {
@@ -75,11 +87,15 @@ describe('model portrait settings targets', () => {
   })
 
   it('combines text, type, provider, portrait-state, and enabled filters', () => {
-    const targets = snapshotPortraitTargets(multi, llm)
+    const selected = {
+      ...multi,
+      user: { connections: { 'image-provider': { models: [{ id: 'gpt-image-2' }] } } },
+    }
+    const targets = snapshotPortraitTargets(selected, llm)
     expect(filterPortraitTargets(targets, { kind: 'llm', provider: 'volcengine', state: 'partial' }).map(item => item.id))
       .toEqual(['llm:volcengine/doubao-seed-2-0-lite-260215'])
-    expect(filterPortraitTargets(targets, { query: 'image', availability: 'disabled' }).map(item => item.id))
+    expect(filterPortraitTargets(targets, { query: 'image', availability: 'enabled' }).map(item => item.id))
       .toEqual(['openai/gpt-image-2'])
-    expect(filterPortraitTargets(targets, { kind: 'task', availability: 'enabled' })).toEqual([])
+    expect(filterPortraitTargets(targets, { kind: 'task', availability: 'disabled' })).toEqual([])
   })
 })

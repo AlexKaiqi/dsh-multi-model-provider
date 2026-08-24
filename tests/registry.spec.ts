@@ -83,6 +83,7 @@ describe('task-model registry', () => {
           },
         },
         value: {
+          providerProfiles: {},
           connections: {
             openai: { credentialRef: 'OPENAI_API_KEY' },
             'doubao-speech': {
@@ -182,13 +183,18 @@ describe('task-model registry', () => {
   })
 
   it('maps the standard Provider editor voice ids onto the owned Realtime routes', async () => {
-    const value = structuredClone(BUILTIN_TASK_MODEL_REGISTRY)
-    value.connections['doubao-speech'] = {
-      ...value.connections['doubao-speech']!,
-      models: [{ id: 'zh_male_xiaotian_jupiter_bigtts', name: '豆包 S2S-O · 小天' }],
+    const base = structuredClone(BUILTIN_TASK_MODEL_REGISTRY)
+    const value: TaskModelRegistryConfig = {
+      ...base,
+      providerProfiles: {
+        'doubao-speech': {
+          ...base.connections['doubao-speech']!,
+          models: [{ id: 'zh_male_xiaotian_jupiter_bigtts', name: '豆包 S2S-O · 小天' }],
+        },
+      },
     }
     const result = await listTaskModels(context(value, {
-      connections: {
+      providerProfiles: {
         'doubao-speech': {
           models: [{ id: 'zh_male_xiaotian_jupiter_bigtts', name: '豆包 S2S-O · 小天' }],
         },
@@ -237,7 +243,7 @@ describe('task-model registry', () => {
 
   it('updates provider-editor selection together with route flags', async () => {
     const ctx = context(structuredClone(BUILTIN_TASK_MODEL_REGISTRY), {
-      connections: {
+      providerProfiles: {
         'doubao-speech': { models: [{ id: 'zh_male_xiaotian_jupiter_bigtts' }] },
       },
     })
@@ -245,7 +251,7 @@ describe('task-model registry', () => {
     expect(ctx.settings.mutate).toHaveBeenCalledWith(
       TASK_MODEL_SETTINGS_NAMESPACE,
       expect.arrayContaining([
-        { op: 'set', path: ['connections', 'doubao-speech', 'models'], value: [] },
+        { op: 'set', path: ['providerProfiles', 'doubao-speech', 'models'], value: [] },
       ]),
       3,
     )

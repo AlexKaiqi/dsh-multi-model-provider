@@ -18,11 +18,11 @@
 
 ### 2. 画像
 
-用户说“整理初始画像”即可。`prepare_model_portraits` 给出种子事实、缺口和官方文档入口；Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能由用户明确授权后的 Agent 调用 `validate_model_portrait(liveProbe=true)` 写入，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 负责读写画像。
+画像只为当前 profile 已注册或已选择的模型按需整理，不再提前调研未配置的内置目录项。用户说“整理画像”即可；`prepare_model_portraits` 给出种子事实、缺口和官方文档入口，Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能由用户明确授权后的 Agent 调用 `validate_model_portrait(liveProbe=true)` 写入，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 负责读写画像。
 
-目录内置一组没有固定数量上限的当前模型初始画像。带 Provider 价格的路由画像覆盖 GPT-5.6 Sol / Terra、Claude Opus 5 / Sonnet 5、Gemini 3.1 Pro Preview / 3.7 Flash、DeepSeek V4 Pro / Flash、Kimi K3 / K2.6、GLM-5.3 / 5-Turbo / 5V-Turbo、Grok 4.5 / 4.3、MiniMax M3 / M2.7，以及 Mistral Small 4 / Ministral 8B。另有与 Provider 解耦的能力画像，覆盖 Qwen 3.8 Max Preview / 3.7 Plus、Qwen 3.5 4B / 9B / 27B、Qwen 3.6 35B-A3B、Qwen3-Coder-Next，以及 MiniMax、Mistral 的开源权重模型。选择先看当前代，再看调用量、领域专长、私有部署使用和硬件体量。它们只是精确模型 ID 命中时的画像兜底，不会替用户注册模型；用户保存的画像永远优先。路由画像可以带对应 Provider 的生效价格；可移植画像不填写虚假的统一价格，因为 API 与自部署成本取决于具体部署。两者都不伪造 benchmark 分数、延迟区间或 `lastProbe`。
+目录保留一组精确 ID 的画像兜底，但只有同一模型在当前 profile 完成注册或选择后才会使用；兜底本身不会创建画像候选，也不会触发提前调研。用户保存的画像永远优先。路由画像可以带对应 Provider 的生效价格；可移植画像不填写虚假的统一价格，因为 API 与自部署成本取决于具体部署。两者都不伪造 benchmark 分数、延迟区间或 `lastProbe`。
 
-领域 task-model 是独立的一层。视频初始集合覆盖 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite、MiniMax H3 与 Hailuo 2.3 / Fast，以及 OpenAI Sora 2 / Pro；另外纳入 MiniMax Speech 2.8 HD / Turbo、Music 3.0 和 image-01。每条都保存精确 task、输入输出模态、执行方式、价格和带来源的能力边界。因此 H3 是带原生音频输出的 `video-generation` 候选，不是 Agent LLM。只有对应 runtime adapter 与凭据都可用后，这些路由才会从 `registered-only` 变成可调用。Google 当前视频路由默认作为候选；OpenAI 已把 Sora 2 / Pro 标成 Legacy，所以默认停用。Music 3.0 的付费 API 自 2026-08-20 起不再接受新用户，也默认停用；画像仍保留给已有付费用户和开源权重部署判断。
+领域 task-model 是独立的一层。内置能力目录覆盖 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite、MiniMax H3 与 Hailuo 2.3 / Fast、OpenAI Sora 2 / Pro，以及 MiniMax Speech 2.8 HD / Turbo、Music 3.0 和 image-01。每条都保存精确 task、输入输出模态、执行方式和能力边界；这些目录元数据只有被用户注册或选择后才会成为画像目标。H3 是带原生音频输出的 `video-generation` route，不是 Agent LLM。只有对应 runtime adapter 与凭据都可用后，路由才会从 `registered-only` 变成可调用。OpenAI 已把 Sora 2 / Pro 标成 Legacy，Music 3.0 的付费 API 自 2026-08-20 起不再接受新用户，因此这些路由默认停用。
 
 ### 3. 选主模型
 
@@ -55,7 +55,7 @@ await ctx.modelCatalog.selectAgentModel({
 - `discover_task_models`：查询 connection 对应的已鉴权 Provider 模型目录，不自动注册。
 - `select_task_models`：整体替换启用集合；`ids: []` 明确表示该 connection 全部停用。
 - `register_task_model`：登记或更新一条非语言模型路由及其 connection profile。
-- `prepare_model_portraits`：给出种子事实、缺口和官方文档入口。
+- `prepare_model_portraits`：为当前 profile 已配置的模型按需给出种子事实、缺口和官方文档入口；拒绝未配置的内置目录项。
 - `ingest_portrait_research`：把带 http(s) 出处的调研结果合并进画像。
 - `get_model_portrait`：查看价格、擅长项、限制、速度、I/O、证据、验证状态与可选实测汇总。
 - `upsert_model_portrait`：让 Harness Agent 保存整理后的证据化初始画像，并立即做结构验证。
@@ -67,7 +67,7 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab；每次采集都会在 `dsh-temporary-session` 提供的可配置“临时工作区”中创建可打开的 Session，因此要求同一 profile 安装并启用该 bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
+安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型，未配置的内置目录项不会出现。每次采集都会在 `dsh-temporary-session` 提供的可配置“临时工作区”中创建可打开的 Session，因此要求同一 profile 安装并启用该 bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
@@ -127,6 +127,8 @@ multi-model-provider:
 
 `volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
+内置豆包目录是能力元数据，不是用户配置。全新安装不会在已配置提供方行中显示豆包语音，而是把它放进「添加提供方」。保存这张标准编辑卡会创建 `providerProfiles.doubao-speech`，通过 Credentials 服务存储 `DOUBAO_API_KEY`，并记录所选音色 profile；删除提供方只删除这份用户 profile，内置目录仍会保留。
+
 安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 的非 Realtime 路由在 task runtime adapter 可用时通过 `invoke_task_model` 调用，Realtime 语音走 `realtimeModelRuntime`。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 
 每条 task route 都有显式 `enabled` 状态。可用模型选择采用整体替换语义；空数组会原样保持“全部停用”，不会回退为全选。停用模型仍可查看画像，但不能被调用。
@@ -166,9 +168,9 @@ multi-model-provider:
 
 画像把三类信息分开：注册表是输入/输出、能力和执行方式的声明；`portrait.description` 是分章节 Markdown 定性说明，`pricing` 是结构化价格，`performance.lastProbe` 是带观测时间的显式实测；调用日志提供长期成功率、p50/p95 延迟、token 与估算成本。画像同时支持 task route id 和 `llm:<provider>/<model>`。不要把厂商文档或人工判断写成实测值。
 
-初始画像有意不追求全覆盖，但不设固定条数：覆盖广泛使用的 Provider，再取当前旗舰、主力工作模型、领域专用模型和实际装机量高的私有部署模型。调用量、开源权重下载与部署形态都是选型信号；具体能力与价格只引用一手资料。命中分两层：先按 `provider/model` 精确命中带路由价格的画像；没有时，再按明确列出的精确模型 ID 命中与 Provider 解耦的能力画像，不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
+内置兜底画像有意不追求全覆盖，也不会单独触发调研。只有当前 profile 已配置模型才会按精确 ID 命中：先匹配带路由价格的 `provider/model` 画像，没有时再匹配明确列出的 Provider 解耦能力画像；不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
 
-“模型画像”页对当前选中的单个模型执行采集或刷新。每个任务都会创建独立的可见后台 Agent Session，以“临时工作区”设置的 root 作为 `cwd`，并持久归入同一个 UI 分组；该 root 默认是 `$DSH_HOME/temporary-sessions`，也可在设置中修改。任务结束时会回收活动 Agent handle，但保留 Session，以便设置页之后打开并审阅研究记录。采集 Agent 没有文件工具，因此共享 scratch root 不会污染项目目录或模型画像持久化。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。画像概念由插件内置，包括身份、I/O 类型与格式、上下文/输出限制、能力与执行方式、价格、生效时间、擅长项、限制、适用/避用场景、速度、吞吐、质量分数、证据出处和验证状态。
+“模型画像”页只对当前 profile 已注册或已选择的单个模型执行按需采集或刷新，不承担未配置模型的预研目录职责。每个任务都会创建独立的可见后台 Agent Session，以“临时工作区”设置的 root 作为 `cwd`，并持久归入同一个 UI 分组；该 root 默认是 `$DSH_HOME/temporary-sessions`，也可在设置中修改。任务结束时会回收活动 Agent handle，但保留 Session，以便设置页之后打开并审阅研究记录。采集 Agent 没有文件工具，因此共享 scratch root 不会污染项目目录或模型画像持久化。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。
 
 多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择有效 route、管理安全凭据引用，并对 Provider adapter 和产品角色 profile 做注册及有界会话组装；GPT/豆包 adapter 负责 wire protocol 和浏览器音频传输，产品插件负责上下文和工具策略。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "portrait-jobs-http",
   "summary": "Same-origin Settings API for starting one bounded portrait research Agent Session and reading its latest status.",
   "rationale": "This is a browser-to-Host product seam, not an Agent tool. Research creates a durable temporary Session, so POST requests require same-origin validation and an explicit marker. Paid live probes are deliberately excluded and require separate explicit Agent approval.",
@@ -28,7 +28,7 @@
   },
   "request": {
     "action": "must be research; probe is rejected",
-    "ids": "optional non-empty array of at most 100 exact target ids"
+    "ids": "optional non-empty array of at most 100 exact target ids already configured or selected in the current profile; catalog-only ids are rejected"
   },
   "response": {
     "ok": "true when status was read or a job was queued; false on validation or runtime failure",

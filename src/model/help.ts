@@ -35,7 +35,7 @@ owned by llm-pi-ai; non-language task models live in this plugin's catalog.
   register_task_model      create or update a registration and its connection
 
 2. portraits:
-  prepare_model_portraits  expand one short intent into seed facts, gaps, and a research plan
+  prepare_model_portraits  research configured models on demand; never pre-research catalog-only entries
   ingest_portrait_research merge Agent-researched facts that have official source URLs
   get_model_portrait       inspect price, strengths, speed, I/O, and evidence
   upsert_model_portrait    save an evidence-backed model portrait
@@ -69,7 +69,8 @@ provider discovery and selection:
   preserved as all disabled; it never falls back to all models.
 
 portrait workflow:
-  “整理初始画像” is sufficient: the Agent calls prepare_model_portraits, opens the
+  Only models already configured or selected in this profile are portrait targets.
+  “整理画像” is sufficient: the Agent calls prepare_model_portraits, opens the
   suggested official documentation, calls ingest_portrait_research with source URLs,
   and validates with liveProbe=false. lastProbe is measured by an explicitly approved Agent live probe, never copied from docs.
 `

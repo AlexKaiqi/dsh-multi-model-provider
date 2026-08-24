@@ -111,6 +111,8 @@ const externalPortraitSchema = z.object({
 
 export const TASK_MODEL_REGISTRY_SCHEMA = z.object({
   connections: z.dict(connectionSchema).default({}).description('Reusable endpoint and credential-reference profiles.'),
+  providerProfiles: z.dict(connectionSchema).default({})
+    .description('Provider profiles added through the Models settings page.'),
   models: z.dict(taskModelSchema).default({}).description('Image, audio, video, embedding, and reranking model routes.'),
   defaults: z.dict(z.string(), taskSchema)
     .default({} as Record<TaskModelTask, string>)
@@ -537,7 +539,15 @@ function requiredDescriptor(ctx: Context): SettingsDescriptor {
 }
 
 function resolvedConfig(descriptor: SettingsDescriptor): TaskModelRegistryConfig {
-  return descriptor.value as TaskModelRegistryConfig
+  const value = descriptor.value as TaskModelRegistryConfig
+  const profiles = value.providerProfiles ?? {}
+  return {
+    ...value,
+    connections: Object.fromEntries(Object.entries(value.connections).map(([id, connection]) => [
+      id,
+      profiles[id] === undefined ? connection : { ...connection, ...profiles[id] },
+    ])),
+  }
 }
 
 /**
@@ -551,7 +561,8 @@ function providerModelSelection(
   connectionId: string,
 ): ReadonlySet<string> | undefined {
   if (typeof descriptor.user !== 'object' || descriptor.user === null || Array.isArray(descriptor.user)) return undefined
-  const connections = (descriptor.user as { connections?: unknown }).connections
+  const user = descriptor.user as { providerProfiles?: unknown; connections?: unknown }
+  const connections = user.providerProfiles ?? user.connections
   if (typeof connections !== 'object' || connections === null || Array.isArray(connections)) return undefined
   const connection = (connections as Record<string, unknown>)[connectionId]
   if (typeof connection !== 'object' || connection === null || Array.isArray(connection)) return undefined
@@ -572,6 +583,46 @@ function selectedByProviderEditor(
 ): boolean {
   const voice = typeof model.profile?.voice === 'string' ? model.profile.voice : undefined
   return selected.has(routeId) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
+}
+
+function userRegisteredTaskModel(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const model = value as Record<string, unknown>
+  return typeof model.connection === 'string'
+    && typeof model.model === 'string'
+    && typeof model.task === 'string'
+}
+
+function userSelectedTaskModel(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    && (value as Record<string, unknown>).enabled === true
+}
+
+/**
+ * Exact task routes that the user registered or selected for this profile.
+ *
+ * The merged Settings value contains the entire built-in catalog, so presence
+ * in config.models alone is not evidence that a route is user configured.
+ */
+export function configuredTaskModelIds(ctx: Context): ReadonlySet<string> {
+  const descriptor = requiredDescriptor(ctx)
+  const config = resolvedConfig(descriptor)
+  const user = typeof descriptor.user === 'object' && descriptor.user !== null && !Array.isArray(descriptor.user)
+    ? descriptor.user as { models?: unknown }
+    : {}
+  const userModels = typeof user.models === 'object' && user.models !== null && !Array.isArray(user.models)
+    ? user.models as Record<string, unknown>
+    : {}
+  const configured = new Set<string>()
+  for (const [id, registration] of Object.entries(config.models)) {
+    const selected = providerModelSelection(descriptor, registration.connection)
+    if (userRegisteredTaskModel(userModels[id])
+      || userSelectedTaskModel(userModels[id])
+      || (selected !== undefined && selectedByProviderEditor(selected, id, registration))) {
+      configured.add(id)
+    }
+  }
+  return configured
 }
 
 export function resolveTaskModelRoute(ctx: Context, id: string, descriptor = requiredDescriptor(ctx)): ResolvedTaskModelRoute {
@@ -678,6 +729,7 @@ function validateConnection(id: string, connection: TaskModelRegistryConfig['con
 
 export function validateTaskModelRegistry(config: TaskModelRegistryConfig): void {
   for (const [id, connection] of Object.entries(config.connections)) validateConnection(id, connection)
+  for (const [id, connection] of Object.entries(config.providerProfiles ?? {})) validateConnection(id, connection)
 
   for (const [id, model] of Object.entries(config.models)) {
     nonBlank(id, 'model route id')
@@ -1091,7 +1143,12 @@ export async function selectTaskModels(
       const voice = typeof model.profile?.voice === 'string' ? model.profile.voice : undefined
       return [{ id: voice ?? model.model, ...(model.displayName === undefined ? {} : { name: model.displayName }) }]
     })
-    ops.push({ op: 'set', path: ['connections', connectionId, 'models'], value: providerModels })
+    const profileRoot = typeof descriptor.user === 'object' && descriptor.user !== null
+      && !Array.isArray(descriptor.user)
+      && typeof (descriptor.user as { providerProfiles?: unknown }).providerProfiles === 'object'
+      ? 'providerProfiles'
+      : 'connections'
+    ops.push({ op: 'set', path: [profileRoot, connectionId, 'models'], value: providerModels })
   }
   if (ops.length > 0) await ctx.settings.mutate(TASK_MODEL_SETTINGS_NAMESPACE, ops, descriptor.revision)
   return {

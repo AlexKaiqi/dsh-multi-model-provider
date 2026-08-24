@@ -193,6 +193,8 @@ export interface RegisteredTaskModel {
 
 export interface TaskModelRegistryConfig {
   readonly connections: Readonly<Record<string, TaskModelConnection>>
+  /** User-added provider profiles overlaid on built-in connection templates. */
+  readonly providerProfiles?: Readonly<Record<string, TaskModelConnection>>
   readonly models: Readonly<Record<string, RegisteredTaskModel>>
   readonly defaults: Readonly<Partial<Record<TaskModelTask, string>>>
   /** Portraits for models owned by another runtime registry, currently llm-pi-ai. */
@@ -348,8 +350,9 @@ export interface SummarizeModelUsageInput {
 }
 
 export interface PrepareModelPortraitsInput {
-  /** Exact task route ids or llm:<provider>/<model> ids. Omit to find every enabled model needing initial work. */
+  /** Exact configured task route ids or live llm:<provider>/<model> ids. Omit to find configured models needing work. */
   readonly ids?: readonly string[]
+  /** Include explicitly user-registered disabled task routes, never unconfigured built-in catalog entries. */
   readonly includeDisabled?: boolean
 }
 

@@ -236,7 +236,7 @@ export class PortraitJobCoordinator {
       workspaceLabel: 'temporary workspace',
       phase: selectedIds.length === 0 ? 'nothing to update' : 'creating temporary Session',
       startedAt: now,
-      ...(selectedIds.length === 0 ? { status: 'completed', finishedAt: now, summary: 'No enabled portraits currently need research.' } : {}),
+      ...(selectedIds.length === 0 ? { status: 'completed', finishedAt: now, summary: 'No configured portraits currently need research.' } : {}),
     }
     if (selectedIds.length > 0) {
       const controller = new AbortController()

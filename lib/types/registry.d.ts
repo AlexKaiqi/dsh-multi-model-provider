@@ -5,6 +5,13 @@ import { type CredentialStatus, type DiscoverTaskModelsInput, type ListTaskModel
 export declare const TASK_MODEL_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
 export declare const TASK_MODEL_REGISTRY_SCHEMA: z<TaskModelRegistryConfig>;
 export declare const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig;
+/**
+ * Exact task routes that the user registered or selected for this profile.
+ *
+ * The merged Settings value contains the entire built-in catalog, so presence
+ * in config.models alone is not evidence that a route is user configured.
+ */
+export declare function configuredTaskModelIds(ctx: Context): ReadonlySet<string>;
 export declare function resolveTaskModelRoute(ctx: Context, id: string, descriptor?: SettingsDescriptor): ResolvedTaskModelRoute;
 export interface EffectiveTaskModelAvailability {
     readonly route: ResolvedTaskModelRoute;

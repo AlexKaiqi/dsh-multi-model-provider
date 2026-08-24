@@ -153,7 +153,7 @@ describe('model portraits', () => {
   it('teaches the Agent the complete workflow from one short portrait request', async () => {
     const result = await prepareModelPortraits(context(), {})
     expect(result).toMatchObject({
-      activation: expect.stringContaining('整理初始画像'),
+      activation: expect.stringMatching(/configured models.*Never pre-research unconfigured catalog entries/),
       ontology: {
         interface: expect.arrayContaining(['input modalities and formats']),
         commercial: expect.arrayContaining(['effective-dated rates']),
