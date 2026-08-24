@@ -18,11 +18,13 @@ describe('Git-installable pack contract', () => {
       exports: Record<string, unknown>
       dsh: { bundle?: { patch?: string } }
       peerDependencies: Record<string, string>
+      peerDependenciesMeta: Record<string, { optional?: boolean }>
     }
     expect(pkg.main).toBe('lib/index.js')
     expect(pkg.exports['./client']).toBe('./lib/client.js')
     expect(pkg.dsh.bundle?.patch).toBe('./cordis.patch.yml')
-    expect(pkg.peerDependencies['dsh-temporary-session']).toBe('^0.1.0-rc.3')
+    expect(pkg.peerDependencies['dsh-temporary-session']).toBe('^0.1.0-rc.4')
+    expect(pkg.peerDependenciesMeta['dsh-temporary-session']?.optional).toBe(true)
     for (const path of [
       'lib/index.js',
       'lib/client.js',

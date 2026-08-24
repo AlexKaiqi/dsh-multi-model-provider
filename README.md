@@ -137,7 +137,9 @@ Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex spee
 
 ## Install
 
-This is a community composition bundle for DeepSeek Harness `0.1.0-rc.6`. It is not an official DeepSeek package. Host and Web runtime files are committed, so a Git install does not need `prepare` or `allowBuilds`.
+This is a community composition bundle for DeepSeek Harness `0.1.1-rc.2`. It is not an official DeepSeek package. Host and Web runtime files are committed, so a Git install does not need `prepare` or `allowBuilds`.
+
+`dsh-temporary-session` is optional and is used only by portrait collection. DSH does not automatically install, activate, or update peer plugins; install it as a direct profile dependency when that workflow is needed.
 
 For a reproducible Git install, append the reviewed release commit SHA to the GitHub spec (`#<release-commit-sha>`). Do not pin an earlier commit merely because it reports the same prerelease version.
 
@@ -158,7 +160,7 @@ dsh plugin --profile web add "$PWD"
 After the package is published to npm:
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.10'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.11'
 ```
 
 Through dsh.pub, once listed:
@@ -178,6 +180,12 @@ Remove it from the profile:
 
 ```sh
 dsh plugin --profile web remove dsh-multi-model-provider
+```
+
+Updates are explicit:
+
+```sh
+dsh plugin --profile web update dsh-multi-model-provider dsh-temporary-session
 ```
 
 ## Development

@@ -220,7 +220,9 @@ agent-default-model:
 
 ## 安装
 
-这是面向 DeepSeek Harness `0.1.0-rc.6` 的社区 composition bundle，不是 DeepSeek 官方包。Host 与 Web 运行时文件已提交进仓库，Git 安装不需要 `prepare` 或 `allowBuilds`。
+这是面向 DeepSeek Harness `0.1.1-rc.2` 的社区 composition bundle，不是 DeepSeek 官方包。Host 与 Web 运行时文件已提交进仓库，Git 安装不需要 `prepare` 或 `allowBuilds`。
+
+`dsh-temporary-session` 是可选依赖，只用于画像采集。DSH 不会自动安装、激活或更新 peer 插件；需要画像采集时请把它直接安装到同一 profile。
 
 需要可复现的 Git 安装时，请在 GitHub spec 后追加经过审核的发布 commit SHA（`#<release-commit-sha>`）；不要仅因旧 commit 也声明相同 prerelease 版本就继续固定旧构建。
 
@@ -241,7 +243,7 @@ dsh plugin --profile web add "$PWD"
 发布到 npm 之后：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.10'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.11'
 ```
 
 被 dsh.pub 收录后：
@@ -261,6 +263,12 @@ dsh web --profile web
 
 ```sh
 dsh plugin --profile web remove dsh-multi-model-provider
+```
+
+版本更新需要显式执行：
+
+```sh
+dsh plugin --profile web update dsh-multi-model-provider dsh-temporary-session
 ```
 
 ## 开发
