@@ -7,9 +7,11 @@
  * owns non-language task-model registration, portraits, and speed probes.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { MODEL_MANAGER_GUIDANCE } from './model/guidance.ts'
 import { HELP } from './model/help.ts'
 import { ModelCatalog } from './catalog.ts'
+import { registerModelCatalogRoute } from './catalog-route.ts'
 import {
   DOUBAO_SPEECH_PROVIDER,
 } from './doubao-speech-catalog.ts'
@@ -23,7 +25,6 @@ import { registerPortraitJobRoutes } from './portrait-jobs.ts'
 import {
   migrateLegacyVolcengineCredential,
 } from './providers/volcengine.ts'
-import { doubaoProviderDirectoryEntry, volcengineProviderDirectoryEntry } from './provider-directory.ts'
 
 export * from './model/guidance.ts'
 export * from './model/tool-surfaces.ts'
@@ -34,6 +35,7 @@ export * from './registry.ts'
 export * from './runtime.ts'
 export * from './realtime.ts'
 export * from './catalog.ts'
+export * from './catalog-route.ts'
 export * from './portrait-core.ts'
 export * from './portraits.ts'
 export * from './observations/index.ts'
@@ -58,38 +60,20 @@ export function apply(ctx: Context): void {
     }
     return () => {}
   }, 'multi-model-provider: Volcengine credential migration')
-  const existingProviders = new Set(ctx.llm.listConfigurableProviders().map(entry => entry.provider))
-  let arkDirectory: (() => void) | undefined
-  let arkRegistrationPending = false
-  const ensureArkDirectory = (): void => {
-    if (arkDirectory !== undefined || arkRegistrationPending) return
-    if (ctx.llm.listConfigurableProviders().some(entry => entry.provider === 'volcengine')) return
-    arkRegistrationPending = true
-    queueMicrotask(() => {
-      try {
-        if (arkDirectory !== undefined) return
-        if (ctx.llm.listConfigurableProviders().some(entry => entry.provider === 'volcengine')) return
-        arkDirectory = ctx.llm.registerConfigurableProviders([volcengineProviderDirectoryEntry()])
-      } finally {
-        arkRegistrationPending = false
-      }
-    })
-  }
-  if (!existingProviders.has('volcengine')) {
-    arkDirectory = ctx.llm.registerConfigurableProviders([volcengineProviderDirectoryEntry()])
-  }
-  ctx.on('llm/adapters-updated', ensureArkDirectory)
-  ensureArkDirectory()
-  if (!existingProviders.has(DOUBAO_SPEECH_PROVIDER)) {
-    ctx.llm.registerConfigurableProviders([doubaoProviderDirectoryEntry()])
-  }
   ctx.llm.registerModelDiscovery('multi-model-provider', async (request) => {
     if (request.provider !== DOUBAO_SPEECH_PROVIDER) return []
-    return discoverDoubaoRealtimeVoices(request)
+    const stored = request.apiKey === undefined
+      ? await ctx.credentials.resolve(credentialRef('DOUBAO_API_KEY'))
+      : undefined
+    return discoverDoubaoRealtimeVoices({
+      ...request,
+      ...(stored === undefined ? {} : { apiKey: stored.value }),
+    })
   })
   new TaskModelRuntime(ctx)
   new RealtimeModelRuntime(ctx)
   new ModelCatalog(ctx)
+  registerModelCatalogRoute(ctx)
   registerTaskModelSettings(ctx)
   registerModelProbeRoute(ctx)
   registerPortraitJobRoutes(ctx)

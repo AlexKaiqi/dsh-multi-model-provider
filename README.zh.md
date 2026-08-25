@@ -67,17 +67,17 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后会在 DSH 自带“模型”页增加“火山方舟”和“豆包语音”两个独立 Provider，并保留普通语言模型的行内画像结果；同时提供独立的只读“模型画像”设置页。页面只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型，未配置的内置目录项不会出现。每次采集都会在 `dsh-temporary-session` 提供的可配置“临时工作区”中创建可打开的 Session，因此要求同一 profile 安装并启用该 bundle；不安装它时，模型目录和 Agent 工具仍可使用。不会增加单独的顶层“火山引擎”设置入口。画像包括：
+安装后只保留 DSH 自带的“模型”管理界面。火山方舟通过 DSH 原生语言模型 Provider 目录接入，因此 DeepSeek 与方舟继续使用宿主的 Provider 行、编辑器、模型列表和删除交互；插件不会再注册第二个“模型”页面或追加另一套 Provider 编辑器。同时提供独立的只读“模型画像”设置页，只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型。每次采集都会在 `dsh-temporary-session` 提供的可配置“临时工作区”中创建可打开的 Session；不安装它时，模型目录和 Agent 工具仍可使用。画像包括：
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
 - 由 Agent 在用户明确授权后通过轻量请求测得的可用性、延迟和观测时间。语言模型测试会产生一次最多 8 token 的少量模型费用；支持探针的 task adapter 运行自己的最小测试。尚无运行探针的 Realtime 路由不显示伪造指标。
 
-火山方舟使用官方 Base URL `https://ark.cn-beijing.volces.com/api/v3` 和 `ARK_API_KEY`。升级时若只存在旧版 `VOLCENGINE_API_KEY`，插件会把值安全复制到标准引用 `ARK_API_KEY`，保留旧引用且不在日志或设置中暴露密钥。豆包语音把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开显示；“验证 API Key 并加载音色”会先使用当前草稿 `DOUBAO_API_KEY` 创建最小 Realtime 会话，只有收到 `session.created` 后才展示文档中的 O/SC 音色目录。两者都在各自 Provider 的编辑卡中完成配置，用户无需手工编辑 YAML。
+火山方舟使用官方 Base URL `https://ark.cn-beijing.volces.com/api/v3` 和 `ARK_API_KEY`。升级时若只存在旧版 `VOLCENGINE_API_KEY`，插件会把值安全复制到标准引用 `ARK_API_KEY`，保留旧引用且不在日志或设置中暴露密钥。豆包语音仍把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开建模。但 DSH `0.1.1-rc.2` 没有开放第三方 Provider 编辑器或模型字段扩展槽，所以本插件不再用第二套页面伪装成原生接入；在宿主提供该契约前，豆包登记与选择保留在 task catalog 和 Agent 工具中。
 
-界面不引入平行配置源：方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。安全凭据只通过 Credentials API 写入本机凭据存储，不进入普通 `settings.yaml`。ChatVoice 只选择已注册的 Realtime 路由，不再管理 Provider 凭据。
+方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。ChatVoice 只选择已注册的 Realtime 路由，不拥有 Provider 凭据。
 
-方舟、DeepSeek 和豆包可在“模型”页独立编辑或删除。删除 DeepSeek 或豆包的有效用户配置时，会清理用户层设置和页面管理的凭据；内置 Provider 定义仍保留，因此无需重装插件即可再次配置。来自环境变量的凭据不会被页面删除。
+方舟与 DeepSeek 可在宿主“模型”页编辑或删除。豆包不会被伪装成 LLM Provider 放进 Agent 语言模型选择器。
 
 会话底部的模型下拉也支持按 Provider、模型 ID、显示名称和描述检索，模型目录变大后不需要滚动寻找。
 
@@ -123,11 +123,11 @@ multi-model-provider:
       profile: {}
 ```
 
-当前可见目录内置 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite；OpenAI Sora 2 / Pro、`gpt-image-2` 和 `gpt-realtime`；MiniMax H3、Hailuo 2.3 / Fast、Speech 2.8 HD / Turbo、Music 3.0、image-01；以及 25 个官方 Realtime S2S-O / SC 2.0 音色配置。它们挂在各自独立的 Provider connection 下，只出现在 `list_task_models`，不会混进语言模型选择器。生成媒体路由在 adapter 未安装时保持 `registered-only`；Legacy Sora 与 Music API 默认停用。豆包 Realtime 协议固定使用 `session.model=1.2.6.1`；模型页把这个协议模型与可选音色分别显示，运行时再自动映射。豆包路由默认停用，旧 ASR/TTS 条目只用于迁移，不在该 Provider 中显示。
+当前可见目录内置 Google Gemini Omni Flash Preview 与 Veo 3.1 Standard / Fast / Lite；OpenAI Sora 2 / Pro、`gpt-image-2` 和 `gpt-realtime`；MiniMax H3、Hailuo 2.3 / Fast、Speech 2.8 HD / Turbo、Music 3.0、image-01；以及 25 个官方 Realtime S2S-O / SC 2.0 音色配置。它们挂在各自独立的 Provider connection 下，只出现在 `list_task_models`，不会混进语言模型选择器。生成媒体路由在 adapter 未安装时保持 `registered-only`；Legacy Sora 与 Music API 默认停用。豆包 Realtime 协议固定使用 `session.model=1.2.6.1`，task profile 把协议模型与可选音色分别保存，运行时再自动映射。旧 ASR/TTS 条目只用于迁移。
 
 `volcengine` 与 `doubao-speech` 是两个 Provider，因为它们的协议、凭据、目录和连通性测试不同。方舟模型目录使用 `ARK_API_KEY`；Realtime Duplex 使用新版语音控制台的单个 `DOUBAO_API_KEY`。方舟 `/models` 不是语音资源目录；火山的 `ListSpeakers`/`ServiceStatus` OpenAPI 又需要云账号 AK/SK，不能由 Speech API Key 调用，因此单 Key 交互使用官方文档随插件维护的 Realtime 目录，并通过最短会话测试实际可访问性。
 
-内置豆包目录是能力元数据，不是用户配置。全新安装不会在已配置提供方行中显示豆包语音，而是把它放进「添加提供方」。保存这张标准编辑卡会创建 `providerProfiles.doubao-speech`，通过 Credentials 服务存储 `DOUBAO_API_KEY`，并记录所选音色 profile；删除提供方只删除这份用户 profile，内置目录仍会保留。
+内置豆包目录是能力元数据，不是用户配置。Web 设置不再包装宿主“模型”页，也不追加任务与 Realtime Provider UI。未来要把豆包原生接入，需要 DSH 开放 Provider 编辑器／模型字段扩展点：Provider 行、生命周期和通用字段仍由 DSH 管理，插件只补充音色等语音字段。
 
 安装插件后，Agent 会在用户询问“火山/方舟/豆包有哪些模型、怎么配置、怎么调用”时先调用 `inspect_volcengine_provider`，而不是要求用户手写 YAML。固定知识（两个 Provider id、官方端点、各自的 API Key 引用和模型所属运行时）由插件提供；方舟账号真实可用模型由鉴权 `/models` 动态查询。语言与 VLM 候选通过 `select_volcengine_language_models` 进入普通 Agent 模型选择器；图片、视频、音频、语音和 Embedding 的非 Realtime 路由在 task runtime adapter 可用时通过 `invoke_task_model` 调用，Realtime 语音走 `realtimeModelRuntime`。Platform 模式部署的模型可能要求使用精确 `ep-*` Endpoint ID。
 
@@ -245,7 +245,7 @@ dsh plugin --profile web add "$PWD"
 发布到 npm 之后：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.12'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.14'
 ```
 
 被 dsh.pub 收录后：

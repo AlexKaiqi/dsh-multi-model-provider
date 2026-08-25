@@ -8,6 +8,7 @@ declare module '@deepseek-ai/cordis' {
 export interface ModelCatalogSnapshot {
     readonly taskModels: readonly Record<string, unknown>[];
     readonly languageModels: readonly Record<string, unknown>[];
+    readonly languageFailures: readonly Record<string, unknown>[];
     readonly languagePortraits: readonly Record<string, unknown>[];
     readonly unresolvedLanguagePortraitIds: readonly string[];
     readonly defaults: Readonly<Partial<Record<TaskModelTask, string>>>;

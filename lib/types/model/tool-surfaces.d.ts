@@ -43,7 +43,7 @@ export declare const INSPECT_VOLCENGINE_PROVIDER_SURFACE: {
 };
 export declare const SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE: {
     readonly name: "select_volcengine_language_models";
-    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official Responses endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
+    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official openai-completions endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
     readonly parameters: {
         readonly models: "Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.";
     };
@@ -216,7 +216,7 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     readonly helpPointer: "inspect_volcengine_provider";
 }, {
     readonly name: "select_volcengine_language_models";
-    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official Responses endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
+    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official openai-completions endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
     readonly parameters: {
         readonly models: "Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.";
     };

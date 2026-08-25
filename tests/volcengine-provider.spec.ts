@@ -71,7 +71,7 @@ describe('Volcengine provider orientation', () => {
     const result = await inspectVolcengineProvider(ctx, new AbortController().signal)
     expect(ctx.llm.discoverModels).toHaveBeenCalledWith(PI_AI_SETTINGS_NAMESPACE, expect.objectContaining({
       baseURL: VOLCENGINE_ARK_BASE_URL,
-      api: 'openai-responses',
+      api: 'openai-completions',
       apiKey: 'must-not-leak',
     }))
     expect(result).toMatchObject({
@@ -112,7 +112,7 @@ describe('Volcengine language/VLM selection', () => {
     expect(ctx.settings.mutate).toHaveBeenCalledWith(
       PI_AI_SETTINGS_NAMESPACE,
       expect.arrayContaining([
-        { op: 'set', path: ['providers', 'volcengine', 'api'], value: 'openai-responses' },
+        { op: 'set', path: ['providers', 'volcengine', 'api'], value: 'openai-completions' },
         { op: 'set', path: ['providers', 'volcengine', 'baseURL'], value: VOLCENGINE_ARK_BASE_URL },
         expect.objectContaining({ op: 'set', path: ['providers', 'volcengine', 'models'] }),
       ]),

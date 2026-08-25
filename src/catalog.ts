@@ -24,6 +24,7 @@ declare module '@deepseek-ai/cordis' {
 export interface ModelCatalogSnapshot {
   readonly taskModels: readonly Record<string, unknown>[]
   readonly languageModels: readonly Record<string, unknown>[]
+  readonly languageFailures: readonly Record<string, unknown>[]
   readonly languagePortraits: readonly Record<string, unknown>[]
   readonly unresolvedLanguagePortraitIds: readonly string[]
   readonly defaults: Readonly<Partial<Record<TaskModelTask, string>>>
@@ -69,9 +70,13 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
   const portraitsById = new Map(languagePortraits.map(row => [asString(row.id), row]))
   const routes = await listModelRoutes(ctx)
   const languageModels: Record<string, unknown>[] = []
+  const languageFailures: Record<string, unknown>[] = []
   for (const providerRow of asRecordList(routes.providers)) {
     const provider = asString(providerRow.provider)
+    const providerName = asString(providerRow.displayName) || provider
     const status = asString(providerRow.status)
+    const modelError = asString(providerRow.modelError)
+    if (modelError) languageFailures.push({ id: provider, name: providerName, message: modelError })
     for (const modelRow of asRecordList(providerRow.models)) {
       const model = asString(modelRow.id)
       if (provider === '' || model === '') continue
@@ -96,8 +101,10 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
         id,
         kind: 'llm',
         provider,
+        providerName,
         model,
         displayName: asString(modelRow.name) || model,
+        ...(Array.isArray(modelRow.inputModalities) ? { inputModalities: [...modelRow.inputModalities] } : {}),
         status,
         ...(portraitRow === undefined ? {} : {
           portrait: portraitRow.portrait,
@@ -112,6 +119,7 @@ export async function snapshotModelCatalog(ctx: Context): Promise<ModelCatalogSn
   return {
     taskModels,
     languageModels,
+    languageFailures,
     languagePortraits,
     unresolvedLanguagePortraitIds,
     defaults,

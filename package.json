@@ -1,7 +1,7 @@
 {
   "name": "dsh-multi-model-provider",
   "description": "Register models, assist with portraits, and select the Agent model from a secret-free catalog for DeepSeek Harness.",
-  "version": "0.1.0-rc.12",
+  "version": "0.1.0-rc.14",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",

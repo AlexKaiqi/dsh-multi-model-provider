@@ -7,7 +7,7 @@ import type { ModelProfileInput, SelectVolcengineLanguageModelsInput } from '../
 
 export const VOLCENGINE_PROVIDER = 'volcengine'
 export const VOLCENGINE_ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
-export const VOLCENGINE_ARK_API = 'openai-responses'
+export const VOLCENGINE_ARK_API = 'openai-completions'
 export const VOLCENGINE_ARK_API_KEY = 'ARK_API_KEY'
 
 const CREDENTIALS = {

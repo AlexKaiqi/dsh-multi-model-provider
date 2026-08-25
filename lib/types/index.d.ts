@@ -16,6 +16,7 @@ export * from './registry.ts';
 export * from './runtime.ts';
 export * from './realtime.ts';
 export * from './catalog.ts';
+export * from './catalog-route.ts';
 export * from './portrait-core.ts';
 export * from './portraits.ts';
 export * from './observations/index.ts';

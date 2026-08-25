@@ -160,6 +160,11 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
         realtimeApiKey: 'DOUBAO_API_KEY',
       },
       profile: {
+        kind: 'realtime-speech',
+        adapter: 'dsh-realtime-voice',
+        protocol: 'doubao-realtime-duplex',
+        protocolModel: '1.2.6.1',
+        modelOption: 'voice',
         product: 'doubao-speech',
         speechResources: 'documented-resource-ids',
       },

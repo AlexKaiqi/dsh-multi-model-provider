@@ -50,7 +50,7 @@ export const INSPECT_VOLCENGINE_PROVIDER_SURFACE = {
 
 export const SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE = {
   name: 'select_volcengine_language_models',
-  description: 'Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official Responses endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.',
+  description: 'Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official openai-completions endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.',
   parameters: {
     models: 'Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.',
   },

@@ -1,27 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { doubaoProviderDirectoryEntry, volcengineProviderDirectoryEntry } from '../src/provider-directory.ts'
+import {
+  DOUBAO_DEFAULT_PROFILE,
+  VOLCENGINE_DEFAULT_PROFILE,
+  doubaoProviderDirectoryEntry,
+  volcengineProviderDirectoryEntry,
+} from '../src/provider-directory.ts'
 
 describe('configurable provider presentation', () => {
-  it('declares Volcengine with the generic Ark editor', () => {
+  it('declares Volcengine using only the host-supported directory contract', () => {
     expect(volcengineProviderDirectoryEntry()).toEqual({
       provider: 'volcengine',
       displayName: '火山方舟',
       settingsNs: 'llm-pi-ai',
       settingsPath: ['providers', 'volcengine'],
       declared: false,
-      editor: {
-        kind: 'provider',
-        apiKeyRef: 'ARK_API_KEY',
-        defaults: {
-          displayName: '火山方舟',
-          apiKeyEnv: 'ARK_API_KEY',
-          baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-          api: 'openai-responses',
-          models: [],
-        },
-        credentialRequired: true,
-        modelsRequired: true,
-      },
+    })
+    expect(VOLCENGINE_DEFAULT_PROFILE).toMatchObject({
+      baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+      api: 'openai-completions',
+      models: [],
     })
   })
 
@@ -29,15 +26,16 @@ describe('configurable provider presentation', () => {
     expect(doubaoProviderDirectoryEntry()).toMatchObject({
       provider: 'doubao-speech',
       settingsPath: ['providerProfiles', 'doubao-speech'],
-      editor: {
-        apiKeyRef: 'DOUBAO_API_KEY',
-        defaults: {
-          provider: 'doubao-speech',
-          baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
-          models: [],
-        },
-        credentialRequired: true,
-        modelsRequired: true,
+    })
+    expect(DOUBAO_DEFAULT_PROFILE).toMatchObject({
+      provider: 'doubao-speech',
+      baseURL: 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+      models: [],
+      profile: {
+        kind: 'realtime-speech',
+        adapter: 'dsh-realtime-voice',
+        protocolModel: '1.2.6.1',
+        modelOption: 'voice',
       },
     })
   })

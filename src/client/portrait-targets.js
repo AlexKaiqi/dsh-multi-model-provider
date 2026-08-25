@@ -2,91 +2,50 @@ function object(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : {}
 }
 
-function modelRecord(value) {
-  return typeof value === 'string' ? { id: value } : object(value)
+function targetFromLanguage(raw) {
+  const row = object(raw)
+  if (typeof row.id !== 'string' || typeof row.provider !== 'string' || typeof row.model !== 'string') return undefined
+  return {
+    id: row.id,
+    kind: 'llm',
+    provider: row.provider,
+    providerName: typeof row.providerName === 'string' && row.providerName ? row.providerName : row.provider,
+    model: row.model,
+    name: typeof row.displayName === 'string' && row.displayName ? row.displayName : row.model,
+    input: Array.isArray(row.inputModalities) && row.inputModalities.length ? row.inputModalities : ['text'],
+    output: ['text'],
+    enabled: row.status === 'live',
+    portrait: object(row.portrait),
+  }
 }
 
-function providerSelection(descriptor, connectionId) {
-  const user = object(descriptor?.user)
-  const profiles = object(user.providerProfiles)
-  const connection = profiles[connectionId] ?? object(user.connections)[connectionId]
-  const models = object(connection).models
-  if (!Array.isArray(models)) return undefined
-  return new Set(models.flatMap((row) => {
-    const id = typeof row === 'string' ? row : object(row).id
-    return typeof id === 'string' && id.trim() ? [id] : []
-  }))
+function targetFromTask(raw) {
+  const row = object(raw)
+  if (typeof row.id !== 'string' || typeof row.provider !== 'string' || typeof row.model !== 'string') return undefined
+  const connection = object(row.connectionProfile)
+  return {
+    id: row.id,
+    kind: 'task',
+    provider: row.provider,
+    providerName: typeof connection.displayName === 'string' && connection.displayName ? connection.displayName : row.provider,
+    model: row.model,
+    name: typeof row.displayName === 'string' && row.displayName ? row.displayName : row.model,
+    input: Array.isArray(row.input) ? row.input : [],
+    output: Array.isArray(row.output) ? row.output : [],
+    task: row.task,
+    enabled: row.enabled === true,
+    portrait: object(row.portrait),
+  }
 }
 
-function selectedByProvider(selected, id, model) {
-  const voice = typeof object(model.profile).voice === 'string' ? object(model.profile).voice : undefined
-  return selected.has(id) || selected.has(model.model) || (voice !== undefined && selected.has(voice))
-}
-
-function userRegisteredTaskModel(value) {
-  const model = object(value)
-  return typeof model.connection === 'string'
-    && typeof model.model === 'string'
-    && typeof model.task === 'string'
-}
-
-function userSelectedTaskModel(value) {
-  return object(value).enabled === true
-}
-
-/** Build the shared portrait target list from the two Settings namespaces. */
-export function snapshotPortraitTargets(multi, llm) {
-  const root = object(multi?.value)
-  const userModels = object(object(multi?.user).models)
-  const connections = object(root.connections)
-  const task = Object.entries(object(root.models)).flatMap(([id, raw]) => {
-    const model = object(raw)
-    const connection = object(connections[model.connection])
-    const selected = providerSelection(multi, model.connection)
-    const userModel = userModels[id]
-    const configured = userRegisteredTaskModel(userModel)
-      || userSelectedTaskModel(userModel)
-      || (selected !== undefined && selectedByProvider(selected, id, model))
-    if (!configured) return []
-    return [{
-      id,
-      kind: 'task',
-      provider: connection.provider ?? model.connection ?? '',
-      providerName: connection.displayName ?? connection.provider ?? model.connection ?? '',
-      model: model.model ?? '',
-      name: model.displayName ?? model.model ?? id,
-      input: Array.isArray(model.input) ? model.input : [],
-      output: Array.isArray(model.output) ? model.output : [],
-      task: model.task,
-      enabled: selected === undefined ? model.enabled !== false : selectedByProvider(selected, id, model),
-      portrait: object(model.portrait),
-    }]
-  })
-
-  const llmRoot = object(llm?.value)
-  const providers = object(llmRoot.providers)
-  const bindings = object(root.portraits)
-  const language = Object.entries(providers).flatMap(([provider, raw]) => {
-    const profile = object(raw)
-    return (Array.isArray(profile.models) ? profile.models : []).flatMap((rawModel) => {
-      const model = modelRecord(rawModel)
-      if (typeof model.id !== 'string' || !model.id.trim()) return []
-      const id = `llm:${provider}/${model.id}`
-      return [{
-        id,
-        kind: 'llm',
-        provider,
-        providerName: profile.displayName ?? provider,
-        model: model.id,
-        name: model.name ?? model.id,
-        input: Array.isArray(model.input) && model.input.length ? model.input : ['text'],
-        output: ['text'],
-        enabled: true,
-        portrait: object(object(bindings[id]).portrait),
-      }]
-    })
-  })
-
+/** Convert the server-side modelCatalog.snapshot() response into portrait selector rows. */
+export function snapshotPortraitTargets(catalog) {
+  const language = (Array.isArray(catalog?.languageModels) ? catalog.languageModels : [])
+    .map(targetFromLanguage)
+    .filter(Boolean)
+  const task = (Array.isArray(catalog?.taskModels) ? catalog.taskModels : [])
+    .map(targetFromTask)
+    .filter(Boolean)
   return [...language, ...task]
 }
 
