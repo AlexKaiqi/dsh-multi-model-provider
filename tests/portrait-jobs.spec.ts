@@ -55,7 +55,7 @@ describe('portrait background jobs', () => {
     expect(buildPortraitProbePrompt(['demo/image'], '2026-08-21T00:00:00.000Z')).toContain('exactly these portrait targets')
   })
 
-  it('runs research in the configurable temporary Workspace and attaches the visible Session', async () => {
+  it('runs research in an isolated temporary Workspace and adopts the visible Session', async () => {
     let workspace = ''
     let createdSessionId = ''
     let prompt = ''
@@ -100,9 +100,11 @@ describe('portrait background jobs', () => {
       },
       llm: { listProviders: vi.fn(() => []) },
       agentDefaultModel: { currentSelection: vi.fn(() => ({ provider: 'test', model: 'agent-model' })) },
-      temporarySessions: {
-        prepareWorkspace: vi.fn(async () => ({ workspaceId: 'temporary-workspace', path: '/tmp/dsh-temporary-sessions' })),
-        attachSession: vi.fn(async () => ({ attached: true, workspaceId: 'temporary-workspace' })),
+      temporaryWorkspaces: {
+        reserve: vi.fn(async () => ({ reservationId: 'reservation-1', path: '/tmp/dsh-temporary-workspaces/workspace-1' })),
+        adopt: vi.fn(async () => ({ found: true, workspaceId: 'temporary-workspace-1' })),
+        retain: vi.fn(async () => ({ found: true })),
+        discard: vi.fn(async () => ({ found: true })),
       },
       agents: {
         create: vi.fn(async (options: { sessionId?: string, meta?: { cwd?: string } }) => {
@@ -119,23 +121,30 @@ describe('portrait background jobs', () => {
     const finished = await waitForJob(coordinator)
 
     expect(finished).toMatchObject({ status: 'completed', targetIds: ['demo/image'], sessionId: createdSessionId })
-    expect(workspace).toBe('/tmp/dsh-temporary-sessions')
+    expect(workspace).toBe('/tmp/dsh-temporary-workspaces/workspace-1')
     expect(prompt).toContain('The plugin owns the following contract')
     expect(prompt).toContain('portrait_job_validate_portrait')
     expect(prompt).toContain('validation always forces liveProbe=false')
-    expect(ctx.temporarySessions.prepareWorkspace).toHaveBeenCalledOnce()
-    expect(ctx.temporarySessions.attachSession).toHaveBeenCalledWith({ sessionId: createdSessionId })
+    expect(ctx.temporaryWorkspaces.reserve).toHaveBeenCalledOnce()
+    expect(ctx.temporaryWorkspaces.adopt).toHaveBeenCalledWith({
+      reservationId: 'reservation-1',
+      sessionId: createdSessionId,
+    })
+    expect(ctx.temporaryWorkspaces.retain).not.toHaveBeenCalled()
+    expect(ctx.temporaryWorkspaces.discard).not.toHaveBeenCalled()
     expect(disposed).toBe(true)
   })
 
-  it('does not attach a Session when startup fails before Agent creation', async () => {
-    const temporarySessions = {
-      prepareWorkspace: vi.fn(async () => ({ workspaceId: 'temporary-workspace', path: '/tmp/dsh-temporary-sessions' })),
-      attachSession: vi.fn(async () => ({ attached: true, workspaceId: 'temporary-workspace' })),
+  it('does not reserve a Workspace when startup fails before Agent creation', async () => {
+    const temporaryWorkspaces = {
+      reserve: vi.fn(async () => ({ reservationId: 'reservation-1', path: '/tmp/dsh-temporary-workspaces/workspace-1' })),
+      adopt: vi.fn(async () => ({ found: true, workspaceId: 'temporary-workspace-1' })),
+      retain: vi.fn(async () => ({ found: true })),
+      discard: vi.fn(async () => ({ found: true })),
     }
     const ctx = {
       agentDefaultModel: { currentSelection: vi.fn(() => ({})) },
-      temporarySessions,
+      temporaryWorkspaces,
       agents: { create: vi.fn() },
     } as unknown as Context
     const coordinator = new PortraitJobCoordinator(ctx as never)
@@ -146,8 +155,8 @@ describe('portrait background jobs', () => {
       phase: 'temporary Session could not start',
       error: 'no default Agent language model is selected',
     })
-    expect(temporarySessions.prepareWorkspace).toHaveBeenCalledOnce()
-    expect(temporarySessions.attachSession).not.toHaveBeenCalled()
+    expect(temporaryWorkspaces.reserve).not.toHaveBeenCalled()
+    expect(temporaryWorkspaces.adopt).not.toHaveBeenCalled()
     expect(ctx.agents.create).not.toHaveBeenCalled()
   })
 })

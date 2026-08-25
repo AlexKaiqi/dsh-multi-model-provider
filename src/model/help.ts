@@ -12,7 +12,7 @@
 import { MODEL_MANAGER_TOOL_SURFACES } from './tool-surfaces.ts'
 
 /** Package version; asserted equal to package.json by the contract tests. */
-export const VERSION = '0.1.0-rc.14'
+export const VERSION = '0.1.0-rc.15'
 
 /** Every model-callable tool name, in registration order. */
 export const TOOL_NAMES = MODEL_MANAGER_TOOL_SURFACES.map(surface => surface.name)

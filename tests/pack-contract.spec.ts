@@ -23,8 +23,8 @@ describe('Git-installable pack contract', () => {
     expect(pkg.main).toBe('lib/index.js')
     expect(pkg.exports['./client']).toBe('./lib/client.js')
     expect(pkg.dsh.bundle?.patch).toBe('./cordis.patch.yml')
-    expect(pkg.peerDependencies['dsh-temporary-session']).toBe('^0.1.0-rc.4')
-    expect(pkg.peerDependenciesMeta['dsh-temporary-session']?.optional).toBe(true)
+    expect(pkg.peerDependencies['dsh-temporary-workspace']).toBe('^0.1.0-rc.5')
+    expect(pkg.peerDependenciesMeta['dsh-temporary-workspace']?.optional).toBe(true)
     for (const path of [
       'lib/index.js',
       'lib/client.js',

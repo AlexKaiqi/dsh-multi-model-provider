@@ -35,6 +35,6 @@
     "job": "latest bounded job view labelled temporary workspace, with status, target ids, phase, timestamps, optional summary/error, and optional visible sessionId",
     "error": "present when ok is false; never includes credential values"
   },
-  "lifecycle": "At most one job is queued or running per plugin instance. Each job creates a distinct visible Session whose cwd is the configurable Temporary Workspace root, then attaches it to that durable UI group. The active Agent handle is disposed at completion or plugin stop; the Session remains user-recoverable.",
+  "lifecycle": "At most one job is queued or running per plugin instance. Each job reserves a distinct child from dsh-temporary-workspace, creates its visible Agent Session with that child as cwd, and adopts it as an independent Workspace. The active Agent handle is disposed at completion or plugin stop; the Session and Workspace remain user-recoverable.",
   "cost": "Research wrappers force liveProbe=false. A paid probe is outside this protocol and requires separate explicit user approval before validate_model_portrait(liveProbe=true)."
 }

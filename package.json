@@ -1,7 +1,7 @@
 {
   "name": "dsh-multi-model-provider",
   "description": "Register models, assist with portraits, and select the Agent model from a secret-free catalog for DeepSeek Harness.",
-  "version": "0.1.0-rc.14",
+  "version": "0.1.0-rc.15",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",
@@ -38,9 +38,13 @@
     "dsh-plugin",
     "deepseek-harness",
     "plugin",
+    "ai",
+    "llm",
     "model",
+    "model-catalog",
     "provider",
-    "multimodal"
+    "multimodal",
+    "realtime"
   ],
   "license": "MIT",
   "dependencies": {
@@ -86,7 +90,7 @@
         "@deepseek-ai/dsh-client-locale"
       ],
       "optionalDependencies": [
-        "dsh-temporary-session"
+        "dsh-temporary-workspace"
       ]
     },
     "bundle": {
@@ -119,11 +123,11 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.1-rc.2",
     "@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
     "@deepseek-ai/schemastery": "^3.18.1",
-    "dsh-temporary-session": "^0.1.0-rc.4",
+    "dsh-temporary-workspace": "^0.1.0-rc.5",
     "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
-    "dsh-temporary-session": {
+    "dsh-temporary-workspace": {
       "optional": true
     }
   },
@@ -148,7 +152,7 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.1-rc.2",
     "@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
     "@deepseek-ai/schemastery": "^3.18.1",
-    "dsh-temporary-session": "link:../dsh-temporary-session/packages/plugin",
+    "dsh-temporary-workspace": "link:../dsh-temporary-workspace/packages/plugin",
     "@types/node": "^22.20.0",
     "@types/ws": "^8.18.1",
     "tsdown": "^0.22.2",

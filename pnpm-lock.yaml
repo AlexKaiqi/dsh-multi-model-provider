@@ -81,9 +81,9 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      dsh-temporary-session:
-        specifier: link:../dsh-temporary-session/packages/plugin
-        version: link:../dsh-temporary-session/packages/plugin
+      dsh-temporary-workspace:
+        specifier: link:../dsh-temporary-workspace/packages/plugin
+        version: link:../dsh-temporary-workspace/packages/plugin
       tsdown:
         specifier: ^0.22.2
         version: 0.22.14(typescript@6.0.3)

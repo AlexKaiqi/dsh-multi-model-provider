@@ -253,6 +253,10 @@
         "layer": "L2"
       },
       {
+        "file": "tests/temporary-workspace-integration.spec.ts",
+        "layer": "L2"
+      },
+      {
         "file": "tests/portrait-source-fetch.spec.ts",
         "layer": "L2"
       },

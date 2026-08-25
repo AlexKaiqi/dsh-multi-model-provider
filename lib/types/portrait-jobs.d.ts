@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Context } from '@deepseek-ai/cordis';
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools';
+import type { TemporaryWorkspaceService } from 'dsh-temporary-workspace';
 import { modelManagerTools } from './tools.ts';
 export declare const PORTRAIT_JOBS_PATH = "/dsh-multi-model-provider/portrait-jobs";
 export declare const PORTRAIT_JOB_HEADER = "x-dsh-portrait-job";
@@ -20,28 +21,11 @@ export interface PortraitJobView {
     readonly summary?: string;
     readonly error?: string;
 }
-interface PortraitTemporarySessions {
-    prepareWorkspace(): Promise<{
-        readonly path: string;
-        readonly workspaceId: string;
-    }>;
-    attachSession(request: {
-        readonly sessionId: string;
-    }): Promise<{
-        readonly attached: true;
-        readonly workspaceId: string;
-    }>;
-}
-declare module '@deepseek-ai/cordis' {
-    interface Context {
-        /** Scratch directories adopted by visible portrait collection Sessions. */
-        temporarySessions: PortraitTemporarySessions;
-    }
-}
+type PortraitTemporaryWorkspaces = Pick<TemporaryWorkspaceService, 'reserve' | 'adopt' | 'retain' | 'discard'>;
 type PortraitJobScope = Context & {
     readonly agents: Context['agents'];
     readonly agentDefaultModel: Context['agentDefaultModel'];
-    readonly temporarySessions: PortraitTemporarySessions;
+    readonly temporaryWorkspaces: PortraitTemporaryWorkspaces;
     readonly webServer: {
         register(route: {
             kind: 'exact';

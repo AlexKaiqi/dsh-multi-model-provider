@@ -5,6 +5,7 @@ import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { TemporaryWorkspaceService } from 'dsh-temporary-workspace'
 import { isSameOriginHttpRequest } from './probe-route.ts'
 import { buildPortraitProbePrompt, buildPortraitResearchPrompt } from './portraits/job-contract.ts'
 import { FETCH_PORTRAIT_SOURCE_TOOL, portraitResearchSources, portraitSourceTool } from './portraits/source-fetch.ts'
@@ -36,22 +37,12 @@ type MutablePortraitJob = {
   -readonly [Key in keyof PortraitJobView]: PortraitJobView[Key]
 }
 
-interface PortraitTemporarySessions {
-  prepareWorkspace(): Promise<{ readonly path: string, readonly workspaceId: string }>
-  attachSession(request: { readonly sessionId: string }): Promise<{ readonly attached: true, readonly workspaceId: string }>
-}
-
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    /** Scratch directories adopted by visible portrait collection Sessions. */
-    temporarySessions: PortraitTemporarySessions
-  }
-}
+type PortraitTemporaryWorkspaces = Pick<TemporaryWorkspaceService, 'reserve' | 'adopt' | 'retain' | 'discard'>
 
 type PortraitJobScope = Context & {
   readonly agents: Context['agents']
   readonly agentDefaultModel: Context['agentDefaultModel']
-  readonly temporarySessions: PortraitTemporarySessions
+  readonly temporaryWorkspaces: PortraitTemporaryWorkspaces
   readonly webServer: {
     register(route: {
       kind: 'exact'
@@ -269,15 +260,18 @@ export class PortraitJobCoordinator {
   ): Promise<void> {
     const job = this.latest!
     let sessionCreated = false
+    let reservationId: string | undefined
+    let reservationAdopted = false
     let completionSummary: string | undefined
     let failure: string | undefined
     try {
-      const workspace = await this.ctx.temporarySessions.prepareWorkspace()
-      if (signal.aborted) throw new Error('portrait background job was cancelled')
-      job.status = 'running'
-      job.phase = 'temporary Session is starting'
       const selection = this.ctx.agentDefaultModel.currentSelection()
       if (!selection.provider || !selection.model) throw new Error('no default Agent language model is selected')
+      const workspace = await this.ctx.temporaryWorkspaces.reserve()
+      reservationId = workspace.reservationId
+      if (signal.aborted) throw new Error('portrait background job was cancelled')
+      job.status = 'running'
+      job.phase = 'temporary Workspace Session is starting'
       const sessionId = SessionId(`session-${randomUUID()}`)
       const handle = await this.ctx.agents.create({
         sessionId,
@@ -303,7 +297,12 @@ export class PortraitJobCoordinator {
       sessionCreated = true
       job.sessionId = String(sessionId)
       if (signal.aborted) throw new Error('portrait background job was cancelled')
-      await this.ctx.temporarySessions.attachSession({ sessionId: String(sessionId) })
+      const adoption = await this.ctx.temporaryWorkspaces.adopt({
+        reservationId: workspace.reservationId,
+        sessionId: String(sessionId),
+      })
+      if (!adoption.found) throw new Error('temporary Workspace reservation expired before Session adoption')
+      reservationAdopted = true
       job.phase = 'temporary Session Agent is researching and validating'
       await waitUntilIdle(handle.agent, signal)
       const firstSeq = handle.agent.session.seq
@@ -318,6 +317,10 @@ export class PortraitJobCoordinator {
     } catch (error) {
       failure = error instanceof Error ? error.message : String(error)
     } finally {
+      if (reservationId !== undefined && !reservationAdopted) {
+        const operation = sessionCreated ? 'retain' : 'discard'
+        await this.ctx.temporaryWorkspaces[operation]({ reservationId }).catch(() => undefined)
+      }
       const handle = this.activeHandle
       this.activeHandle = undefined
       await handle?.dispose().catch(() => undefined)
@@ -336,7 +339,7 @@ export class PortraitJobCoordinator {
 }
 
 export function registerPortraitJobRoutes(ctx: Context): void {
-  ctx.inject(['agents', 'agentDefaultModel', 'webServer', 'temporarySessions'], (scope) => {
+  ctx.inject(['agents', 'agentDefaultModel', 'webServer', 'temporaryWorkspaces'], (scope) => {
     const jobScope = scope as PortraitJobScope
     const coordinator = new PortraitJobCoordinator(jobScope)
     jobScope.effect(() => {
