@@ -162,7 +162,7 @@ dsh plugin --profile web add "$PWD"
 After the package is published to npm:
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.11'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.12'
 ```
 
 Through dsh.pub, once listed:

@@ -245,7 +245,7 @@ dsh plugin --profile web add "$PWD"
 发布到 npm 之后：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.11'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.12'
 ```
 
 被 dsh.pub 收录后：
