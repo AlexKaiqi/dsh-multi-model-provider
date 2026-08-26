@@ -1,7 +1,7 @@
 /**
  * Version and command surface for the model-management tool set.
  *
- * This plugin has no CLI; its "commands" are the sixteen tools the model can call.
+ * This plugin has no CLI; its "commands" are the model-callable tools.
  * Stating them in one place lets a deployment answer "what can this plugin do?"
  * without reading the registration code, and pins the version so the model-facing
  * surface cannot drift from a release.
@@ -12,7 +12,7 @@
 import { MODEL_MANAGER_TOOL_SURFACES } from './tool-surfaces.ts'
 
 /** Package version; asserted equal to package.json by the contract tests. */
-export const VERSION = '0.1.0-rc.15'
+export const VERSION = '0.1.0-rc.18'
 
 /** Every model-callable tool name, in registration order. */
 export const TOOL_NAMES = MODEL_MANAGER_TOOL_SURFACES.map(surface => surface.name)
@@ -36,6 +36,7 @@ owned by llm-pi-ai; non-language task models live in this plugin's catalog.
 
 2. portraits:
   prepare_model_portraits  research configured models on demand; never pre-research catalog-only entries
+  fetch_portrait_source    open an exact first-party URL approved by the target research plan
   ingest_portrait_research merge Agent-researched facts that have official source URLs
   get_model_portrait       inspect price, strengths, speed, I/O, and evidence
   upsert_model_portrait    save an evidence-backed model portrait
@@ -70,7 +71,7 @@ provider discovery and selection:
 
 portrait workflow:
   Only models already configured or selected in this profile are portrait targets.
-  “整理画像” is sufficient: the Agent calls prepare_model_portraits, opens the
+  “整理画像” is sufficient: load the collect-model-portraits skill, call prepare_model_portraits, open the
   suggested official documentation, calls ingest_portrait_research with source URLs,
   and validates with liveProbe=false. lastProbe is measured by an explicitly approved Agent live probe, never copied from docs.
 `

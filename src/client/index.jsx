@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DICTIONARIES, installTranslator, NS, t } from './i18n.js'
 import { snapshotPortraitTargets } from './portrait-targets.js'
 
@@ -79,47 +79,6 @@ function providerNameOf(target) {
   return target.providerName || target.provider || t('unknown')
 }
 
-function usePortraitJob(onCompleted) {
-  const [job, setJob] = useState(undefined)
-  const [error, setError] = useState(undefined)
-  const [available, setAvailable] = useState(true)
-  const completed = useRef('')
-  const load = async () => {
-    const response = await fetch('/dsh-multi-model-provider/portrait-jobs', { credentials: 'same-origin' })
-    if (!response.ok) {
-      if (response.status === 404) setAvailable(false)
-      throw new Error(response.status === 404 ? t('portraitJobsUnavailable') : `portrait job status HTTP ${response.status}`)
-    }
-    setAvailable(true)
-    const value = await response.json()
-    setJob(value.job)
-    if (value.job?.finishedAt && value.job.id !== completed.current) {
-      completed.current = value.job.id
-      onCompleted()
-    }
-    return value.job
-  }
-  useEffect(() => { void load().catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }, [])
-  useEffect(() => {
-    if (!job || !['queued', 'running'].includes(job.status)) return undefined
-    const timer = setInterval(() => { void load().catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }, 1_500)
-    return () => clearInterval(timer)
-  }, [job?.id, job?.status])
-  const start = async (action, ids) => {
-    setError(undefined)
-    const response = await fetch('/dsh-multi-model-provider/portrait-jobs', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-dsh-portrait-job': '1' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ action, ...(ids === undefined ? {} : { ids }), ...(action === 'probe' ? { approved: true } : {}) }),
-    })
-    const value = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(value.error ?? `portrait job HTTP ${response.status}`)
-    setJob(value.job)
-  }
-  return { job, error, available, start: (action, ids) => start(action, ids).catch(cause => setError(cause instanceof Error ? cause.message : String(cause))) }
-}
-
 function MetricSummary({ portrait }) {
   const lastProbe = object(object(portrait.performance).lastProbe)
   return <>
@@ -157,7 +116,7 @@ function EvidenceAndValidation({ portrait }) {
 }
 
 /** Two flat tasks: collect a portrait or view the latest result. */
-function PortraitViewer({ config, reload, sessions }) {
+function PortraitViewer({ config, reload, sessions, close }) {
   const targets = useMemo(
     () => snapshotPortraitTargets(config.modelCatalog),
     [config.modelCatalog],
@@ -165,7 +124,8 @@ function PortraitViewer({ config, reload, sessions }) {
   const catalogFailures = Array.isArray(config.modelCatalog?.languageFailures) ? config.modelCatalog.languageFailures : []
   const [targetId, setTargetId] = useState(targets[0]?.id ?? '')
   const [portraitTab, setPortraitTab] = useState('collect')
-  const portraitJob = usePortraitJob(() => { void reload() })
+  const [launching, setLaunching] = useState(false)
+  const [launchError, setLaunchError] = useState(undefined)
 
   const target = targets.find(item => item.id === targetId) ?? targets[0]
 
@@ -178,9 +138,28 @@ function PortraitViewer({ config, reload, sessions }) {
   const portrait = object(target?.portrait)
   const state = stateOf(portrait)
   const description = descriptionOf(portrait)
-  const jobBusy = ['queued', 'running'].includes(portraitJob.job?.status)
-
-  const jobDetail = portraitJob.job?.summary || portraitJob.job?.error || portraitJob.job?.phase
+  const startCollection = async () => {
+    if (!target || launching) return
+    setLaunching(true)
+    setLaunchError(undefined)
+    try {
+      const sessionId = sessions.list.getSnapshot().current
+      if (!sessionId) throw new Error(t('portraitNeedsSession'))
+      const binding = sessions.binding(sessionId)
+      if (!binding) throw new Error(t('portraitNeedsSession'))
+      const response = await binding.session.prompt([{
+        type: 'text',
+        text: `/collect-model-portraits ${target.id}`,
+      }], 'queue')
+      if (!response.ok) throw new Error(response.error.message)
+      close()
+      sessions.open(sessionId)
+    } catch (cause) {
+      setLaunchError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setLaunching(false)
+    }
+  }
 
   return <section className="mmp-portrait-panel">
     <div className="mmp-portrait-tabs" role="tablist">
@@ -191,9 +170,9 @@ function PortraitViewer({ config, reload, sessions }) {
     {catalogFailures.map(failure => <div className="mmp-error" key={failure.id}>{t('modelRegistryFailure', { provider: failure.name || failure.id, message: failure.message })}</div>)}
     <select aria-label={t('portraitSelectTitle')} className="mmp-input mmp-model-picker" value={target?.id ?? ''} onChange={event => setTargetId(event.target.value)}>{targets.map(item => <option value={item.id} key={item.id}>{item.name} · {providerNameOf(item)} · {t(`portraitState.${stateOf(object(item.portrait))}`)}</option>)}</select>
     {portraitTab === 'collect' && <>
-      <div><button type="button" className="mmp-button" disabled={!portraitJob.available || jobBusy || !target} onClick={() => target && void portraitJob.start('research', [target.id])}>{t('portraitStartCollection')}</button></div>
-      {portraitJob.job && <div className="mmp-job"><div>{t(`portraitJob.${portraitJob.job.status}`)}</div>{jobDetail && <div className="mmp-muted">{jobDetail}</div>}{portraitJob.job.sessionId && <div><button type="button" className="mmp-button" onClick={() => sessions.open(portraitJob.job.sessionId)}>{t('portraitOpenSession')}</button></div>}</div>}
-      {portraitJob.error && <div className="mmp-error">{portraitJob.error}</div>}
+      <div className="mmp-muted">{t('portraitSkillHint')}</div>
+      <div><button type="button" className="mmp-button" disabled={launching || !target} onClick={() => void startCollection()}>{launching ? t('portraitStartingCollection') : t('portraitStartCollection')}</button></div>
+      {launchError && <div className="mmp-error">{launchError}</div>}
     </>}
     {portraitTab === 'view' && target && <div className="mmp-portrait-view">
         <div><span className="mmp-status" data-state={state}>{t(`portraitState.${state}`)}</span><div className="mmp-tags"><span className="mmp-tag">{t('inputLabel', { value: target.input.join(' + ') || t('unknown') })}</span><span className="mmp-tag">{t('outputLabel', { value: target.output.join(' + ') || t('unknown') })}</span></div></div>
@@ -205,11 +184,11 @@ function PortraitViewer({ config, reload, sessions }) {
   </section>
 }
 
-function PortraitSettings({ api, sessions }) {
+function PortraitSettings({ api, sessions, close }) {
   const [config, reload] = useConfig(api, true)
   if (config.status === 'loading' && !config.multi) return <div className="mmp-page mmp-portrait-page"><div className="mmp-muted">{t('loadingPortraits')}</div></div>
   if (config.status === 'error') return <div className="mmp-page mmp-portrait-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>{t('retry')}</button></div>
-  return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} sessions={sessions} /></div>
+  return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} sessions={sessions} close={close} /></div>
 }
 
 export const inject = ['slots', 'connection', 'locale', 'sessions']

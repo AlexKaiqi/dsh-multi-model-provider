@@ -8,6 +8,7 @@ import CredentialProvider, {
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import * as PiAiPlugin from '@deepseek-ai/dsh-llm-pi-ai'
 import SettingsProvider, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import SkillRegistry from '@deepseek-ai/dsh-skill'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { describe, expect, it, vi } from 'vitest'
@@ -98,6 +99,7 @@ describe('official llm-pi-ai integration', () => {
       fibers.push(await ctx.plugin(AgentDefaultModel, { provider: 'openai', model: 'gpt-test' }))
       fibers.push(await ctx.plugin(ToolRuntime))
       fibers.push(await ctx.plugin(SystemPrompt))
+      fibers.push(await ctx.plugin(SkillRegistry))
       fibers.push(await ctx.plugin(MultiModelProvider))
 
       const names = ctx.tools.schemas().map(tool => tool.name)
@@ -105,9 +107,10 @@ describe('official llm-pi-ai integration', () => {
         'list_model_routes',
         'register_task_model',
         'prepare_model_portraits',
+        'fetch_portrait_source',
         'select_default_model',
       ]))
-      expect(names).toHaveLength(16)
+      expect(names).toHaveLength(17)
 
       const assembly = await ctx.systemPrompt.assemble()
       const section = assembly.sections.find(item => item.name === 'tool:multi-model-provider')

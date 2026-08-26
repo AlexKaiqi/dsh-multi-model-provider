@@ -44,8 +44,21 @@ export function portraitGaps(portrait: ModelPortrait | undefined): readonly stri
  * Returns:
  *   Suggested sources and questions. lastProbe is never a research question.
  */
-export function researchPlanFor(provider: string, gaps: readonly string[]): Record<string, unknown> {
-  const suggestedSources = [...officialResearchSources(provider)]
+export function researchPlanFor(
+  provider: string,
+  gaps: readonly string[],
+  context: {
+    readonly model?: string
+    readonly task?: string
+    readonly evidenceSources?: readonly string[]
+  } = {},
+): Record<string, unknown> {
+  const officialSources = officialResearchSources(provider, context.model, context.task)
+  const officialSites = new Set(officialSources.map(source => sourceSite(source)))
+  const suggestedSources = [...new Set([
+    ...(context.evidenceSources ?? []).filter(source => httpUrl(source) && officialSites.has(sourceSite(source))),
+    ...officialSources,
+  ])]
   const questions = RESEARCHABLE_GAPS
     .filter(field => gaps.includes(field))
     .map(field => ({
@@ -55,6 +68,7 @@ export function researchPlanFor(provider: string, gaps: readonly string[]): Reco
     }))
   return {
     suggestedSources,
+    sourceStatus: suggestedSources.length > 0 ? 'ready' : 'unavailable',
     questions,
     lastProbe: gaps.includes('lastProbe')
       ? 'After explicit user approval, run validate_model_portrait with liveProbe=true. Do not copy documentation latency into lastProbe.'
@@ -216,4 +230,9 @@ function httpUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+function sourceSite(value: string): string {
+  const labels = new URL(value).hostname.toLowerCase().replace(/\.$/, '').split('.')
+  return labels.length <= 2 ? labels.join('.') : labels.slice(-2).join('.')
 }

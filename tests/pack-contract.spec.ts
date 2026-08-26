@@ -18,19 +18,19 @@ describe('Git-installable pack contract', () => {
       exports: Record<string, unknown>
       dsh: { bundle?: { patch?: string } }
       peerDependencies: Record<string, string>
-      peerDependenciesMeta: Record<string, { optional?: boolean }>
     }
     expect(pkg.main).toBe('lib/index.js')
     expect(pkg.exports['./client']).toBe('./lib/client.js')
     expect(pkg.dsh.bundle?.patch).toBe('./cordis.patch.yml')
-    expect(pkg.peerDependencies['dsh-temporary-workspace']).toBe('^0.1.0-rc.5')
-    expect(pkg.peerDependenciesMeta['dsh-temporary-workspace']?.optional).toBe(true)
+    expect(pkg.peerDependencies['@deepseek-ai/dsh-skill']).toBe('^0.1.1-rc.2')
+    expect(pkg.peerDependencies['dsh-temporary-workspace']).toBeUndefined()
     for (const path of [
       'lib/index.js',
       'lib/client.js',
       'lib/client.js.map',
       'cordis.patch.yml',
       'plugin-spec.json',
+      'skills',
       'src',
       'tests',
       'README.md',

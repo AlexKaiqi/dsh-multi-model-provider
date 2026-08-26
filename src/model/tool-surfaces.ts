@@ -1,5 +1,5 @@
 /**
- * Model-visible surfaces of the sixteen model-management tools.
+ * Model-visible surfaces of the model-management tools.
  *
  * Names, descriptions, and parameter descriptions live here; `../tools.ts` only
  * assembles them with their execute bodies. Each description states both when to
@@ -132,6 +132,16 @@ export const PREPARE_MODEL_PORTRAITS_SURFACE = {
   helpPointer: 'prepare_model_portraits',
 } as const
 
+export const FETCH_PORTRAIT_SOURCE_SURFACE = {
+  name: 'fetch_portrait_source',
+  description: 'Open one exact first-party documentation URL approved by prepare_model_portraits for one configured model. Use it while following the collect-model-portraits skill when the normal Web tools are unavailable or an allowlisted source is sufficient. The id and URL must match the current research plan. Do not use it for arbitrary URLs, redirects, non-text responses, or oversized responses; they are rejected.',
+  parameters: {
+    id: 'Exact configured portrait target id returned by prepare_model_portraits.',
+    url: 'Exact HTTP(S) URL copied from that target\'s researchPlan.suggestedSources.',
+  },
+  helpPointer: 'prepare_model_portraits',
+} as const
+
 export const INGEST_PORTRAIT_RESEARCH_SURFACE = {
   name: 'ingest_portrait_research',
   description: 'Merge Agent-researched portrait facts into a registered model after opening official documentation. Use it after prepare_model_portraits when prices, strengths, and limitations have http(s) source URLs. Do not use it to guess facts, write lastProbe from documentation, store secrets, or change registered input/output modalities.',
@@ -216,6 +226,7 @@ export const MODEL_MANAGER_TOOL_SURFACES = [
   SELECT_TASK_MODELS_SURFACE,
   REGISTER_TASK_MODEL_SURFACE,
   PREPARE_MODEL_PORTRAITS_SURFACE,
+  FETCH_PORTRAIT_SOURCE_SURFACE,
   INGEST_PORTRAIT_RESEARCH_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   UPSERT_MODEL_PORTRAIT_SURFACE,

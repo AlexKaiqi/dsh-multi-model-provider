@@ -12,19 +12,14 @@
     "filesystem": "none",
     "persistentState": true,
     "subprocess": false,
-    "subagents": true,
-    "temporaryResources": true,
+    "subagents": false,
+    "temporaryResources": false,
     "customProtocol": true
   },
   "contracts": [
     {
       "name": "model-probe-http",
       "file": "spec/model-probe.http.json",
-      "versionField": "version"
-    },
-    {
-      "name": "portrait-jobs-http",
-      "file": "spec/portrait-jobs.http.json",
       "versionField": "version"
     }
   ],
@@ -249,12 +244,8 @@
         "layer": "L1"
       },
       {
-        "file": "tests/portrait-jobs.spec.ts",
-        "layer": "L2"
-      },
-      {
-        "file": "tests/temporary-workspace-integration.spec.ts",
-        "layer": "L2"
+        "file": "tests/model-portrait-skill.spec.ts",
+        "layer": "L1"
       },
       {
         "file": "tests/portrait-source-fetch.spec.ts",

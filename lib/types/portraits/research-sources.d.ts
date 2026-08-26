@@ -4,17 +4,20 @@
  * These are starting URLs, not a complete catalog. The Agent must still extract
  * current facts from the live pages and record the exact page as evidence.source.
  */
-export declare const VOLCENGINE_ARK_DOCS = "https://www.volcengine.com/docs/82379";
-export declare const DOUBAO_SPEECH_DOCS = "https://www.volcengine.com/docs/6561";
-export declare const OPENAI_MODELS_DOCS = "https://platform.openai.com/docs/models";
-export declare const OPENAI_PRICING_DOCS = "https://platform.openai.com/docs/pricing";
-export declare const OPENAI_IMAGE_DOCS = "https://platform.openai.com/docs/guides/image-generation";
-export declare const OPENAI_VIDEO_DOCS = "https://platform.openai.com/docs/api-reference/videos";
-export declare const ANTHROPIC_MODELS_DOCS = "https://platform.claude.com/docs/en/about-claude/models/overview";
+export declare const VOLCENGINE_ARK_DOCS = "https://docs.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh";
+export declare const VOLCENGINE_ARK_PRICING_DOCS = "https://docs.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1544106&lang=zh";
+export declare const DOUBAO_SPEECH_DOCS = "https://docs.volcengine.com/api/doc/getDocDetail?LibraryID=6561&DocumentID=2499930&lang=zh";
+export declare const DOUBAO_SPEECH_PRICING_DOCS = "https://docs.volcengine.com/api/doc/getDocDetail?LibraryID=6561&DocumentID=1359370&lang=zh";
+export declare const DOUBAO_REALTIME_DOCS = "https://docs.volcengine.com/api/doc/getDocDetail?LibraryID=6561&DocumentID=1594356&lang=zh";
+export declare const OPENAI_MODELS_DOCS = "https://developers.openai.com/api/docs/models/all";
+export declare const OPENAI_PRICING_DOCS = "https://developers.openai.com/api/docs/pricing";
+export declare const OPENAI_IMAGE_DOCS = "https://developers.openai.com/api/docs/guides/image-generation";
+export declare const OPENAI_VIDEO_DOCS = "https://developers.openai.com/api/docs/models/sora-2";
+export declare const ANTHROPIC_MODELS_DOCS = "https://platform.claude.com/docs/en/models/overview";
 export declare const ANTHROPIC_PRICING_DOCS = "https://platform.claude.com/docs/en/about-claude/pricing";
 export declare const GOOGLE_MODELS_DOCS = "https://ai.google.dev/gemini-api/docs/models";
-export declare const GOOGLE_PRICING_DOCS = "https://ai.google.dev/gemini-api/docs/pricing";
-export declare const GOOGLE_VIDEO_DOCS = "https://ai.google.dev/gemini-api/docs/video";
+export declare const GOOGLE_PRICING_DOCS = "https://ai.google.dev/gemini-api/docs/pricing?hl=en";
+export declare const GOOGLE_VIDEO_DOCS = "https://ai.google.dev/gemini-api/docs/video?hl=en";
 export declare const DEEPSEEK_MODELS_DOCS = "https://api-docs.deepseek.com/news/news260424/";
 export declare const DEEPSEEK_PRICING_DOCS = "https://api-docs.deepseek.com/quick_start/pricing/";
 export declare const KIMI_MODELS_DOCS = "https://www.kimi.ai/help/kimi-api/api-model-selection";
@@ -44,4 +47,4 @@ export declare const MISTRAL_PRICING_DOCS = "https://docs.mistral.ai/models/mode
  * Returns:
  *   HTTPS documentation entry points. Empty when the provider has no bundled sources.
  */
-export declare function officialResearchSources(provider: string): readonly string[];
+export declare function officialResearchSources(provider: string, model?: string, task?: string): readonly string[];

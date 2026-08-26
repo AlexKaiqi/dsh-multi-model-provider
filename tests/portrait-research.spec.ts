@@ -1,12 +1,15 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { ingestPortraitResearch, portraitGaps, prepareModelPortraits } from '../src/portraits.ts'
+import { researchPlanFor } from '../src/portraits/research.ts'
 import {
   ANTHROPIC_MODELS_DOCS,
   ANTHROPIC_PRICING_DOCS,
   DEEPSEEK_MODELS_DOCS,
   DEEPSEEK_PRICING_DOCS,
+  DOUBAO_REALTIME_DOCS,
   DOUBAO_SPEECH_DOCS,
+  DOUBAO_SPEECH_PRICING_DOCS,
   GOOGLE_MODELS_DOCS,
   GOOGLE_PRICING_DOCS,
   GOOGLE_VIDEO_DOCS,
@@ -30,6 +33,7 @@ import {
   QWEN_OPEN_WEIGHTS_DOCS,
   QWEN_PRICING_DOCS,
   VOLCENGINE_ARK_DOCS,
+  VOLCENGINE_ARK_PRICING_DOCS,
   XAI_MODELS_DOCS,
   XAI_PRICING_DOCS,
   ZAI_MODELS_DOCS,
@@ -190,7 +194,7 @@ describe('portrait research testsuite', () => {
     const candidate = (result.candidates as Array<Record<string, unknown>>)[0]!
     expect(candidate.gaps).toEqual(['pricing', 'specialties', 'limitations', 'evidence'])
     expect(candidate.researchPlan).toEqual(expect.objectContaining({
-      suggestedSources: [DOUBAO_SPEECH_DOCS],
+      suggestedSources: [DOUBAO_SPEECH_DOCS, DOUBAO_SPEECH_PRICING_DOCS, DOUBAO_REALTIME_DOCS],
       questions: expect.arrayContaining([
         expect.objectContaining({ field: 'pricing' }),
       ]),
@@ -218,7 +222,7 @@ describe('portrait research testsuite', () => {
           input: ['text', 'image'],
         }),
         researchPlan: expect.objectContaining({
-          suggestedSources: [VOLCENGINE_ARK_DOCS],
+          suggestedSources: [VOLCENGINE_ARK_DOCS, VOLCENGINE_ARK_PRICING_DOCS],
           lastProbe: expect.stringContaining('validate_model_portrait'),
         }),
         gaps: expect.arrayContaining(['lastProbe', 'pricing']),
@@ -245,12 +249,23 @@ describe('portrait research testsuite', () => {
   })
 
   it('bundles official documentation entry points by provider', () => {
-    expect(officialResearchSources('volcengine')).toEqual([VOLCENGINE_ARK_DOCS])
-    expect(officialResearchSources('doubao-speech')).toEqual([DOUBAO_SPEECH_DOCS])
+    expect(officialResearchSources('volcengine')).toEqual([VOLCENGINE_ARK_DOCS, VOLCENGINE_ARK_PRICING_DOCS])
+    expect(officialResearchSources('doubao-speech')).toEqual([
+      DOUBAO_SPEECH_DOCS,
+      DOUBAO_SPEECH_PRICING_DOCS,
+      DOUBAO_REALTIME_DOCS,
+    ])
     expect(officialResearchSources('anthropic')).toEqual([ANTHROPIC_MODELS_DOCS, ANTHROPIC_PRICING_DOCS])
-    expect(officialResearchSources('openai')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS])
-    expect(officialResearchSources('gpt-proxy')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS, OPENAI_IMAGE_DOCS, OPENAI_VIDEO_DOCS])
-    expect(officialResearchSources('google')).toEqual([GOOGLE_MODELS_DOCS, GOOGLE_PRICING_DOCS, GOOGLE_VIDEO_DOCS])
+    expect(officialResearchSources('openai')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS])
+    expect(officialResearchSources('gpt-proxy')).toEqual([OPENAI_MODELS_DOCS, OPENAI_PRICING_DOCS])
+    expect(officialResearchSources('openai', 'sora-2', 'video-generation')).toEqual([
+      'https://developers.openai.com/api/docs/models/sora-2',
+      OPENAI_MODELS_DOCS,
+      OPENAI_PRICING_DOCS,
+    ])
+    expect(officialResearchSources('openai', 'gpt-image-2', 'image-generation')).toContain(OPENAI_IMAGE_DOCS)
+    expect(officialResearchSources('google')).toEqual([GOOGLE_MODELS_DOCS, GOOGLE_PRICING_DOCS])
+    expect(officialResearchSources('google', 'veo-3.1-generate-preview', 'video-generation')).toContain(GOOGLE_VIDEO_DOCS)
     expect(officialResearchSources('deepseek')).toEqual([DEEPSEEK_MODELS_DOCS, DEEPSEEK_PRICING_DOCS])
     expect(officialResearchSources('moonshotai')).toEqual([KIMI_MODELS_DOCS, KIMI_PRICING_DOCS])
     expect(officialResearchSources('zai')).toEqual([ZAI_MODELS_DOCS, ZAI_PRICING_DOCS])
@@ -258,15 +273,33 @@ describe('portrait research testsuite', () => {
     expect(officialResearchSources('qwen-token-plan')).toEqual([QWEN_MODELS_DOCS, QWEN_PRICING_DOCS, QWEN_OPEN_WEIGHTS_DOCS])
     expect(officialResearchSources('minimax')).toEqual([
       MINIMAX_MODELS_DOCS,
-      MINIMAX_H3_DOCS,
-      MINIMAX_H3_OPEN_SOURCE_DOCS,
       MINIMAX_MULTIMODAL_DOCS,
+      MINIMAX_PRICING_DOCS,
+    ])
+    expect(officialResearchSources('minimax', 'MiniMax-H3', 'video-generation')).toEqual([
+      MINIMAX_H3_DOCS,
+      MINIMAX_MULTIMODAL_DOCS,
+      MINIMAX_H3_OPEN_SOURCE_DOCS,
+      MINIMAX_LOCAL_DEPLOY_DOCS,
+      MINIMAX_PRICING_DOCS,
+    ])
+    expect(officialResearchSources('minimax', 'image-01', 'image-generation')).toEqual([
       MINIMAX_IMAGE_DOCS,
       MINIMAX_PRICING_DOCS,
-      MINIMAX_LOCAL_DEPLOY_DOCS,
     ])
     expect(officialResearchSources('mistral')).toEqual([MISTRAL_MODELS_DOCS, MISTRAL_PRICING_DOCS])
     expect(officialResearchSources('unknown-provider')).toEqual([])
+  })
+
+  it('marks mapped providers ready and does not promote arbitrary stored evidence into the fetch allowlist', () => {
+    expect(researchPlanFor('deepseek-official', ['description'], { model: 'deepseek-v4-flash' }))
+      .toEqual(expect.objectContaining({
+        sourceStatus: 'ready',
+        suggestedSources: [DEEPSEEK_MODELS_DOCS, DEEPSEEK_PRICING_DOCS],
+      }))
+    expect(researchPlanFor('unknown-provider', ['description'], {
+      evidenceSources: ['http://127.0.0.1/private'],
+    })).toEqual(expect.objectContaining({ sourceStatus: 'unavailable', suggestedSources: [] }))
   })
 
   it('ingests researched specialties and prices that cite an http(s) source', async () => {

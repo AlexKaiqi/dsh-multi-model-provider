@@ -1,5 +1,5 @@
 /**
- * Model-visible surfaces of the sixteen model-management tools.
+ * Model-visible surfaces of the model-management tools.
  *
  * Names, descriptions, and parameter descriptions live here; `../tools.ts` only
  * assembles them with their execute bodies. Each description states both when to
@@ -116,6 +116,15 @@ export declare const PREPARE_MODEL_PORTRAITS_SURFACE: {
     readonly parameters: {
         readonly ids: "Optional exact configured task route ids or live LLM ids in llm:<provider>/<model> form. Infer these from recent registration or selection context when possible; omit to find configured models with missing or non-valid portraits.";
         readonly includeDisabled: "Include explicitly user-registered disabled task routes when ids are omitted; defaults to false. It never exposes unconfigured built-in catalog entries.";
+    };
+    readonly helpPointer: "prepare_model_portraits";
+};
+export declare const FETCH_PORTRAIT_SOURCE_SURFACE: {
+    readonly name: "fetch_portrait_source";
+    readonly description: "Open one exact first-party documentation URL approved by prepare_model_portraits for one configured model. Use it while following the collect-model-portraits skill when the normal Web tools are unavailable or an allowlisted source is sufficient. The id and URL must match the current research plan. Do not use it for arbitrary URLs, redirects, non-text responses, or oversized responses; they are rejected.";
+    readonly parameters: {
+        readonly id: "Exact configured portrait target id returned by prepare_model_portraits.";
+        readonly url: "Exact HTTP(S) URL copied from that target's researchPlan.suggestedSources.";
     };
     readonly helpPointer: "prepare_model_portraits";
 };
@@ -282,6 +291,14 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     readonly parameters: {
         readonly ids: "Optional exact configured task route ids or live LLM ids in llm:<provider>/<model> form. Infer these from recent registration or selection context when possible; omit to find configured models with missing or non-valid portraits.";
         readonly includeDisabled: "Include explicitly user-registered disabled task routes when ids are omitted; defaults to false. It never exposes unconfigured built-in catalog entries.";
+    };
+    readonly helpPointer: "prepare_model_portraits";
+}, {
+    readonly name: "fetch_portrait_source";
+    readonly description: "Open one exact first-party documentation URL approved by prepare_model_portraits for one configured model. Use it while following the collect-model-portraits skill when the normal Web tools are unavailable or an allowlisted source is sufficient. The id and URL must match the current research plan. Do not use it for arbitrary URLs, redirects, non-text responses, or oversized responses; they are rejected.";
+    readonly parameters: {
+        readonly id: "Exact configured portrait target id returned by prepare_model_portraits.";
+        readonly url: "Exact HTTP(S) URL copied from that target's researchPlan.suggestedSources.";
     };
     readonly helpPointer: "prepare_model_portraits";
 }, {

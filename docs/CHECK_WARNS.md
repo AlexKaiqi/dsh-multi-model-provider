@@ -33,12 +33,12 @@ storage remains owned by `dsh-credentials`. The plugin does not maintain a secon
 journal or writable file store that it could replay after a crash.
 
 Plugin-owned temporary resources do have lifecycle coverage:
-`tests/realtime-runtime.spec.ts` verifies adapter/session cleanup,
+`tests/realtime-runtime.spec.ts` verifies adapter/session cleanup and
 `tests/probe-route.spec.ts` verifies exact route re-ownership after service
-reactivation, and `tests/portrait-jobs.spec.ts` verifies Agent disposal plus
-reservation adoption and failed-start discard behavior. Configuration tests
-assert that validation happens before mutation and that the Settings revision is
-forwarded.
+reactivation. Portrait collection is a current-Session skill and intentionally
+does not own a background Agent, temporary Workspace, job reservation, or
+persistent queue. Configuration tests assert that validation happens before
+mutation and that the Settings revision is forwarded.
 
 Revisit this acceptance if the plugin starts writing files directly, adds its own
 persistent store, or performs a multi-namespace write that needs compensation.

@@ -20,7 +20,11 @@ export declare function portraitGaps(portrait: ModelPortrait | undefined): reado
  * Returns:
  *   Suggested sources and questions. lastProbe is never a research question.
  */
-export declare function researchPlanFor(provider: string, gaps: readonly string[]): Record<string, unknown>;
+export declare function researchPlanFor(provider: string, gaps: readonly string[], context?: {
+    readonly model?: string;
+    readonly task?: string;
+    readonly evidenceSources?: readonly string[];
+}): Record<string, unknown>;
 /**
  * Merge Agent-researched, source-backed facts into a stored portrait.
  *

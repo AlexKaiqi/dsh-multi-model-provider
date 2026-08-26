@@ -21,7 +21,7 @@ import { TaskModelRuntime } from './runtime.ts'
 import { RealtimeModelRuntime } from './realtime.ts'
 import { modelManagerTools } from './tools.ts'
 import { registerModelProbeRoute } from './probe-route.ts'
-import { registerPortraitJobRoutes } from './portrait-jobs.ts'
+import { registerModelPortraitSkill } from './model/portrait-skill.ts'
 import {
   migrateLegacyVolcengineCredential,
 } from './providers/volcengine.ts'
@@ -40,14 +40,13 @@ export * from './portrait-core.ts'
 export * from './portraits.ts'
 export * from './observations/index.ts'
 export * from './portraits/index.ts'
-export * from './portraits/job-contract.ts'
-export * from './portrait-jobs.ts'
+export * from './model/portrait-skill.ts'
 export * from './invocation.ts'
 export * from './types.ts'
 export { modelManagerTools } from './tools.ts'
 
 export const name = 'multi-model-provider'
-export const inject = ['llm', 'settings', 'credentials', 'agentDefaultModel', 'tools', 'systemPrompt']
+export const inject = ['llm', 'settings', 'credentials', 'agentDefaultModel', 'tools', 'systemPrompt', 'skills']
 
 export function apply(ctx: Context): void {
   ctx.effect(async () => {
@@ -76,7 +75,7 @@ export function apply(ctx: Context): void {
   registerModelCatalogRoute(ctx)
   registerTaskModelSettings(ctx)
   registerModelProbeRoute(ctx)
-  registerPortraitJobRoutes(ctx)
+  ctx.effect(() => registerModelPortraitSkill(ctx), 'multi-model-provider: model portrait skill')
   for (const tool of modelManagerTools(ctx)) ctx.tools.register(tool)
   ctx.systemPrompt.section({
     name: 'tool:multi-model-provider',

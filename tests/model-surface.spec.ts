@@ -13,6 +13,7 @@ import { HELP, TOOL_NAMES, VERSION } from '../src/model/help.ts'
 import {
   CONFIGURE_MODEL_ROUTE_SURFACE,
   DISCOVER_TASK_MODELS_SURFACE,
+  FETCH_PORTRAIT_SOURCE_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   INGEST_PORTRAIT_RESEARCH_SURFACE,
   INVOKE_TASK_MODEL_SURFACE,
@@ -48,6 +49,7 @@ describe('tool surfaces', () => {
       SELECT_TASK_MODELS_SURFACE,
       REGISTER_TASK_MODEL_SURFACE,
       PREPARE_MODEL_PORTRAITS_SURFACE,
+      FETCH_PORTRAIT_SOURCE_SURFACE,
       INGEST_PORTRAIT_RESEARCH_SURFACE,
       GET_MODEL_PORTRAIT_SURFACE,
       UPSERT_MODEL_PORTRAIT_SURFACE,
@@ -67,6 +69,7 @@ describe('tool surfaces', () => {
       'select_task_models',
       'register_task_model',
       'prepare_model_portraits',
+      'fetch_portrait_source',
       'ingest_portrait_research',
       'get_model_portrait',
       'upsert_model_portrait',
@@ -206,17 +209,17 @@ describe('help surface', () => {
     expect(host).toContain("ctx.credentials.resolve(credentialRef('DOUBAO_API_KEY'))")
   })
 
-  it('keeps portrait Settings to select, collect in a temporary Session, and view', async () => {
+  it('keeps portrait Settings to select, launch the skill in the current Session, and view', async () => {
     const client = await readFile(new URL('../src/client/index.jsx', import.meta.url), 'utf8')
     expect(client).toContain("id: 'model-portraits'")
     expect(client).toContain("label: () => t('tabPortraits')")
     expect(client).not.toContain("id: 'model-portrait'")
-    expect(client).toContain("portraitJob.start('research', [target.id])")
-    expect(client).not.toContain("portraitJob.start('probe', [target.id])")
-    expect(client).toContain("fetch('/dsh-multi-model-provider/portrait-jobs'")
-    expect(client).toContain("response.status === 404 ? t('portraitJobsUnavailable')")
-    expect(client).toContain('disabled={!portraitJob.available || jobBusy || !target}')
-    expect(client).toContain('sessions.open(portraitJob.job.sessionId)')
+    expect(client).toContain('`/collect-model-portraits ${target.id}`')
+    expect(client).toContain("binding.session.prompt([{")
+    expect(client).toContain('close()')
+    expect(client).toContain('sessions.open(sessionId)')
+    expect(client).not.toContain('/portrait-jobs')
+    expect(client).not.toContain('temporaryWorkspaces')
     expect(client).toContain("if (target.provider === 'volcengine') return t('providerVolcengine')")
     expect(client).toContain("if (target.provider === 'doubao-speech') return t('providerDoubaoSpeech')")
     expect(client).toContain('role="tablist"')

@@ -22,7 +22,7 @@ For a declared language route, `contextWindow` describes model capacity. Leave `
 
 Portrait work is on demand for models already registered or selected in the current profile; the plugin no longer pre-researches unconfigured built-in catalog entries. `prepare_model_portraits` returns seed facts, gaps, and official documentation URLs for those configured targets. The Agent opens those pages and calls `ingest_portrait_research` with http(s) source URLs; price rates must cite that evidence. `lastProbe` is recorded only by an explicitly approved Agent call to `validate_model_portrait(liveProbe=true)`, never copied from documentation.
 
-The catalog retains exact-id portrait fallbacks, but they are used only after the same model is registered or selected in the current profile. A fallback neither creates a portrait target nor starts advance research. A stored user portrait always wins. Route portraits may contain effective-dated provider prices; portable portraits deliberately leave pricing empty because API and infrastructure cost depend on the selected deployment. Neither kind fabricates benchmark scores, latency ranges, or `lastProbe` results.
+The portrait settings selector is the same `snapshot().languageModels` collection used by DSH's session model picker; task-model registry entries are not mixed into that Agent-model list. The catalog retains exact-id portrait fallbacks, but they are used only after the same model is registered or selected in the current profile. A fallback neither creates a portrait target nor starts advance research. A stored user portrait always wins. Route portraits may contain effective-dated provider prices; portable portraits deliberately leave pricing empty because API and infrastructure cost depend on the selected deployment. Neither kind fabricates benchmark scores, latency ranges, or `lastProbe` results.
 
 Specialized task routes are a separate layer. The built-in capability catalog covers Google Gemini Omni Flash Preview and Veo 3.1 Standard / Fast / Lite; MiniMax H3 and Hailuo 2.3 / Fast; OpenAI Sora 2 / Pro; MiniMax Speech 2.8 HD / Turbo, Music 3.0, and image-01. These catalog entries become portrait targets only after the user registers or selects them. H3 is a `video-generation` route with native audio output, not an Agent LLM. Routes remain `registered-only` until their declared runtime adapters and credentials are available. Sora 2 / Pro and Music 3.0 remain disabled because their provider APIs are legacy or unavailable to new users.
 
@@ -54,6 +54,7 @@ Other plugins that only need the directory can stop at `snapshot()`. Do not scra
 - `select_task_models` replaces the enabled set; `ids: []` explicitly disables every route on that connection.
 - `register_task_model` creates or updates a task-model route and its reusable connection profile.
 - `prepare_model_portraits` builds an on-demand research plan only for models configured in the current profile; unconfigured built-in catalog ids are rejected.
+- `fetch_portrait_source` opens an exact first-party URL approved by that target's research plan.
 - `ingest_portrait_research` merges Agent-researched facts that have http(s) source URLs.
 - `get_model_portrait`, `upsert_model_portrait`, and `validate_model_portrait` manage evidence-backed model profiles.
 - `invoke_task_model` invokes a callable non-Realtime request/response route through its runtime adapter. Realtime speech uses `realtimeModelRuntime` and a provider-owned session transport.
@@ -63,7 +64,7 @@ Registration tools accept credential references such as `OPENAI_API_KEY`, never 
 
 ## Settings UI and data model
 
-Installation leaves the shipped **Models** Settings section as the only model-management surface. **Volcengine Ark** is contributed through DSH's native configurable-language-provider directory, so DeepSeek and Ark keep the shipped provider rows, editors, model lists, and delete behavior. The plugin does not register a second Models section or append a parallel provider editor. It also adds a flat, read-only **Model portraits** Settings page with two tabs: collect and view. Its selector lists only models registered or selected in the current profile; unconfigured built-in catalog entries remain hidden. Each collection reserves and adopts an isolated **Temporary Workspace** provided by `dsh-temporary-workspace`. The collection tab therefore requires that profile bundle; catalog and Agent-tool features remain available without it.
+Installation leaves the shipped **Models** Settings section as the only model-management surface. **Volcengine Ark** is contributed through DSH's native configurable-language-provider directory, so DeepSeek and Ark keep the shipped provider rows, editors, model lists, and delete behavior. The plugin does not register a second Models section or append a parallel provider editor. It also adds a flat, read-only **Model portraits** Settings page with two tabs: collect and view. Its selector lists only models registered or selected in the current profile; unconfigured built-in catalog entries remain hidden. Collection invokes the bundled `collect-model-portraits` skill in the current Session; it does not create a background Agent, Session, or Temporary Workspace.
 
 Ark uses `ARK_API_KEY` and the official `https://ark.cn-beijing.volces.com/api/v3` base URL. On upgrade, a legacy `VOLCENGINE_API_KEY` value is safely copied to the standard `ARK_API_KEY` reference when the latter is missing; the legacy reference is retained and the secret is never logged or written to ordinary settings. Doubao keeps the fixed Realtime protocol model `1.2.6.1` and voice as separate task-profile fields. DSH `0.1.1-rc.2` exposes no third-party provider-editor or per-model-field slot in its Models page, so this package does not fake native integration by mounting another editor. Doubao registration and selection remain available through the task catalog and Agent tools until DSH exposes that extension contract.
 
@@ -125,7 +126,7 @@ A portrait keeps one sectioned qualitative Markdown description, structured pric
 
 The starter set is intentionally selective but has no fixed size: cover widely adopted providers, then include current flagships, workhorses, specialized models, and commonly self-hosted models with distinct hardware footprints. Usage, open-weight adoption, and deployment form are selection signals; every model claim and price cites first-party documentation. Matching has two exact layers: `provider/model` route profiles may carry route pricing, while an explicitly enumerated exact model id may receive a provider-independent capability profile. There is no fuzzy alias guessing and no price transfer across providers. Runtime reachability, time to first token, and latency remain separate probe/usage observations.
 
-The **Model portraits** page collects or refreshes the currently selected model. Each job reserves a unique child below the configured `dsh-temporary-workspace` parent, creates a visible background Agent Session with that child as `cwd`, and adopts it as an independent Workspace. The parent defaults to `$DSH_HOME/temporary-workspaces` and can be changed in Temporary Workspace Settings. The active Agent handle is disposed when the job finishes, while the Session and Workspace remain recoverable so Settings can open the research record later. The collection Agent has no filesystem tools, keeping its isolated scratch directory separate from project work and model-portrait persistence. The plugin supplies immutable registration seeds and the full research/acceptance contract, and requires the Agent to gather current official documentation or benchmark evidence, save findings through `ingest_portrait_research` / `upsert_model_portrait`, and run `validate_model_portrait(liveProbe=false)`. Settings displays job status and the resulting portrait, evidence, validation, and latest probe. Paid or traffic-producing live probes are not started by collection; they require a separate explicit user approval before the Agent may call `validate_model_portrait(liveProbe=true)`.
+The **Model portraits** page collects or refreshes the currently selected model by sending an explicit `/collect-model-portraits <id>` invocation to the current Session and closing Settings. The skill receives model- and task-specific first-party sources, opens them through `fetch_portrait_source`, saves findings through `ingest_portrait_research`, and runs `validate_model_portrait(liveProbe=false)`. The source reader follows only same-site documentation redirects and extracts document-center JSON payloads instead of treating an empty JavaScript shell as research content. The View tab displays the resulting portrait, evidence, validation, and latest probe. Paid or traffic-producing live probes require a separate explicit user approval before the Agent may call `validate_model_portrait(liveProbe=true)`.
 
 Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex speech providers implement `RealtimeModelSessionAdapter` against `realtimeModelRuntime`. `invoke_task_model` records privacy-safe task metrics. LLM observations reuse native durable Harness `request/header`, `step/start`, and `assistant/message.usage` events, so no wrapper or duplicate content log is added. `summarize_model_usage` aggregates counts, success, latency, tokens, and cost without copying prompts, responses, media, or credentials.
 
@@ -141,7 +142,7 @@ Request/response providers implement `TaskModelRuntimeAdapter`; full-duplex spee
 
 This is a community composition bundle for DeepSeek Harness `0.1.1-rc.2`. It is not an official DeepSeek package. Host and Web runtime files are committed, so a Git install does not need `prepare` or `allowBuilds`.
 
-`dsh-temporary-workspace` is optional and is used only by portrait collection. DSH does not automatically install, activate, or update peer plugins; install it as a direct profile dependency when that workflow is needed.
+The bundled `collect-model-portraits` skill and its allowlisted source reader are installed with this package; portrait collection has no peer-plugin requirement.
 
 For a reproducible Git install, append the reviewed release commit SHA to the GitHub spec (`#<release-commit-sha>`). Do not pin an earlier commit merely because it reports the same prerelease version.
 
@@ -162,10 +163,10 @@ dsh plugin --profile web add "$PWD"
 After the package is published to npm:
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.15'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.18'
 ```
 
-Prerelease versions are published under the npm `next` tag. Install `dsh-temporary-workspace@next` in the same profile when model-portrait collection is needed.
+Prerelease versions are published under the npm `next` tag.
 
 Through dsh.pub, once listed:
 
@@ -189,7 +190,7 @@ dsh plugin --profile web remove dsh-multi-model-provider
 Updates are explicit:
 
 ```sh
-dsh plugin --profile web update dsh-multi-model-provider dsh-temporary-workspace
+dsh plugin --profile web update dsh-multi-model-provider
 ```
 
 ## Development

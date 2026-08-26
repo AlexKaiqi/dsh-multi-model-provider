@@ -18,7 +18,7 @@
 
 ### 2. 画像
 
-画像只为当前 profile 已注册或已选择的模型按需整理，不再提前调研未配置的内置目录项。用户说“整理画像”即可；`prepare_model_portraits` 给出种子事实、缺口和官方文档入口，Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能由用户明确授权后的 Agent 调用 `validate_model_portrait(liveProbe=true)` 写入，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 负责读写画像。
+模型画像设置页与会话模型选择器严格使用同一份 `snapshot().languageModels`；task-model 注册表不会混入 Agent 模型列表。画像只为当前 profile 已注册或已选择的语言模型按需整理，不再提前调研未配置的内置目录项。用户说“整理画像”即可；`prepare_model_portraits` 给出种子事实、缺口和官方文档入口，Agent 打开文档后调用 `ingest_portrait_research`，价格必须带 http(s) 出处。`lastProbe` 只能由用户明确授权后的 Agent 调用 `validate_model_portrait(liveProbe=true)` 写入，不能从文档抄。`get_model_portrait` / `upsert_model_portrait` / `validate_model_portrait` 负责读写画像。
 
 目录保留一组精确 ID 的画像兜底，但只有同一模型在当前 profile 完成注册或选择后才会使用；兜底本身不会创建画像候选，也不会触发提前调研。用户保存的画像永远优先。路由画像可以带对应 Provider 的生效价格；可移植画像不填写虚假的统一价格，因为 API 与自部署成本取决于具体部署。两者都不伪造 benchmark 分数、延迟区间或 `lastProbe`。
 
@@ -67,7 +67,7 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后只保留 DSH 自带的“模型”管理界面。火山方舟通过 DSH 原生语言模型 Provider 目录接入，因此 DeepSeek 与方舟继续使用宿主的 Provider 行、编辑器、模型列表和删除交互；插件不会再注册第二个“模型”页面或追加另一套 Provider 编辑器。同时提供独立的只读“模型画像”设置页，只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型。每次采集都会通过 `dsh-temporary-workspace` 预留并采用一个隔离的“临时工作区”；不安装它时，模型目录和 Agent 工具仍可使用。画像包括：
+安装后只保留 DSH 自带的“模型”管理界面。火山方舟通过 DSH 原生语言模型 Provider 目录接入，因此 DeepSeek 与方舟继续使用宿主的 Provider 行、编辑器、模型列表和删除交互；插件不会再注册第二个“模型”页面或追加另一套 Provider 编辑器。同时提供独立的只读“模型画像”设置页，只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型。采集会在当前会话显式调用内置 `collect-model-portraits` skill，不再创建后台 Agent、独立会话或临时工作区。画像包括：
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
@@ -170,7 +170,7 @@ multi-model-provider:
 
 内置兜底画像有意不追求全覆盖，也不会单独触发调研。只有当前 profile 已配置模型才会按精确 ID 命中：先匹配带路由价格的 `provider/model` 画像，没有时再匹配明确列出的 Provider 解耦能力画像；不做模糊别名猜测，也不跨 Provider 搬运价格。可用性、首 token 和延迟仍由独立测速与真实调用观测补充。
 
-“模型画像”页只对当前 profile 已注册或已选择的单个模型执行按需采集或刷新，不承担未配置模型的预研目录职责。每个任务都会在“临时工作区”配置的父目录下预留唯一子目录，创建以该目录为 `cwd` 的可见后台 Agent Session，并采用为独立 Workspace；父目录默认是 `$DSH_HOME/temporary-workspaces`，也可在设置中修改。任务结束时会回收活动 Agent handle，但保留 Session 和 Workspace，以便设置页之后打开并审阅研究记录。采集 Agent 没有文件工具，因此每次任务的 scratch 目录彼此隔离，也不会污染项目目录或模型画像持久化。插件负责提供不可改写的注册种子、完整画像契约、证据要求和验收规则；Agent 负责查询当前官方资料或可信 benchmark，并通过 `ingest_portrait_research` / `upsert_model_portrait` 写入，随后执行 `validate_model_portrait(liveProbe=false)`。设置页只读展示任务状态、画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。
+“模型画像”页只对当前 profile 已注册或已选择的单个模型执行按需采集或刷新，不承担未配置模型的预研目录职责。点击采集后，页面向当前会话发送 `/collect-model-portraits <id>` 并关闭设置。skill 会取得模型/任务级官方来源，通过 `fetch_portrait_source` 打开资料，通过 `ingest_portrait_research` 保存带出处的事实，再执行 `validate_model_portrait(liveProbe=false)`。来源读取器只跟随同一官方站点内的重定向，并能提取文档中心 JSON 正文，不会把空的 JavaScript 外壳误判成有效资料。查看页展示画像、证据、校验与最近实测。采集不会自动运行可能产生流量或费用的实测；用户必须另行明确授权，Agent 才可调用 `validate_model_portrait(liveProbe=true)` 写回结果。
 
 多模态一次性执行采用可插拔 `TaskModelRuntimeAdapter`；全双工会话采用 `realtimeModelRuntime` 的 `RealtimeModelSessionAdapter`。核心插件统一选择有效 route、管理安全凭据引用，并对 Provider adapter 和产品角色 profile 做注册及有界会话组装；GPT/豆包 adapter 负责 wire protocol 和浏览器音频传输，产品插件负责上下文和工具策略。task-model 调用自动追加 `multi-model/invocation`；普通 LLM 调用则直接聚合 Harness 已持久化的 `request/header`、`step/start` 与 `assistant/message.usage`，不会再包一层或重复保存正文。调用记录不保存提示词、回复、媒体内容或凭据。
 
@@ -224,7 +224,7 @@ agent-default-model:
 
 这是面向 DeepSeek Harness `0.1.1-rc.2` 的社区 composition bundle，不是 DeepSeek 官方包。Host 与 Web 运行时文件已提交进仓库，Git 安装不需要 `prepare` 或 `allowBuilds`。
 
-`dsh-temporary-workspace` 是可选依赖，只用于画像采集。DSH 不会自动安装、激活或更新 peer 插件；需要画像采集时请把它直接安装到同一 profile。
+`collect-model-portraits` skill 与受限的官方资料读取工具随本包安装，画像采集不再依赖其它 peer 插件。
 
 需要可复现的 Git 安装时，请在 GitHub spec 后追加经过审核的发布 commit SHA（`#<release-commit-sha>`）；不要仅因旧 commit 也声明相同 prerelease 版本就继续固定旧构建。
 
@@ -245,10 +245,10 @@ dsh plugin --profile web add "$PWD"
 发布到 npm 之后：
 
 ```sh
-dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.15'
+dsh plugin --profile web add 'dsh-multi-model-provider@0.1.0-rc.18'
 ```
 
-预发布版本使用 npm `next` tag。需要模型画像采集时，请在同一 profile 安装 `dsh-temporary-workspace@next`。
+预发布版本使用 npm `next` tag。
 
 被 dsh.pub 收录后：
 
@@ -272,7 +272,7 @@ dsh plugin --profile web remove dsh-multi-model-provider
 版本更新需要显式执行：
 
 ```sh
-dsh plugin --profile web update dsh-multi-model-provider dsh-temporary-workspace
+dsh plugin --profile web update dsh-multi-model-provider
 ```
 
 ## 开发

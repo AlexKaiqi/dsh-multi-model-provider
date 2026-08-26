@@ -19,34 +19,17 @@ function targetFromLanguage(raw) {
   }
 }
 
-function targetFromTask(raw) {
-  const row = object(raw)
-  if (typeof row.id !== 'string' || typeof row.provider !== 'string' || typeof row.model !== 'string') return undefined
-  const connection = object(row.connectionProfile)
-  return {
-    id: row.id,
-    kind: 'task',
-    provider: row.provider,
-    providerName: typeof connection.displayName === 'string' && connection.displayName ? connection.displayName : row.provider,
-    model: row.model,
-    name: typeof row.displayName === 'string' && row.displayName ? row.displayName : row.model,
-    input: Array.isArray(row.input) ? row.input : [],
-    output: Array.isArray(row.output) ? row.output : [],
-    task: row.task,
-    enabled: row.enabled === true,
-    portrait: object(row.portrait),
-  }
-}
-
-/** Convert the server-side modelCatalog.snapshot() response into portrait selector rows. */
+/**
+ * Convert the server-side modelCatalog.snapshot() response into portrait rows.
+ *
+ * This is deliberately the same language-model collection exposed by DSH's
+ * session model picker. Task models have their own registry and must not leak
+ * into this Agent-model surface.
+ */
 export function snapshotPortraitTargets(catalog) {
-  const language = (Array.isArray(catalog?.languageModels) ? catalog.languageModels : [])
+  return (Array.isArray(catalog?.languageModels) ? catalog.languageModels : [])
     .map(targetFromLanguage)
     .filter(Boolean)
-  const task = (Array.isArray(catalog?.taskModels) ? catalog.taskModels : [])
-    .map(targetFromTask)
-    .filter(Boolean)
-  return [...language, ...task]
 }
 
 export function portraitTargetState(target) {

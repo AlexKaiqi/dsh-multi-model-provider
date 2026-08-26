@@ -9,6 +9,7 @@ import { discoverTaskModels, listTaskModels, registerTaskModel, selectTaskModels
 import {
   CONFIGURE_MODEL_ROUTE_SURFACE,
   DISCOVER_TASK_MODELS_SURFACE,
+  FETCH_PORTRAIT_SOURCE_SURFACE,
   GET_MODEL_PORTRAIT_SURFACE,
   INGEST_PORTRAIT_RESEARCH_SURFACE,
   INVOKE_TASK_MODEL_SURFACE,
@@ -24,6 +25,7 @@ import {
   UPSERT_MODEL_PORTRAIT_SURFACE,
   VALIDATE_MODEL_PORTRAIT_SURFACE,
 } from './model/tool-surfaces.ts'
+import { fetchPortraitSource, portraitResearchSources } from './portraits/source-fetch.ts'
 import {
   MODEL_EXECUTION_MODES,
   MODEL_MODALITIES,
@@ -331,6 +333,20 @@ export function modelManagerTools(ctx: Context) {
       },
       output: jsonOutput,
       execute: async (args, exec) => asJsonValue(await prepareModelPortraits(ctx, args, exec.signal)),
+    }),
+    defineTool({
+      name: FETCH_PORTRAIT_SOURCE_SURFACE.name,
+      description: FETCH_PORTRAIT_SOURCE_SURFACE.description,
+      parameters: {
+        id: { type: 'string', required: true, description: FETCH_PORTRAIT_SOURCE_SURFACE.parameters.id },
+        url: { type: 'string', required: true, description: FETCH_PORTRAIT_SOURCE_SURFACE.parameters.url },
+      },
+      output: jsonOutput,
+      execute: async (args, exec) => {
+        const manifest = await prepareModelPortraits(ctx, { ids: [args.id] }, exec.signal)
+        const allowedSources = new Set(portraitResearchSources(manifest))
+        return fetchPortraitSource(args.url, allowedSources, exec.signal)
+      },
     }),
     defineTool({
       name: INGEST_PORTRAIT_RESEARCH_SURFACE.name,

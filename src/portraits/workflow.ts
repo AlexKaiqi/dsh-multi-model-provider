@@ -52,7 +52,11 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
       needsInitialPortrait: portrait === undefined || portrait.validation.state !== 'valid',
       seed: taskSeed(provider, registration.model, registration, portrait),
       gaps,
-      researchPlan: researchPlanFor(provider, gaps),
+      researchPlan: researchPlanFor(provider, gaps, {
+        model: registration.model,
+        task: registration.task,
+        ...(portrait === undefined ? {} : { evidenceSources: portrait.evidence.map(item => item.source) }),
+      }),
     })
   }
   const warnings: string[] = []
@@ -101,7 +105,10 @@ export async function prepareModelPortraits(ctx: Context, input: PrepareModelPor
             ...(portrait?.performance.lastProbe === undefined ? {} : { lastProbe: portrait.performance.lastProbe }),
           },
           gaps,
-          researchPlan: researchPlanFor(provider.id, gaps),
+          researchPlan: researchPlanFor(provider.id, gaps, {
+            model: model.id,
+            ...(portrait === undefined ? {} : { evidenceSources: portrait.evidence.map(item => item.source) }),
+          }),
         })
       }
     } catch (error) {

@@ -36,7 +36,7 @@ describe('model portrait settings targets', () => {
     languageFailures: [],
   }
 
-  it('uses the unified server catalog, including DeepSeek outside llm-pi-ai settings', () => {
+  it('matches the session model picker and excludes task-model registry entries', () => {
     expect(snapshotPortraitTargets(catalog)).toEqual([
       expect.objectContaining({
         id: 'llm:volcengine/doubao-seed-2-0-lite-260215',
@@ -50,18 +50,10 @@ describe('model portrait settings targets', () => {
         providerName: 'DeepSeek',
         name: 'DeepSeek-V4-Pro',
       }),
-      expect.objectContaining({
-        id: 'openai/gpt-image-2',
-        kind: 'task',
-        providerName: 'OpenAI Images',
-      }),
     ])
-  })
-
-  it('uses the registry effective enabled state for task models', () => {
-    const disabled = { ...catalog, taskModels: [{ ...catalog.taskModels[0], enabled: false }] }
-    expect(snapshotPortraitTargets(disabled)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'openai/gpt-image-2', enabled: false }),
+    expect(snapshotPortraitTargets(catalog).map(item => item.id)).toEqual(catalog.languageModels.map(item => item.id))
+    expect(snapshotPortraitTargets(catalog)).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'openai/gpt-image-2' }),
     ]))
   })
 
@@ -69,8 +61,8 @@ describe('model portrait settings targets', () => {
     const targets = snapshotPortraitTargets(catalog)
     expect(filterPortraitTargets(targets, { kind: 'llm', provider: 'volcengine', state: 'partial' }).map(item => item.id))
       .toEqual(['llm:volcengine/doubao-seed-2-0-lite-260215'])
-    expect(filterPortraitTargets(targets, { query: 'image', availability: 'enabled' }).map(item => item.id))
-      .toEqual(['openai/gpt-image-2'])
+    expect(filterPortraitTargets(targets, { query: 'deepseek', availability: 'enabled' }).map(item => item.id))
+      .toEqual(['llm:deepseek-official/deepseek-v4-pro'])
     expect(filterPortraitTargets(targets, { kind: 'task', availability: 'disabled' })).toEqual([])
   })
 })
