@@ -10,6 +10,7 @@ import { initialPortrait, normalizePortrait, normalizeStoredPortrait } from './p
 import { builtinTaskPortrait } from './portraits/builtin-task.ts'
 import {
   DOUBAO_REALTIME_BASE_URL,
+  DOUBAO_SPEECH_AGENT_PLAN_CATALOG,
   DOUBAO_SPEECH_CATALOG,
   DOUBAO_SPEECH_LEGACY_CATALOG,
   DOUBAO_SPEECH_PROVIDER,
@@ -145,6 +146,16 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       credentialRef: 'GEMINI_API_KEY',
       baseURL: 'https://generativelanguage.googleapis.com',
       profile: { product: 'gemini-generative-media' },
+    },
+    'doubao-speech-agent-plan': {
+      provider: DOUBAO_SPEECH_PROVIDER,
+      displayName: '豆包语音 Agent Plan',
+      apiKeyEnv: 'ARK_API_KEY',
+      credentialRef: 'ARK_API_KEY',
+      credentialRefs: { apiKey: 'ARK_API_KEY' },
+      baseURL: 'https://openspeech.bytedance.com',
+      profile: { product: 'doubao-speech', billingMode: 'agent-plan', authProduct: 'ark-agent-plan', explicitSelectionRequired: true },
+      models: [],
     },
     [DOUBAO_SPEECH_PROVIDER]: {
       provider: DOUBAO_SPEECH_PROVIDER,
@@ -388,7 +399,7 @@ export const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig = {
       profile: { protocol: 'openai-webrtc', voice: 'marin' },
       portrait: initialPortrait('OpenAI full-duplex Realtime speech model.'),
     },
-    ...Object.fromEntries([...DOUBAO_SPEECH_LEGACY_CATALOG, ...DOUBAO_SPEECH_CATALOG].map(entry => [entry.id, {
+    ...Object.fromEntries([...DOUBAO_SPEECH_LEGACY_CATALOG, ...DOUBAO_SPEECH_AGENT_PLAN_CATALOG, ...DOUBAO_SPEECH_CATALOG].map(entry => [entry.id, {
       ...entry.registration,
       portrait: initialPortrait(entry.summary),
     }])),

@@ -9,7 +9,7 @@ import {
 } from './providers/volcengine.ts'
 
 export const VOLCENGINE_DEFAULT_PROFILE = {
-  displayName: '火山方舟',
+  displayName: '火山方舟（按量计费）',
   apiKeyEnv: VOLCENGINE_ARK_API_KEY,
   baseURL: VOLCENGINE_ARK_BASE_URL,
   api: VOLCENGINE_ARK_API,
@@ -53,7 +53,7 @@ export function doubaoProviderDirectoryEntry() {
 export function volcengineProviderDirectoryEntry() {
   return {
     provider: 'volcengine',
-    displayName: '火山方舟',
+    displayName: '火山方舟（按量计费）',
     settingsNs: 'llm-pi-ai',
     settingsPath: ['providers', 'volcengine'],
     declared: false,

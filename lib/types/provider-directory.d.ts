@@ -1,5 +1,5 @@
 export declare const VOLCENGINE_DEFAULT_PROFILE: {
-    readonly displayName: "火山方舟";
+    readonly displayName: "火山方舟（按量计费）";
     readonly apiKeyEnv: "ARK_API_KEY";
     readonly baseURL: "https://ark.cn-beijing.volces.com/api/v3";
     readonly api: "openai-completions";
@@ -37,7 +37,7 @@ export declare function doubaoProviderDirectoryEntry(): {
 };
 export declare function volcengineProviderDirectoryEntry(): {
     readonly provider: "volcengine";
-    readonly displayName: "火山方舟";
+    readonly displayName: "火山方舟（按量计费）";
     readonly settingsNs: "llm-pi-ai";
     readonly settingsPath: readonly ["providers", "volcengine"];
     readonly declared: false;

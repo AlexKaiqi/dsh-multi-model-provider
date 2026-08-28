@@ -207,6 +207,11 @@ export function modelManagerTools(ctx: Context) {
       name: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.name,
       description: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.description,
       parameters: {
+        mode: {
+          type: 'string',
+          enum: ['payg', 'agent-plan'],
+          description: SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE.parameters.mode,
+        },
         models: {
           type: 'array',
           required: true,

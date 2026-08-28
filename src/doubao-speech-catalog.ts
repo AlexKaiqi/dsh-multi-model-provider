@@ -22,6 +22,29 @@ type DoubaoSpeechCatalogEntry = {
  * shown by the Models provider editor: their Access Token contract is a
  * different product surface from Realtime Duplex.
  */
+export const DOUBAO_SPEECH_AGENT_PLAN_CATALOG: readonly DoubaoSpeechCatalogEntry[] = [
+  {
+    id: 'doubao-agent-plan/seed-asr-2.0-stream',
+    summary: 'Doubao Seed ASR 2.0 Agent Plan streaming recognition route; explicit selection required.',
+    registration: {
+      enabled: false, connection: 'doubao-speech-agent-plan', model: 'volc.seedasr.sauc.duration', displayName: '豆包流式语音识别 2.0（Agent Plan）',
+      task: 'transcription', runtimeAdapter: 'doubao-speech-agent-plan', credentialNames: ['apiKey'], input: ['audio', 'file'], output: ['text'], execution: 'streaming',
+      capabilities: ['speech.transcribe.stream', 'speech.transcribe.file'], operations: ['transcribe-stream', 'transcribe-file'], roles: ['speech-to-text'],
+      profile: { billingMode: 'agent-plan', resourceId: 'volc.seedasr.sauc.duration', requiresExplicitSelection: true, endpoint: 'wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_async', finalResultEndpoint: 'wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream', protocol: 'websocket-binary-v1-gzip' },
+    },
+  },
+  {
+    id: 'doubao-agent-plan/seed-tts-2.0-http',
+    summary: 'Doubao Seed TTS 2.0 Agent Plan HTTP synthesis route; explicit selection required.',
+    registration: {
+      enabled: false, connection: 'doubao-speech-agent-plan', model: 'seed-tts-2.0', displayName: '豆包语音合成 2.0（Agent Plan HTTP）',
+      task: 'speech-synthesis', runtimeAdapter: 'doubao-speech-agent-plan', credentialNames: ['apiKey'], input: ['text'], output: ['audio'], execution: 'request-response',
+      capabilities: ['speech.synthesize.short'], operations: ['synthesize'], roles: ['text-to-speech'],
+      profile: { billingMode: 'agent-plan', resourceId: 'seed-tts-2.0', requiresExplicitSelection: true, endpoint: 'https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional' },
+    },
+  },
+]
+
 export const DOUBAO_SPEECH_LEGACY_CATALOG: readonly DoubaoSpeechCatalogEntry[] = [
   {
     id: 'doubao/volc.bigasr.sauc.duration',

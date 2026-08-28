@@ -14,6 +14,7 @@ export * from './operations.ts';
 export * from './providers/index.ts';
 export * from './registry.ts';
 export * from './runtime.ts';
+export * from './pipeline-runtime.ts';
 export * from './realtime.ts';
 export * from './catalog.ts';
 export * from './catalog-route.ts';

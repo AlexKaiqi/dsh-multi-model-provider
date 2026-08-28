@@ -6,6 +6,7 @@ import {
   migrateLegacyVolcengineCredential,
   selectVolcengineLanguageModels,
   VOLCENGINE_ARK_BASE_URL,
+  VOLCENGINE_ARK_PAYG_BASE_URL,
 } from '../src/providers/volcengine.ts'
 import { TASK_MODEL_SETTINGS_NAMESPACE } from '../src/registry.ts'
 
@@ -77,10 +78,14 @@ describe('Volcengine provider orientation', () => {
     expect(result).toMatchObject({
       provider: 'volcengine',
       credentials: { arkApiKey: { ref: 'ARK_API_KEY', configured: true }, doubaoApiKey: { ref: 'DOUBAO_API_KEY', configured: false } },
+      displayName: '火山方舟',
       ark: {
         discovery: 'ok',
         availableModels: [{ id: 'doubao-seed-2-0-lite-260215' }],
-        selectedLanguageModels: [{ id: 'doubao-seed-selected' }],
+        routes: {
+          payAsYouGo: { provider: 'volcengine', baseURL: VOLCENGINE_ARK_PAYG_BASE_URL, selectedLanguageModels: [{ id: 'doubao-seed-selected' }] },
+          agentPlan: { provider: 'volcengine-agent-plan', baseURL: 'https://ark.cn-beijing.volces.com/api/plan/v3', selectedLanguageModels: [] },
+        },
       },
       relatedTaskProvider: {
         provider: 'doubao-speech',
@@ -118,10 +123,25 @@ describe('Volcengine language/VLM selection', () => {
       ]),
       3,
     )
-    expect(result).toMatchObject({ provider: 'volcengine', selected: ['doubao-seed-2-0-lite-260215'], allDisabled: false })
+    expect(VOLCENGINE_ARK_BASE_URL).toBe(VOLCENGINE_ARK_PAYG_BASE_URL)
+    expect(result).toMatchObject({ provider: 'volcengine', selected: ['doubao-seed-2-0-lite-260215'], allDisabled: false, billingMode: 'payg' })
   })
 
-  it('preserves an explicit empty selection by removing the LLM route', async () => {
+  it('configures Agent Plan without replacing the pay-as-you-go provider', async () => {
+    const ctx = context()
+    const result = await selectVolcengineLanguageModels(ctx, { mode: 'agent-plan', models: [{ id: 'glm-5-2-260617', input: ['text'] }] })
+    expect(ctx.settings.mutate).toHaveBeenCalledWith(
+      PI_AI_SETTINGS_NAMESPACE,
+      expect.arrayContaining([
+        { op: 'set', path: ['providers', 'volcengine-agent-plan', 'baseURL'], value: 'https://ark.cn-beijing.volces.com/api/plan/v3' },
+        expect.objectContaining({ op: 'set', path: ['providers', 'volcengine-agent-plan', 'models'] }),
+      ]),
+      3,
+    )
+    expect(result).toMatchObject({ provider: 'volcengine-agent-plan', billingMode: 'agent-plan', selected: ['glm-5-2-260617'] })
+  })
+
+  it('preserves an explicit empty selection by removing only the selected LLM route', async () => {
     const ctx = context()
     const result = await selectVolcengineLanguageModels(ctx, { models: [] })
     expect(ctx.settings.mutate).toHaveBeenCalledWith(

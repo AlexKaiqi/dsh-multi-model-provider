@@ -18,6 +18,7 @@ type DoubaoSpeechCatalogEntry = {
  * shown by the Models provider editor: their Access Token contract is a
  * different product surface from Realtime Duplex.
  */
+export declare const DOUBAO_SPEECH_AGENT_PLAN_CATALOG: readonly DoubaoSpeechCatalogEntry[];
 export declare const DOUBAO_SPEECH_LEGACY_CATALOG: readonly DoubaoSpeechCatalogEntry[];
 /**
  * Public voices documented for the Realtime S2S-O and SC 2.0 products.

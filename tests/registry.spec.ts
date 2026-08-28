@@ -156,7 +156,7 @@ describe('task-model registry', () => {
 
   it('ships legacy speech routes plus every documented Realtime O/SC voice profile', async () => {
     const result = await listTaskModels(context(), { provider: 'doubao-speech' })
-    expect(result.count).toBe(2 + DOUBAO_REALTIME_VOICES.length)
+    expect(result.count).toBe(4 + DOUBAO_REALTIME_VOICES.length)
     expect(result.models).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'doubao/volc.bigasr.sauc.duration',
@@ -166,6 +166,18 @@ describe('task-model registry', () => {
       expect.objectContaining({
         id: 'doubao/seed-tts-1.0',
         capabilities: ['speech.synthesize.short'],
+      }),
+      expect.objectContaining({
+        id: 'doubao-agent-plan/seed-asr-2.0-stream',
+        enabled: false,
+        model: 'volc.seedasr.sauc.duration',
+        capabilities: ['speech.transcribe.stream', 'speech.transcribe.file'],
+      }),
+      expect.objectContaining({
+        id: 'doubao-agent-plan/seed-tts-2.0-http',
+        enabled: false,
+        model: 'seed-tts-2.0',
+        execution: 'request-response',
       }),
       expect.objectContaining({
         id: 'doubao/realtime/zh_female_vv_jupiter_bigtts',

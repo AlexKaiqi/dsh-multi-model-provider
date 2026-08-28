@@ -336,7 +336,9 @@ export interface SelectTaskModelsInput {
 }
 
 export interface SelectVolcengineLanguageModelsInput {
-  /** Complete selected LLM/VLM profiles. An empty array explicitly disables the Volcengine LLM route. */
+  /** Billing route to replace. Defaults to the ordinary pay-as-you-go route for compatibility. */
+  readonly mode?: 'payg' | 'agent-plan'
+  /** Complete selected LLM/VLM profiles. An empty array explicitly disables only the selected billing route. */
   readonly models: readonly ModelProfileInput[]
 }
 

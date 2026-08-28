@@ -10,12 +10,13 @@ describe('configurable provider presentation', () => {
   it('declares Volcengine using only the host-supported directory contract', () => {
     expect(volcengineProviderDirectoryEntry()).toEqual({
       provider: 'volcengine',
-      displayName: '火山方舟',
+      displayName: '火山方舟（按量计费）',
       settingsNs: 'llm-pi-ai',
       settingsPath: ['providers', 'volcengine'],
       declared: false,
     })
     expect(VOLCENGINE_DEFAULT_PROFILE).toMatchObject({
+      displayName: '火山方舟（按量计费）',
       baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
       api: 'openai-completions',
       models: [],

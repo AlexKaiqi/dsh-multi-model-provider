@@ -43,9 +43,10 @@ export declare const INSPECT_VOLCENGINE_PROVIDER_SURFACE: {
 };
 export declare const SELECT_VOLCENGINE_LANGUAGE_MODELS_SURFACE: {
     readonly name: "select_volcengine_language_models";
-    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official openai-completions endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
+    readonly description: "Replace one Ark language/VLM billing route: mode=payg configures provider=volcengine on /api/v3, while mode=agent-plan configures provider=volcengine-agent-plan on /api/plan/v3. The two routes coexist and never silently fall back to each other. Use it after inspect_volcengine_provider and authoritative model metadata review; an empty models array disables only the selected route. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
     readonly parameters: {
-        readonly models: "Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.";
+        readonly mode: "Billing route to replace: payg or agent-plan. Defaults to payg for compatibility.";
+        readonly models: "Complete selected language/VLM profiles. Pass [] to remove only the selected billing route.";
     };
     readonly helpPointer: "inspect_volcengine_provider";
 };
@@ -225,9 +226,10 @@ export declare const MODEL_MANAGER_TOOL_SURFACES: readonly [{
     readonly helpPointer: "inspect_volcengine_provider";
 }, {
     readonly name: "select_volcengine_language_models";
-    readonly description: "Replace the selected Ark language/VLM model catalog and configure the llm-pi-ai provider=volcengine route with the official openai-completions endpoint. Use it after inspect_volcengine_provider and authoritative model metadata review; pass an empty models array to disable every Volcengine LLM without fallback. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
+    readonly description: "Replace one Ark language/VLM billing route: mode=payg configures provider=volcengine on /api/v3, while mode=agent-plan configures provider=volcengine-agent-plan on /api/plan/v3. The two routes coexist and never silently fall back to each other. Use it after inspect_volcengine_provider and authoritative model metadata review; an empty models array disables only the selected route. Do not use it for image/video generation, speech, audio, embedding, or other task routes, and verify the result with inspect_volcengine_provider.";
     readonly parameters: {
-        readonly models: "Complete selected language/VLM model profiles from Ark discovery. Pass [] to remove the Volcengine LLM route and select nothing.";
+        readonly mode: "Billing route to replace: payg or agent-plan. Defaults to payg for compatibility.";
+        readonly models: "Complete selected language/VLM profiles. Pass [] to remove only the selected billing route.";
     };
     readonly helpPointer: "inspect_volcengine_provider";
 }, {

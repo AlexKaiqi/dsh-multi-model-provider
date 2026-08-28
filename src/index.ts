@@ -18,6 +18,7 @@ import {
 import { discoverDoubaoRealtimeVoices } from './doubao-discovery.ts'
 import { registerTaskModelSettings } from './registry.ts'
 import { TaskModelRuntime } from './runtime.ts'
+import { TaskPipelineRuntime } from './pipeline-runtime.ts'
 import { RealtimeModelRuntime } from './realtime.ts'
 import { modelManagerTools } from './tools.ts'
 import { registerModelProbeRoute } from './probe-route.ts'
@@ -33,6 +34,7 @@ export * from './operations.ts'
 export * from './providers/index.ts'
 export * from './registry.ts'
 export * from './runtime.ts'
+export * from './pipeline-runtime.ts'
 export * from './realtime.ts'
 export * from './catalog.ts'
 export * from './catalog-route.ts'
@@ -70,6 +72,7 @@ export function apply(ctx: Context): void {
     })
   })
   new TaskModelRuntime(ctx)
+  new TaskPipelineRuntime(ctx)
   new RealtimeModelRuntime(ctx)
   new ModelCatalog(ctx)
   registerModelCatalogRoute(ctx)

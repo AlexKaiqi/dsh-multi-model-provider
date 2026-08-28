@@ -28,7 +28,7 @@ owned by llm-pi-ai; non-language task models live in this plugin's catalog.
   list_model_routes        inspect routes, credential status, and model catalogs
   configure_model_route    create or update one llm-pi-ai provider profile
   inspect_volcengine_provider inspect Ark/Doubao credentials, live catalog, selections, and usage paths
-  select_volcengine_language_models replace Ark language/VLM selection; [] disables all
+  select_volcengine_language_models replace one Ark payg/Agent Plan selection; both may coexist
   list_task_models         inspect registrations and whether they are callable
   discover_task_models     query an authenticated provider model catalog
   select_task_models       replace the enabled set; [] disables all
@@ -64,8 +64,9 @@ registration is not callability:
   openai/gpt-image-2 and Doubao speech start registered-only.
 
 provider discovery and selection:
-  Volcengine Ark and Doubao Speech are separate provider connections with
-  separate protocols, catalogs, and API keys. Discovery is advisory and never
+  Volcengine Ark pay-as-you-go, Ark Agent Plan, and Doubao Speech are separate routes.
+  provider=volcengine uses /api/v3 and provider=volcengine-agent-plan uses /api/plan/v3;
+  they may coexist and neither is a silent fallback for the other. Discovery is advisory and never
   auto-registers or auto-enables returned models. An empty enabled selection is
   preserved as all disabled; it never falls back to all models.
 

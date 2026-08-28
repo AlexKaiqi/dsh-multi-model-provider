@@ -6,7 +6,11 @@ import { listTaskModels } from '../registry.ts'
 import type { ModelProfileInput, SelectVolcengineLanguageModelsInput } from '../types.ts'
 
 export const VOLCENGINE_PROVIDER = 'volcengine'
-export const VOLCENGINE_ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
+export const VOLCENGINE_AGENT_PLAN_PROVIDER = 'volcengine-agent-plan'
+/** Agent Plan and pay-as-you-go are independent routes and may coexist. */
+export const VOLCENGINE_ARK_PLAN_BASE_URL = 'https://ark.cn-beijing.volces.com/api/plan/v3'
+export const VOLCENGINE_ARK_PAYG_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
+export const VOLCENGINE_ARK_BASE_URL = VOLCENGINE_ARK_PAYG_BASE_URL
 export const VOLCENGINE_ARK_API = 'openai-completions'
 export const VOLCENGINE_ARK_API_KEY = 'ARK_API_KEY'
 
@@ -49,10 +53,10 @@ function descriptor(ctx: Context, ns: string) {
   return ctx.settings.describe({ redactSecrets: true }).find(item => item.ns === ns)
 }
 
-function selectedLanguageModels(ctx: Context): unknown[] {
+function selectedLanguageModels(ctx: Context, provider: string): unknown[] {
   const root = object(descriptor(ctx, PI_AI_SETTINGS_NAMESPACE)?.value)
   const providers = object(root?.providers)
-  const profile = object(providers?.[VOLCENGINE_PROVIDER])
+  const profile = object(providers?.[provider])
   return Array.isArray(profile?.models) ? profile.models : []
 }
 
@@ -109,12 +113,25 @@ export async function inspectVolcengineProvider(ctx: Context, signal: AbortSigna
     credentials,
     ark: {
       api: VOLCENGINE_ARK_API,
-      baseURL: VOLCENGINE_ARK_BASE_URL,
-      catalogEndpoint: `${VOLCENGINE_ARK_BASE_URL}/models`,
       discovery: arkConfigured ? discovery.error === undefined ? 'ok' : 'failed' : 'credential-required',
       ...(discovery.error === undefined ? {} : { error: discovery.error }),
       availableModels: discovery.models,
-      selectedLanguageModels: selectedLanguageModels(ctx),
+      routes: {
+        payAsYouGo: {
+          provider: VOLCENGINE_PROVIDER,
+          displayName: '火山方舟（按量计费）',
+          baseURL: VOLCENGINE_ARK_PAYG_BASE_URL,
+          catalogEndpoint: `${VOLCENGINE_ARK_PAYG_BASE_URL}/models`,
+          selectedLanguageModels: selectedLanguageModels(ctx, VOLCENGINE_PROVIDER),
+        },
+        agentPlan: {
+          provider: VOLCENGINE_AGENT_PLAN_PROVIDER,
+          displayName: '火山方舟 Agent Plan',
+          baseURL: VOLCENGINE_ARK_PLAN_BASE_URL,
+          catalogEndpoint: `${VOLCENGINE_ARK_PLAN_BASE_URL}/models`,
+          selectedLanguageModels: selectedLanguageModels(ctx, VOLCENGINE_AGENT_PLAN_PROVIDER),
+        },
+      },
     },
     relatedTaskProvider: {
       provider: 'doubao-speech',
@@ -123,7 +140,8 @@ export async function inspectVolcengineProvider(ctx: Context, signal: AbortSigna
       taskRoutes,
     },
     routingRules: {
-      languageAndVlm: 'Select with select_volcengine_language_models; these become ordinary llm-pi-ai models and are used through the Agent model selector.',
+      languageAndVlm: 'Select payg or agent-plan independently with select_volcengine_language_models; both become ordinary llm-pi-ai providers in the Agent model selector.',
+      billingIsolation: 'provider=volcengine uses /api/v3; provider=volcengine-agent-plan uses /api/plan/v3. Neither route silently falls back to the other.',
       imageVideoAudioSpeech: 'Register/select task routes, then use invoke_task_model for callable non-realtime routes; realtime-speech routes use realtimeModelRuntime.',
       platformEndpoint: 'When the account uses a deployed Platform endpoint, its ep-* endpoint id is the model id; do not substitute a display name.',
     },
@@ -148,23 +166,29 @@ function normalizeProfiles(models: readonly ModelProfileInput[]): ModelProfileIn
 
 export async function selectVolcengineLanguageModels(ctx: Context, input: SelectVolcengineLanguageModelsInput): Promise<Record<string, unknown>> {
   const models = normalizeProfiles(input.models)
+  const mode = input.mode ?? 'payg'
+  const plan = mode === 'agent-plan'
+  const provider = plan ? VOLCENGINE_AGENT_PLAN_PROVIDER : VOLCENGINE_PROVIDER
+  const baseURL = plan ? VOLCENGINE_ARK_PLAN_BASE_URL : VOLCENGINE_ARK_PAYG_BASE_URL
+  const displayName = plan ? '火山方舟 Agent Plan' : '火山方舟（按量计费）'
   if (models.length === 0) {
     const current = descriptor(ctx, PI_AI_SETTINGS_NAMESPACE)
     if (current === undefined) throw new ModelManagerError('llm-pi-ai settings are unavailable', 'MODEL_SETTINGS_UNAVAILABLE')
-    const ops: SettingsPathOp[] = [{ op: 'unset', path: ['providers', VOLCENGINE_PROVIDER] }]
+    const ops: SettingsPathOp[] = [{ op: 'unset', path: ['providers', provider] }]
     await ctx.settings.mutate(PI_AI_SETTINGS_NAMESPACE, ops, current.revision)
     return {
-      provider: VOLCENGINE_PROVIDER,
+      provider,
+      billingMode: mode,
       selected: [],
       allDisabled: true,
-      note: 'The Volcengine LLM route was removed. No fallback model was selected; task-model selections are unchanged.',
+      note: `The ${displayName} LLM route was removed. The other billing route and task-model selections are unchanged.`,
     }
   }
   const result = await configureModelRoute(ctx, {
-    provider: VOLCENGINE_PROVIDER,
-    displayName: '火山方舟',
+    provider,
+    displayName,
     api: VOLCENGINE_ARK_API,
-    baseURL: VOLCENGINE_ARK_BASE_URL,
+    baseURL,
     apiKeyEnv: CREDENTIALS.arkApiKey,
     models,
   })
@@ -172,6 +196,7 @@ export async function selectVolcengineLanguageModels(ctx: Context, input: Select
     ...result,
     selected: models.map(model => model.id),
     allDisabled: false,
-    usage: 'Create a new Agent or use the session model selector with provider=volcengine and one selected model id.',
+    billingMode: mode,
+    usage: `Use provider=${provider} in the session model selector. This route stays pinned to ${baseURL} and never falls back to the other billing route.`,
   }
 }
