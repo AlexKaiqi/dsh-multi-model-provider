@@ -29,8 +29,9 @@ function object(value) {
 }
 
 function responseValue(response) {
-  if (!response?.result?.ok) throw new Error(response?.result?.error?.message ?? t('requestFailed'))
-  return response.result.value
+  const result = response?.result ?? response
+  if (!result?.ok) throw new Error(result?.error?.message ?? t('requestFailed'))
+  return result.value
 }
 
 function useConfig(api, includeModelCatalog = false) {
@@ -39,7 +40,7 @@ function useConfig(api, includeModelCatalog = false) {
     setState(current => ({ ...current, status: 'loading', error: undefined }))
     try {
       const [settings, modelCatalog] = await Promise.all([
-        api.settings.describe({}).then(responseValue),
+        api.settings.describe().then(responseValue),
         includeModelCatalog
           ? fetch(MODEL_CATALOG_PATH, { credentials: 'same-origin', cache: 'no-store' }).then(async response => {
               if (!response.ok) throw new Error(`model catalog HTTP ${response.status}`)
@@ -191,7 +192,7 @@ function PortraitSettings({ api, sessions, close }) {
   return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} sessions={sessions} close={close} /></div>
 }
 
-export const inject = ['slots', 'connection', 'locale', 'sessions']
+export const inject = ['slots', 'locale', 'sessions', 'remote', 'remote.settings']
 
 export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, DICTIONARIES), 'multi-model-provider: locale dictionaries')
@@ -203,12 +204,11 @@ export function apply(ctx) {
     document.head.appendChild(tag)
     return () => tag.remove()
   }, 'multi-model-provider: settings styles')
-  const connection = ctx.get('connection')
   const sessions = ctx.get('sessions')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'model-portraits', order: 11,
     label: () => t('tabPortraits'),
     locale: NS,
-    inject: () => ({ api: connection.api, sessions }),
+    inject: () => ({ api: ctx.remote, sessions }),
   }, PortraitSettings))
 }
