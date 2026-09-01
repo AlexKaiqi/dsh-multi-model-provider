@@ -2,6 +2,7 @@ export const NS = 'multiModelProvider'
 
 export const EN = {
   requestFailed: 'Request failed',
+  settingsReadUnavailable: 'No settings read channel is available in this client build.',
   providerVolcengine: 'Volcengine Ark',
   providerDoubaoSpeech: 'Doubao Speech',
   portraitsEmpty: 'Register or select at least one model in this profile before portraits appear here.',
@@ -45,6 +46,7 @@ export const EN = {
 export const ZH = {
   ...EN,
   requestFailed: '请求失败',
+  settingsReadUnavailable: '当前客户端没有可用的设置读取通道。',
   providerVolcengine: '火山方舟',
   providerDoubaoSpeech: '豆包语音',
   portraitsEmpty: '当前 profile 的统一模型注册表中还没有可展示的模型。',

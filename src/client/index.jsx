@@ -34,13 +34,33 @@ function responseValue(response) {
   return result.value
 }
 
-function useConfig(api, includeModelCatalog = false) {
+/**
+ * Read the redacted settings document over a channel this browser build has.
+ *
+ * The typed `remote.settings` namespace exists only when the running DSH
+ * client assembly mounts the settings-controller contribution; older
+ * assemblies (e.g. dsh-api-remotes 0.1.1-rc.2) never mount it, so a bare
+ * `api.settings.describe()` throws "Cannot read properties of undefined
+ * (reading 'describe')". The static Connection carrier is part of
+ * dsh-client-connection itself and is always present — the same read path
+ * the built-in settings UI uses — so prefer it and keep the typed namespace
+ * as a fallback for assemblies that scope reads per caller.
+ */
+function describeSettings(api, connection) {
+  const carrier = connection?.api?.settings
+  if (typeof carrier?.describe === 'function') return carrier.describe({}).then(responseValue)
+  const typed = api?.settings
+  if (typeof typed?.describe === 'function') return typed.describe().then(responseValue)
+  return Promise.reject(new Error(t('settingsReadUnavailable')))
+}
+
+function useConfig(api, connection, includeModelCatalog = false) {
   const [state, setState] = useState({ status: 'loading', multi: undefined, modelCatalog: { languageModels: [], taskModels: [], languageFailures: [] }, writable: false })
   const load = async () => {
     setState(current => ({ ...current, status: 'loading', error: undefined }))
     try {
       const [settings, modelCatalog] = await Promise.all([
-        api.settings.describe().then(responseValue),
+        describeSettings(api, connection),
         includeModelCatalog
           ? fetch(MODEL_CATALOG_PATH, { credentials: 'same-origin', cache: 'no-store' }).then(async response => {
               if (!response.ok) throw new Error(`model catalog HTTP ${response.status}`)
@@ -59,7 +79,7 @@ function useConfig(api, includeModelCatalog = false) {
       setState(current => ({ ...current, status: 'error', error: error instanceof Error ? error.message : String(error) }))
     }
   }
-  useEffect(() => { void load() }, [api, includeModelCatalog])
+  useEffect(() => { void load() }, [api, connection, includeModelCatalog])
   return [state, load]
 }
 
@@ -185,14 +205,18 @@ function PortraitViewer({ config, reload, sessions, close }) {
   </section>
 }
 
-function PortraitSettings({ api, sessions, close }) {
-  const [config, reload] = useConfig(api, true)
+function PortraitSettings({ api, connection, sessions, close }) {
+  const [config, reload] = useConfig(api, connection, true)
   if (config.status === 'loading' && !config.multi) return <div className="mmp-page mmp-portrait-page"><div className="mmp-muted">{t('loadingPortraits')}</div></div>
   if (config.status === 'error') return <div className="mmp-page mmp-portrait-page"><div className="mmp-error">{config.error}</div><button className="mmp-button" onClick={() => void reload()}>{t('retry')}</button></div>
   return <div className="mmp-page mmp-portrait-page"><PortraitViewer config={config} reload={reload} sessions={sessions} close={close} /></div>
 }
 
-export const inject = ['slots', 'locale', 'sessions', 'remote', 'remote.settings']
+// `connection` is the static wire carrier (dsh-client-connection). Settings
+// reads go through describeSettings(), which never depends on which Remote
+// namespaces the running DSH assembly mounts; the generated `remote` proxy
+// stays injected as the typed fallback.
+export const inject = ['slots', 'locale', 'sessions', 'remote', 'connection']
 
 export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, DICTIONARIES), 'multi-model-provider: locale dictionaries')
@@ -205,10 +229,11 @@ export function apply(ctx) {
     return () => tag.remove()
   }, 'multi-model-provider: settings styles')
   const sessions = ctx.get('sessions')
+  const connection = ctx.get('connection')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'model-portraits', order: 11,
     label: () => t('tabPortraits'),
     locale: NS,
-    inject: () => ({ api: ctx.remote, sessions }),
+    inject: () => ({ api: ctx.remote, connection, sessions }),
   }, PortraitSettings))
 }
