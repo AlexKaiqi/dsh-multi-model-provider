@@ -67,13 +67,17 @@ await ctx.modelCatalog.selectAgentModel({
 
 ## Settings UI
 
-安装后只保留 DSH 自带的“模型”管理界面。火山方舟通过 DSH 原生语言模型 Provider 目录接入，因此 DeepSeek 与方舟继续使用宿主的 Provider 行、编辑器、模型列表和删除交互；插件不会再注册第二个“模型”页面或追加另一套 Provider 编辑器。同时提供独立的只读“模型画像”设置页，只有“采集”和“查看”两个 Tab，选择器只列当前 profile 已注册或已选择的模型。采集会在当前会话显式调用内置 `collect-model-portraits` skill，不再创建后台 Agent、独立会话或临时工作区。画像包括：
+在 DSH `0.1.2-rc.1` 及以上版本中，打开 **设置 → 模型 → 配置火山方舟**。插件使用宿主的 `settings.models.footer` 扩展插槽，预填官方按量计费地址 `https://ark.cn-beijing.volces.com/api/v3`。输入 Key、获取当前账号目录、勾选模型后保存；获取失败会显示错误，也可以手工填写准确的模型 ID 或 `ep-*` 接入点 ID。至少选择一个模型才能保存，因为 pi-ai 未内置这条路由的模型目录。目录中的输出容量不会被写成每次请求的 token 上限。保存后沿用宿主的 Provider 行和会话模型选择器。
+
+表单通过 DSH 原生设置、凭据与 LLM Remote 读写，保存携带已读取的 revision，只修改表单负责的字段。密钥只进入凭据存储。查询不同地址时不会转发原地址的已存密钥，须显式输入目标地址的 Key。旧版宿主没有该插槽时，仍可使用 Agent 工具。
+
+独立的只读“模型画像”设置页有“采集”和“查看”两个 Tab，仅列已配置的模型；采集在当前会话调用 `collect-model-portraits` skill。
 
 - 一份由 Agent 根据带出处资料生成的分章节 Markdown 模型说明，集中承载定位、擅长、局限和适用场景等定性知识；
 - 按操作、单位、金额和币种保存的结构化价格；
 - 由 Agent 在用户明确授权后通过轻量请求测得的可用性、延迟和观测时间。语言模型测试会产生一次最多 8 token 的少量模型费用；支持探针的 task adapter 运行自己的最小测试。尚无运行探针的 Realtime 路由不显示伪造指标。
 
-插件把两种方舟计费方式注册为可同时存在的独立 Provider：`volcengine` 使用按量计费 Base URL `https://ark.cn-beijing.volces.com/api/v3`，`volcengine-agent-plan` 使用订阅 Base URL `https://ark.cn-beijing.volces.com/api/plan/v3`。二者使用 `ARK_API_KEY`，但模型选择与 Session 路由相互独立，且不会静默回退到另一条计费路径。升级时若只存在旧版 `VOLCENGINE_API_KEY`，插件会把值安全复制到标准引用 `ARK_API_KEY`，保留旧引用且不在日志或设置中暴露密钥。豆包语音仍把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开建模。但 DSH `0.1.1-rc.2` 没有开放第三方 Provider 编辑器或模型字段扩展槽，所以本插件不再用第二套页面伪装成原生接入；在宿主提供该契约前，豆包登记与选择保留在 task catalog 和 Agent 工具中。
+插件把两种方舟计费方式注册为可同时存在的独立 Provider：`volcengine` 使用按量计费 Base URL `https://ark.cn-beijing.volces.com/api/v3`，`volcengine-agent-plan` 使用订阅 Base URL `https://ark.cn-beijing.volces.com/api/plan/v3`。二者使用 `ARK_API_KEY`，但模型选择与 Session 路由相互独立，且不会静默回退到另一条计费路径。升级时若只存在旧版 `VOLCENGINE_API_KEY`，插件会把值安全复制到标准引用 `ARK_API_KEY`，保留旧引用且不在日志或设置中暴露密钥。豆包语音仍把固定的 Realtime 协议模型 `1.2.6.1` 与音色分开建模。方舟配置表单负责按量计费路由，Agent Plan 仍可通过 Agent 工具独立配置；豆包登记与选择保留在 task catalog 和 Agent 工具中。
 
 方舟语言模型仍写入官方 `llm-pi-ai.providers.volcengine`；豆包语音 task-model 与全部画像写入 `multi-model-provider`。ChatVoice 只选择已注册的 Realtime 路由，不拥有 Provider 凭据。
 

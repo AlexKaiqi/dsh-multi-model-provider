@@ -1,8 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
-import { type SettingsDescriptor } from '@deepseek-ai/dsh-settings';
+import type { SettingsNamespace, SettingsDescriptor } from '@deepseek-ai/dsh-settings';
 import { type CredentialStatus, type DiscoverTaskModelsInput, type ListTaskModelsInput, type RegisterTaskModelInput, type ResolvedTaskModelRoute, type TaskModelRegistryConfig, type SelectTaskModelsInput } from './types.ts';
-export declare const TASK_MODEL_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
+export declare const TASK_MODEL_SETTINGS_NAMESPACE: SettingsNamespace;
 export declare const TASK_MODEL_REGISTRY_SCHEMA: z<TaskModelRegistryConfig>;
 export declare const BUILTIN_TASK_MODEL_REGISTRY: TaskModelRegistryConfig;
 /**

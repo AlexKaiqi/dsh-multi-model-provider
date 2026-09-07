@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { PI_AI_SETTINGS_NAMESPACE } from '../src/operations.ts'
 import {
   inspectVolcengineProvider,
+  discoverVolcengineModels,
   migrateLegacyVolcengineCredential,
   selectVolcengineLanguageModels,
   VOLCENGINE_ARK_BASE_URL,
@@ -50,6 +51,28 @@ function context(arkConfigured = true): Context {
 }
 
 describe('Volcengine provider orientation', () => {
+  it('uses the official URL for a first-run draft and bypasses the bundled provider catalog', async () => {
+    const ctx = context(false)
+    const signal = new AbortController().signal
+    await discoverVolcengineModels(ctx, { provider: 'volcengine', apiKey: 'draft-key', signal })
+    expect(ctx.llm.discoverModels).toHaveBeenCalledWith('llm-pi-ai', { baseURL: VOLCENGINE_ARK_BASE_URL, api: 'openai-completions', apiKey: 'draft-key', signal })
+    expect(ctx.settings.mutate).not.toHaveBeenCalled()
+  })
+
+  it('uses the saved Ark credential without exposing it to the browser', async () => {
+    const ctx = context()
+    const result = await discoverVolcengineModels(ctx, { provider: 'volcengine' })
+    expect(ctx.llm.discoverModels).toHaveBeenCalledWith('llm-pi-ai', expect.objectContaining({ apiKey: 'must-not-leak' }))
+    expect(JSON.stringify(result)).not.toContain('must-not-leak')
+  })
+
+  it('reports missing credentials and refuses forwarding a saved key to a changed endpoint', async () => {
+    const ctx = context(false)
+    await expect(discoverVolcengineModels(ctx, {})).rejects.toThrow('API key')
+    await expect(discoverVolcengineModels(context(), { baseURL: 'https://other.example/v1' })).rejects.toThrow('saved key is not forwarded')
+    expect(ctx.llm.discoverModels).not.toHaveBeenCalled()
+  })
+
   it('copies the legacy credential reference to ARK_API_KEY without deleting the legacy value', async () => {
     const values = new Map([['VOLCENGINE_API_KEY', 'legacy-secret']])
     const ctx = {

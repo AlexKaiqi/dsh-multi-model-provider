@@ -4,7 +4,7 @@ import { isIP } from 'node:net'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { settingsNamespace, type SettingsDescriptor, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace, SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { ModelManagerError } from './operations.ts'
 import { initialPortrait, normalizePortrait, normalizeStoredPortrait } from './portrait-core.ts'
 import { builtinTaskPortrait } from './portraits/builtin-task.ts'
@@ -33,7 +33,7 @@ import {
   type SelectTaskModelsInput,
 } from './types.ts'
 
-export const TASK_MODEL_SETTINGS_NAMESPACE = settingsNamespace('multi-model-provider')
+export const TASK_MODEL_SETTINGS_NAMESPACE = 'multi-model-provider' as SettingsNamespace
 
 const modalitySchema = z.union(MODEL_MODALITIES)
 const taskSchema = z.union(TASK_MODEL_TASKS)

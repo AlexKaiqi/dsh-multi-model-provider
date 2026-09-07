@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import { settingsNamespace, type SettingsDescriptor, type SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace, SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import type {
   ConfigureModelRouteInput,
   CredentialStatus,
@@ -10,7 +10,7 @@ import type {
   ModelRouteView,
 } from './types.ts'
 
-export const PI_AI_SETTINGS_NAMESPACE = settingsNamespace('llm-pi-ai')
+export const PI_AI_SETTINGS_NAMESPACE = 'llm-pi-ai' as SettingsNamespace
 
 export class ModelManagerError extends HarnessError {
   constructor(message: string, code: string, options?: ErrorOptions) {

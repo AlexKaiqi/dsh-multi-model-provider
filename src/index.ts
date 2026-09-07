@@ -25,6 +25,8 @@ import { registerModelProbeRoute } from './probe-route.ts'
 import { registerModelPortraitSkill } from './model/portrait-skill.ts'
 import {
   migrateLegacyVolcengineCredential,
+  discoverVolcengineModels,
+  VOLCENGINE_PROVIDER,
 } from './providers/volcengine.ts'
 
 export * from './model/guidance.ts'
@@ -62,6 +64,7 @@ export function apply(ctx: Context): void {
     return () => {}
   }, 'multi-model-provider: Volcengine credential migration')
   ctx.llm.registerModelDiscovery('multi-model-provider', async (request) => {
+    if (request.provider === VOLCENGINE_PROVIDER) return discoverVolcengineModels(ctx, request)
     if (request.provider !== DOUBAO_SPEECH_PROVIDER) return []
     const stored = request.apiKey === undefined
       ? await ctx.credentials.resolve(credentialRef('DOUBAO_API_KEY'))

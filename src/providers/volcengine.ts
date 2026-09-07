@@ -4,15 +4,13 @@ import type { SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { configureModelRoute, ModelManagerError, PI_AI_SETTINGS_NAMESPACE } from '../operations.ts'
 import { listTaskModels } from '../registry.ts'
 import type { ModelProfileInput, SelectVolcengineLanguageModelsInput } from '../types.ts'
+import type { LlmModelDiscoveryRequest } from '@deepseek-ai/dsh-llm'
+import {
+  VOLCENGINE_PROVIDER, VOLCENGINE_AGENT_PLAN_PROVIDER, VOLCENGINE_ARK_PLAN_BASE_URL,
+  VOLCENGINE_ARK_PAYG_BASE_URL, VOLCENGINE_ARK_BASE_URL, VOLCENGINE_ARK_API, VOLCENGINE_ARK_API_KEY,
+} from '../volcengine-defaults.ts'
 
-export const VOLCENGINE_PROVIDER = 'volcengine'
-export const VOLCENGINE_AGENT_PLAN_PROVIDER = 'volcengine-agent-plan'
-/** Agent Plan and pay-as-you-go are independent routes and may coexist. */
-export const VOLCENGINE_ARK_PLAN_BASE_URL = 'https://ark.cn-beijing.volces.com/api/plan/v3'
-export const VOLCENGINE_ARK_PAYG_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
-export const VOLCENGINE_ARK_BASE_URL = VOLCENGINE_ARK_PAYG_BASE_URL
-export const VOLCENGINE_ARK_API = 'openai-completions'
-export const VOLCENGINE_ARK_API_KEY = 'ARK_API_KEY'
+export * from '../volcengine-defaults.ts'
 
 const CREDENTIALS = {
   arkApiKey: VOLCENGINE_ARK_API_KEY,
@@ -86,6 +84,28 @@ async function discoverArkModels(ctx: Context, signal: AbortSignal): Promise<{ m
   } catch (error) {
     return { models: [], error: error instanceof Error ? error.message : 'Ark model discovery failed' }
   }
+}
+
+/** Query the account's actual catalog, including before a language route exists. */
+export async function discoverVolcengineModels(ctx: Context, request: LlmModelDiscoveryRequest & { signal?: AbortSignal }) {
+  const profile = object(object(object(descriptor(ctx, PI_AI_SETTINGS_NAMESPACE)?.value)?.providers)?.[VOLCENGINE_PROVIDER])
+  const baseURL = request.baseURL?.trim() || (typeof profile?.baseURL === 'string' ? profile.baseURL : VOLCENGINE_ARK_BASE_URL)
+  let apiKey = request.apiKey?.trim()
+  if (!apiKey) {
+    const storedURL = typeof profile?.baseURL === 'string' ? profile.baseURL : VOLCENGINE_ARK_BASE_URL
+    if (baseURL.replace(/\/+$/, '') !== storedURL.replace(/\/+$/, '')) {
+      throw new ModelManagerError('Enter an API key to query a different endpoint; the saved key is not forwarded to it.', 'ARK_CREDENTIAL_REQUIRED')
+    }
+    const ref = typeof profile?.apiKeyEnv === 'string' ? profile.apiKeyEnv : VOLCENGINE_ARK_API_KEY
+    apiKey = (await ctx.credentials.resolve(credentialRef(ref)))?.value
+  }
+  if (!apiKey) throw new ModelManagerError('Enter the Ark API key before fetching available models.', 'ARK_CREDENTIAL_REQUIRED')
+  // Omit provider: pi-ai would otherwise prefer its bundled catalog over the
+  // authenticated endpoint, which is not evidence of this account's access.
+  return ctx.llm.discoverModels(PI_AI_SETTINGS_NAMESPACE, {
+    baseURL, api: VOLCENGINE_ARK_API, apiKey,
+    ...(request.signal === undefined ? {} : { signal: request.signal }),
+  })
 }
 
 /** One provider-specific orientation call: credentials, live catalog, selections, and invocation paths. */

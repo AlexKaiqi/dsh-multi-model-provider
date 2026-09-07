@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DICTIONARIES, installTranslator, NS, t } from './i18n.js'
 import { snapshotPortraitTargets } from './portrait-targets.js'
+import { ArkSetup } from './ark-settings.jsx'
 
 const MULTI_NS = 'multi-model-provider'
 const MODEL_CATALOG_PATH = '/dsh-multi-model-provider/catalog'
@@ -219,6 +220,13 @@ function PortraitSettings({ api, connection, sessions, close }) {
 export const inject = ['slots', 'locale', 'sessions', 'remote', 'connection']
 
 export function apply(ctx) {
+  ctx.inject(['remote.settings', 'remote.credentials', 'remote.llm'], scope => {
+    scope.slots.inject('settings.models.footer', () => scope.slots.register({
+      name: 'settings.models.footer', id: 'volcengine-setup', order: 10,
+      locale: NS,
+      inject: () => ({ remote: scope.remote, t: scope.locale.bind(NS) }),
+    }, ArkSetup))
+  })
   ctx.effect(() => ctx.locale.register(NS, DICTIONARIES), 'multi-model-provider: locale dictionaries')
   ctx.effect(() => installTranslator(ctx.locale.bind(NS)), 'multi-model-provider: locale binding')
   ctx.effect(() => {
