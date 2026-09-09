@@ -238,11 +238,11 @@ describe('help surface', () => {
     expect(client).not.toContain('conversation.input.right')
     expect(client).not.toContain('inputActions')
     expect(client).toContain("const MODEL_CATALOG_PATH = '/dsh-multi-model-provider/catalog'")
-    // The Ark footer uses typed Remotes only inside its optional scope;
-    // portrait settings must remain loadable on older client assemblies.
+    // The portrait page reads through the official typed Settings Remote and
+    // must declare that namespace in the plugin's own injection contract.
     expect(client).toContain("ctx.inject(['remote.settings', 'remote.credentials', 'remote.llm']")
     expect(client).toContain("scope.slots.inject('settings.models.footer'")
-    expect(client.match(/export const inject = \[(.*?)\]/)?.[1]).not.toContain('remote.settings')
+    expect(client.match(/export const inject = \[(.*?)\]/)?.[1]).toContain('remote.settings')
     expect(client).toContain("'remote'")
     expect(client).toContain('api: ctx.remote')
     expect(client).not.toContain('connection.api')
